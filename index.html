@@ -1,0 +1,1217 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Portal Data Kabupaten &amp; Kota Indonesia — Basis Data Statistik &amp; Geografis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ---------------- Root App Layout ---------------- */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: var(--cream-100);
+            color: var(--text-hi);
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        }
+
+        .app-root {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ---------------- Top Navbar (Indonesian Merah Putih Branding) ---------------- */
+        .app-header {
+            height: 66px;
+            background: #ffffff;
+            border-bottom: 2px solid var(--merah);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(31, 36, 46, 0.06);
+            flex-shrink: 0;
+            gap: 16px;
+        }
+
+        .brand-block {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 260px;
+        }
+
+        .flag-strip {
+            width: 5px;
+            height: 34px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, var(--merah) 50%, #ffffff 50%);
+            border: 1px solid rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .brand-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--merah);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            flex-shrink: 0;
+        }
+
+        .brand-logo svg {
+            width: 19px;
+            height: 19px;
+        }
+
+        .brand-text h1 {
+            font-size: 16.5px;
+            margin: 0;
+            color: var(--text-hi);
+            line-height: 1.15;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-text p {
+            margin: 0;
+            font-size: 11px;
+            color: var(--text-mid);
+            font-weight: 500;
+        }
+
+        /* Search with Clear & Category Badges */
+        .header-search {
+            flex: 1;
+            max-width: 460px;
+            position: relative;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            border-radius: 99px;
+            padding: 8px 14px;
+            background: var(--cream-50);
+            border: 1px solid var(--line-strong);
+            transition: all .2s var(--ease);
+        }
+
+        .search-box:focus-within {
+            border-color: var(--merah);
+            box-shadow: 0 0 0 3px rgba(207, 30, 46, 0.12);
+            background: #ffffff;
+        }
+
+        .search-box svg {
+            width: 15px;
+            height: 15px;
+            color: var(--text-low);
+            flex-shrink: 0;
+        }
+
+        .search-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: inherit;
+            font-size: 13.5px;
+            color: var(--text-hi);
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-low);
+        }
+
+        .search-box .clear-btn {
+            background: none;
+            border: none;
+            color: var(--text-low);
+            cursor: pointer;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .search-box .clear-btn:hover {
+            color: var(--text-hi);
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--radius-m);
+            box-shadow: var(--shadow-panel);
+            max-height: 380px;
+            overflow-y: auto;
+            z-index: 1200;
+        }
+
+        .search-dropdown .result-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 14px;
+            cursor: pointer;
+            border-top: 1px solid var(--line);
+            transition: background .12s;
+        }
+
+        .search-dropdown .result-row:first-child {
+            border-top: none;
+        }
+
+        .search-dropdown .result-row:hover,
+        .search-dropdown .result-row.active {
+            background: var(--merah-bg);
+        }
+
+        .search-dropdown .r-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-dropdown .r-type-badge {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--cream-200);
+            color: var(--text-mid);
+        }
+
+        .search-dropdown .r-type-badge.kota {
+            background: var(--sky-bg);
+            color: var(--sky);
+        }
+
+        .search-dropdown .rname {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text-hi);
+        }
+
+        .search-dropdown .rprov {
+            font-size: 11px;
+            color: var(--text-mid);
+        }
+
+        .search-dropdown .rempty {
+            padding: 16px;
+            text-align: center;
+            font-size: 12.5px;
+            color: var(--text-low);
+        }
+
+        /* Header Right View Mode Switcher */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .view-switcher {
+            display: flex;
+            background: var(--cream-200);
+            border-radius: 99px;
+            padding: 3px;
+            gap: 2px;
+        }
+
+        .view-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-mid);
+            padding: 5px 13px;
+            border-radius: 99px;
+            cursor: pointer;
+            transition: all .15s var(--ease);
+        }
+
+        .view-btn.active {
+            background: #ffffff;
+            color: var(--merah);
+            box-shadow: 0 1px 3px rgba(31, 36, 46, 0.1);
+        }
+
+        .view-btn svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        /* ---------------- Split Layout ---------------- */
+        .app-body {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ---------------- Left Sidebar ---------------- */
+        .sidebar {
+            width: 370px;
+            background: #ffffff;
+            border-right: 1px solid var(--line);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+            z-index: 800;
+        }
+
+        .sidebar-section {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .section-tag {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text-low);
+        }
+
+        /* Metric Category Tabs */
+        .metric-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 12px;
+            border-radius: var(--radius-s);
+            border: 1px solid var(--line);
+            background: var(--cream-50);
+            cursor: pointer;
+            transition: all .15s var(--ease);
+        }
+
+        .metric-item:hover {
+            border-color: var(--line-strong);
+            background: var(--cream-200);
+        }
+
+        .metric-item.active {
+            background: var(--merah-bg);
+            border-color: var(--merah);
+        }
+
+        .m-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .m-tag {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 3px 6px;
+            border-radius: 4px;
+            background: var(--cream-200);
+            color: var(--text-mid);
+            letter-spacing: 0.02em;
+        }
+
+        .metric-item.active .m-tag {
+            background: var(--merah);
+            color: #ffffff;
+        }
+
+        .m-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-hi);
+        }
+
+        .metric-item.active .m-title {
+            color: var(--merah);
+        }
+
+        .m-sub {
+            font-size: 11px;
+            color: var(--text-low);
+        }
+
+        /* Filter Controls */
+        .filter-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: var(--radius-s);
+            border: 1px solid var(--line-strong);
+            background: var(--cream-50);
+            font-family: inherit;
+            font-size: 12.5px;
+            color: var(--text-hi);
+            outline: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .filter-select:focus {
+            border-color: var(--merah);
+        }
+
+        .type-pills {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+
+        .type-pill {
+            padding: 6px 8px;
+            font-size: 11.5px;
+            font-weight: 600;
+            text-align: center;
+            border-radius: var(--radius-s);
+            border: 1px solid var(--line);
+            background: var(--cream-50);
+            color: var(--text-mid);
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .type-pill.active {
+            background: var(--merah);
+            color: #ffffff;
+            border-color: var(--merah);
+        }
+
+        .island-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .island-pill {
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 99px;
+            border: 1px solid var(--line);
+            background: var(--cream-50);
+            color: var(--text-mid);
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .island-pill:hover {
+            border-color: var(--merah);
+            color: var(--merah);
+            background: var(--merah-bg);
+        }
+
+        /* Benchmark Summary Card */
+        .benchmark-card {
+            background: linear-gradient(135deg, var(--cream-50), var(--tan-bg));
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 12px 14px;
+        }
+
+        .bm-title {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--text-mid);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .bm-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .bm-item .val {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text-hi);
+            display: block;
+            letter-spacing: -0.02em;
+        }
+
+        .bm-item .lbl {
+            font-size: 10px;
+            color: var(--text-low);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        /* Leaderboard with Top/Bottom Switcher */
+        .leaderboard-toggle {
+            display: flex;
+            gap: 4px;
+            background: var(--cream-200);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .lb-btn {
+            border: none;
+            background: transparent;
+            font-size: 10.5px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-mid);
+        }
+
+        .lb-btn.active {
+            background: #ffffff;
+            color: var(--merah);
+            font-weight: 700;
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .rank-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 10px;
+            border-radius: var(--radius-s);
+            border: 1px solid var(--line);
+            background: var(--cream-50);
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .rank-row:hover {
+            border-color: var(--merah);
+            background: var(--merah-bg);
+        }
+
+        .rank-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .rank-badge {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            background: var(--cream-200);
+            font-size: 10.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-mid);
+            flex-shrink: 0;
+        }
+
+        .rank-badge.top-1 {
+            background: var(--merah-light);
+            color: var(--merah);
+        }
+
+        .rank-name b {
+            font-size: 12px;
+            color: var(--text-hi);
+            display: block;
+            line-height: 1.2;
+            font-weight: 700;
+        }
+
+        .rank-name small {
+            font-size: 10px;
+            color: var(--text-mid);
+        }
+
+        .rank-val {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--text-hi);
+            text-align: right;
+        }
+
+        /* ---------------- Central Workspace ---------------- */
+        .workspace {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Active Context Status Strip */
+        .map-context-strip {
+            position: absolute;
+            top: 16px;
+            left: 18px;
+            z-index: 700;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--line-strong);
+            backdrop-filter: blur(10px);
+            border-radius: 99px;
+            padding: 7px 16px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+
+        .map-context-strip .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--merah);
+            display: inline-block;
+        }
+
+        .map-context-strip b {
+            color: var(--text-hi);
+        }
+
+        .map-context-strip .sub-tag {
+            color: var(--text-mid);
+            padding-left: 8px;
+            border-left: 1px solid var(--line-strong);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: var(--cream-200);
+        }
+
+        /* Map Legend Overlay */
+        .map-legend {
+            position: absolute;
+            left: 18px;
+            bottom: 20px;
+            z-index: 700;
+            width: 270px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--line-strong);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-panel);
+            border-radius: var(--radius-m);
+            padding: 12px 14px;
+        }
+
+        .map-legend .leg-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-mid);
+            margin-bottom: 6px;
+        }
+
+        .map-legend .scale-bar {
+            height: 7px;
+            border-radius: 99px;
+            background: linear-gradient(90deg, #3b82b8, #cf1e2e, #b0804b);
+            margin-bottom: 5px;
+        }
+
+        .map-legend .scale-vals {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10.5px;
+            color: var(--text-low);
+            font-weight: 600;
+        }
+
+        /* ---------------- Table View Container ---------------- */
+        .table-view-wrap {
+            position: absolute;
+            inset: 0;
+            background: var(--cream-100);
+            z-index: 750;
+            overflow-y: auto;
+            padding: 22px 26px;
+            display: none;
+        }
+
+        .table-view-wrap.active {
+            display: block;
+        }
+
+        .table-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .table-header-row h2 {
+            font-size: 20px;
+            font-weight: 800;
+            margin: 0;
+            color: var(--text-hi);
+            letter-spacing: -0.02em;
+        }
+
+        .data-table-container {
+            background: #ffffff;
+            border-radius: var(--radius-m);
+            border: 1px solid var(--line);
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .data-table th {
+            background: var(--cream-200);
+            padding: 11px 14px;
+            font-weight: 700;
+            font-size: 11.5px;
+            color: var(--text-mid);
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            border-bottom: 1px solid var(--line-strong);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .data-table th:hover {
+            color: var(--merah);
+        }
+
+        .data-table td {
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--line);
+            color: var(--text-hi);
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tr:hover td {
+            background: var(--merah-bg);
+        }
+
+        .data-table .highlight-col {
+            font-weight: 700;
+            color: var(--merah);
+        }
+
+        .data-table .action-btn {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--merah);
+            text-decoration: none;
+            padding: 3px 10px;
+            border-radius: 99px;
+            border: 1px solid var(--merah-light);
+            background: #ffffff;
+            transition: all .15s;
+        }
+
+        .data-table .action-btn:hover {
+            background: var(--merah);
+            color: #ffffff;
+        }
+
+        /* ---------------- Detail Sliding Drawer ---------------- */
+        .region-panel {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            bottom: 18px;
+            width: 380px;
+            background: #ffffff;
+            border: 1px solid var(--line-strong);
+            box-shadow: var(--shadow-panel);
+            border-radius: var(--radius-l);
+            padding: 22px 22px 18px;
+            overflow-y: auto;
+            transform: translateX(440px);
+            opacity: 0;
+            transition: transform .35s var(--ease), opacity .3s var(--ease);
+            pointer-events: none;
+            z-index: 950;
+        }
+
+        .region-panel.open {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .rp-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 1px solid var(--line);
+            background: var(--cream-50);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-mid);
+        }
+
+        .rp-close:hover {
+            color: var(--text-hi);
+            background: var(--cream-200);
+        }
+
+        .rp-type-tag {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: var(--cream-200);
+            color: var(--text-mid);
+            margin-bottom: 4px;
+        }
+
+        .rp-prov {
+            font-size: 11.5px;
+            color: var(--merah);
+            font-weight: 700;
+        }
+
+        .rp-name {
+            font-size: 21px;
+            line-height: 1.15;
+            margin: 2px 0 10px;
+            font-weight: 800;
+            color: var(--text-hi);
+            letter-spacing: -0.02em;
+        }
+
+        .rp-spotlight {
+            background: linear-gradient(135deg, var(--merah-bg), var(--tan-bg));
+            border: 1px solid rgba(207, 30, 46, 0.2);
+            border-radius: var(--radius-s);
+            padding: 11px 13px;
+            margin-bottom: 14px;
+        }
+
+        .rp-spotlight .sp-label {
+            font-size: 11px;
+            color: var(--text-mid);
+            font-weight: 600;
+        }
+
+        .rp-spotlight .sp-val {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--merah);
+            line-height: 1.2;
+            margin: 2px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .rp-spotlight .sp-compare {
+            font-size: 10.5px;
+            color: var(--text-mid);
+        }
+
+        .rp-lead {
+            display: flex;
+            gap: 9px;
+            align-items: center;
+            margin-bottom: 14px;
+            background: var(--cream-50);
+            padding: 9px 11px;
+            border-radius: var(--radius-s);
+            border: 1px solid var(--line);
+        }
+
+        .rp-lead .avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--merah-light), var(--merah));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #ffffff;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .rp-lead .who b {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .rp-lead .who small {
+            font-size: 10.5px;
+            color: var(--text-mid);
+        }
+
+        .rp-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 10px;
+            margin-bottom: 16px;
+            background: #ffffff;
+            border: 1px solid var(--line);
+            padding: 12px;
+            border-radius: var(--radius-s);
+        }
+
+        .rp-meter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .rp-meter-row .meter {
+            flex: 1;
+        }
+
+        .rp-meter-row span {
+            font-size: 10.5px;
+            color: var(--text-mid);
+            white-space: nowrap;
+        }
+
+        .rp-cta {
+            width: 100%;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        /* ---------------- Responsive Breakpoints ---------------- */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 320px;
+            }
+            .header-search {
+                max-width: 320px;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .app-header {
+                height: auto;
+                padding: 10px 14px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .brand-block {
+                min-width: auto;
+            }
+            .header-search {
+                order: 3;
+                max-width: 100%;
+                width: 100%;
+            }
+            .app-body {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: 260px;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+            }
+            .region-panel {
+                left: 0;
+                right: 0;
+                bottom: 0;
+                top: auto;
+                width: 100%;
+                height: 72vh;
+                border-radius: 20px 20px 0 0;
+                transform: translateY(110%);
+            }
+            .region-panel.open {
+                transform: translateY(0);
+            }
+            .map-context-strip {
+                left: 10px;
+                top: 10px;
+                right: 10px;
+                padding: 5px 12px;
+                font-size: 11px;
+            }
+            .map-legend {
+                left: 10px;
+                bottom: 10px;
+                width: calc(100% - 20px);
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-root">
+        <!-- Top App Navigation Header -->
+        <header class="app-header">
+            <div class="brand-block">
+                <div class="flag-strip" title="Republik Indonesia"></div>
+                <div class="brand-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                        <line x1="8" y1="2" x2="8" y2="18"></line>
+                        <line x1="16" y1="6" x2="16" y2="22"></line>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>Portal Data Indonesia</h1>
+                    <p id="headerSubtitle">Basis Data 514 Kabupaten &amp; Kota di 38 Provinsi</p>
+                </div>
+            </div>
+
+            <!-- Useful Quick Search Bar -->
+            <div class="header-search">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <circle cx="11" cy="11" r="7" />
+                        <line x1="21" y1="21" x2="16.2" y2="16.2" />
+                    </svg>
+                    <input id="searchInput" type="text" placeholder="Cari nama kabupaten, kota, atau provinsi…" autocomplete="off" aria-label="Cari wilayah">
+                    <button class="clear-btn" id="searchClearBtn" hidden aria-label="Bersihkan pencarian">✕</button>
+                </div>
+                <div class="search-dropdown" id="searchResults" hidden></div>
+            </div>
+
+            <!-- View Switcher & Actions -->
+            <div class="header-actions">
+                <div class="view-switcher">
+                    <button type="button" class="view-btn active" id="btnViewMap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                        </svg>
+                        Peta Interaktif
+                    </button>
+                    <button type="button" class="view-btn" id="btnViewTable">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Tabel Peringkat
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body: Sidebar + Workspace + Region Panel -->
+        <div class="app-body">
+            <!-- Sidebar: Filter & Interactive Indicator Hub -->
+            <aside class="sidebar">
+                <!-- 1. Indikator Tematik Selector -->
+                <div class="sidebar-section">
+                    <div class="section-header">
+                        <span class="section-tag">Indikator Tematik</span>
+                    </div>
+                    <div class="metric-list" id="metricCards">
+                        <!-- Populated dynamically by map.js -->
+                    </div>
+                </div>
+
+                <!-- 2. Filter Wilayah & Lokasi -->
+                <div class="sidebar-section">
+                    <div class="section-header">
+                        <span class="section-tag">Filter Wilayah &amp; Cakupan</span>
+                    </div>
+                    <div class="filter-grid">
+                        <select id="provFilter" class="filter-select" aria-label="Filter berdasarkan provinsi">
+                            <option value="">Semua Provinsi (Nasional)</option>
+                        </select>
+                        <div class="type-pills" id="typePills">
+                            <button type="button" class="type-pill active" data-type="all">Semua</button>
+                            <button type="button" class="type-pill" data-type="kabupaten">Kabupaten</button>
+                            <button type="button" class="type-pill" data-type="kota">Kota</button>
+                        </div>
+                        <div class="island-pills" id="islandPills">
+                            <button type="button" class="island-pill" data-bounds="sumatera">Sumatera</button>
+                            <button type="button" class="island-pill" data-bounds="jawa">Jawa</button>
+                            <button type="button" class="island-pill" data-bounds="kalimantan">Kalimantan</button>
+                            <button type="button" class="island-pill" data-bounds="sulawesi">Sulawesi</button>
+                            <button type="button" class="island-pill" data-bounds="bali_nusa">Bali-Nusa</button>
+                            <button type="button" class="island-pill" data-bounds="papua">Maluku-Papua</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. National Summary Stats for Active Metric -->
+                <div class="sidebar-section">
+                    <div class="benchmark-card">
+                        <div class="bm-title">
+                            <span id="bmMetricName">Kepadatan Penduduk</span>
+                            <span style="font-size:10px; color:var(--text-low); font-weight:600;">Rujukan Nasional</span>
+                        </div>
+                        <div class="bm-grid">
+                            <div class="bm-item">
+                                <span class="val" id="natMin">–</span>
+                                <span class="lbl">Terendah</span>
+                            </div>
+                            <div class="bm-item">
+                                <span class="val" id="natAvg" style="color:var(--merah);">–</span>
+                                <span class="lbl">Rata-Rata</span>
+                            </div>
+                            <div class="bm-item">
+                                <span class="val" id="natMax">–</span>
+                                <span class="lbl">Tertinggi</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Leaderboard / Top Ranking -->
+                <div class="sidebar-section" style="flex: 1;">
+                    <div class="section-header">
+                        <span class="section-tag">Peringkat Daerah</span>
+                        <div class="leaderboard-toggle">
+                            <button type="button" class="lb-btn active" id="lbTopBtn">Tertinggi</button>
+                            <button type="button" class="lb-btn" id="lbBottomBtn">Terendah</button>
+                        </div>
+                    </div>
+                    <div class="leaderboard-list" id="leaderboardList">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Workspace: Map & Table -->
+            <main class="workspace">
+                <!-- Map Context Strip -->
+                <div class="map-context-strip" id="mapContextStrip">
+                    <span class="dot"></span>
+                    <span>Peta Sebaran: <b id="stripMetricLabel">Kepadatan Penduduk</b></span>
+                    <span class="sub-tag" id="stripFilterLabel">Seluruh Indonesia (514 Wilayah)</span>
+                </div>
+
+                <!-- Map Container -->
+                <div id="map" role="application" aria-label="Peta interaktif kabupaten dan kota Indonesia"></div>
+
+                <!-- Floating Map Legend -->
+                <div class="map-legend" id="mapLegend">
+                    <div class="leg-title" id="legendMetricTitle">Kepadatan Penduduk (jiwa/km²)</div>
+                    <div class="scale-bar"></div>
+                    <div class="scale-vals">
+                        <span id="scaleMin">–</span>
+                        <span id="scaleMax">–</span>
+                    </div>
+                </div>
+
+                <!-- Table View -->
+                <div class="table-view-wrap" id="tableViewWrap">
+                    <div class="table-header-row">
+                        <div>
+                            <h2>Tabel Peringkat &amp; Komparasi Wilayah</h2>
+                            <p style="margin: 3px 0 0; font-size: 12.5px; color: var(--text-mid);" id="tableCountLabel">Menampilkan 514 kabupaten &amp; kota</p>
+                        </div>
+                    </div>
+                    <div class="data-table-container">
+                        <table class="data-table" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th data-sort="rank">No</th>
+                                    <th data-sort="kabkota">Kabupaten / Kota</th>
+                                    <th data-sort="prov">Provinsi</th>
+                                    <th data-sort="active_metric" id="thActiveMetric">Metrik Terpilih</th>
+                                    <th data-sort="penduduk">Penduduk</th>
+                                    <th data-sort="ipm_total">IPM</th>
+                                    <th data-sort="pdrb_perkapita">PDRB/Kap</th>
+                                    <th data-sort="persentase_miskin">Kemiskinan</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right Detail Sliding Drawer Panel -->
+            <aside class="region-panel" id="regionPanel">
+                <div class="rp-close" id="rpClose" role="button" aria-label="Tutup">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                        <line x1="4" y1="4" x2="20" y2="20" />
+                        <line x1="20" y1="4" x2="4" y2="20" />
+                    </svg>
+                </div>
+                <div id="rpContent"></div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="data.js"></script>
+    <script src="map.js"></script>
+</body>
+
+</html>

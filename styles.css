@@ -1,0 +1,278 @@
+/* ============================================================
+   Portal Data Kabupaten/Kota — design tokens & shared components
+   Palette: Indonesian Merah-Putih, warm cream, sky blue, light tan.
+   Type: Plus Jakarta Sans (Clean Modern Sans-Serif).
+   ============================================================ */
+
+:root {
+    --cream-50: #fffdf9;
+    --cream-100: #faf7f2;
+    --cream-200: #f2ece4;
+    --cream-300: #e5ddd3;
+    --line: rgba(130, 110, 90, 0.12);
+    --line-strong: rgba(130, 110, 90, 0.22);
+    --card: rgba(255, 255, 255, 0.9);
+    --card-strong: #ffffff;
+    --text-hi: #1f242e;
+    --text-mid: #525c6e;
+    --text-low: #8b95a5;
+
+    /* Indonesian Merah-Putih & Pastel Accents */
+    --merah: #cf1e2e;
+    --merah-dark: #ad1422;
+    --merah-light: #fce8ea;
+    --merah-bg: #fff2f3;
+    --rose: #cf1e2e;
+    --rose-light: #fce8ea;
+    --rose-bg: #fff2f3;
+
+    --sky: #3b82b8;
+    --sky-light: #dbeafe;
+    --sky-bg: #eff6ff;
+    --tan: #b0804b;
+    --tan-light: #fef3c7;
+    --tan-bg: #fffbeb;
+    --green: #2e7d32;
+    --green-light: #e8f5e9;
+    --coral: #d32f2f;
+
+    --radius-s: 8px;
+    --radius-m: 14px;
+    --radius-l: 20px;
+    --shadow-card: 0 2px 8px rgba(31, 36, 46, 0.05), 0 1px 2px rgba(31, 36, 46, 0.04);
+    --shadow-panel: 0 10px 30px rgba(31, 36, 46, 0.08), 0 2px 6px rgba(31, 36, 46, 0.04);
+    --ease: cubic-bezier(.22, .9, .32, 1);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    color-scheme: light;
+}
+
+body {
+    margin: 0;
+    background: var(--cream-100);
+    color: var(--text-hi);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-size: 14.5px;
+    line-height: 1.5;
+}
+
+::selection {
+    background: var(--merah-light);
+    color: var(--merah-dark);
+}
+
+::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--cream-300);
+    border-radius: 99px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+a {
+    color: inherit;
+}
+
+button {
+    font-family: inherit;
+}
+
+.serif {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+/* ---------- card panel ---------- */
+.glass {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-panel);
+    border-radius: var(--radius-m);
+}
+
+/* ---------- focus ring ---------- */
+:focus-visible {
+    outline: 2px solid var(--merah);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* ---------- data-completeness meter ---------- */
+.meter {
+    height: 6px;
+    border-radius: 99px;
+    background: var(--cream-200);
+    overflow: hidden;
+    position: relative;
+}
+
+.meter>i {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--tan), var(--merah));
+}
+
+/* ---------- chips ---------- */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    letter-spacing: .01em;
+    border: 1px solid var(--line);
+    background: #ffffff;
+    color: var(--text-mid);
+    white-space: nowrap;
+}
+
+.chip b {
+    color: var(--text-hi);
+    font-weight: 700;
+}
+
+.chip.merah {
+    border-color: rgba(207, 30, 46, 0.25);
+    color: var(--merah);
+    background: var(--merah-bg);
+}
+
+.chip.teal {
+    border-color: rgba(59, 130, 184, 0.25);
+    color: #2b6a98;
+    background: var(--sky-bg);
+}
+
+.chip.gold {
+    border-color: rgba(176, 128, 75, 0.25);
+    color: #8c6230;
+    background: var(--tan-bg);
+}
+
+/* ---------- primary / ghost buttons ---------- */
+.btn {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 11px 18px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform .18s var(--ease), background .18s var(--ease), box-shadow .18s var(--ease);
+}
+
+.btn:active {
+    transform: scale(.97);
+}
+
+.btn-primary {
+    background: var(--merah);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(207, 30, 46, 0.25);
+}
+
+.btn-primary:hover {
+    background: var(--merah-dark);
+    box-shadow: 0 6px 18px rgba(207, 30, 46, 0.35);
+}
+
+.btn-ghost {
+    background: #ffffff;
+    color: var(--text-hi);
+    border: 1px solid var(--line-strong);
+}
+
+.btn-ghost:hover {
+    background: var(--cream-200);
+}
+
+.btn-icon {
+    width: 15px;
+    height: 15px;
+    flex: none;
+}
+
+/* ---------- section stat tile ---------- */
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.stat .num {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(20px, 2.4vw, 26px);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-hi);
+    letter-spacing: -0.02em;
+}
+
+.stat .label {
+    font-size: 12px;
+    color: var(--text-mid);
+}
+
+.stat .unit {
+    font-size: 12px;
+    color: var(--text-low);
+    font-weight: 500;
+    margin-left: 3px;
+}
+
+.na {
+    color: var(--text-low);
+    font-style: italic;
+    font-size: 13px;
+}
+
+/* ---------- responsive helpers ---------- */
+.only-desktop {
+    display: initial;
+}
+
+.only-mobile {
+    display: none;
+}
+
+@media (max-width:760px) {
+    .only-desktop {
+        display: none !important;
+    }
+
+    .only-mobile {
+        display: initial !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+    }
+}

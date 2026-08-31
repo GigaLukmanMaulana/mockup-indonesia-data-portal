@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profil Wilayah — Portal Data Kabupaten &amp; Kota Indonesia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: var(--cream-100);
+            color: var(--text-hi);
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        }
+
+        .shell {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 24px 24px 80px;
+        }
+
+        /* ---- Header Topnav ---- */
+        .topnav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--text-hi);
+            font-size: 13.5px;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 99px;
+            border: 1px solid var(--line-strong);
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(31, 36, 46, 0.05);
+            transition: all .15s var(--ease);
+        }
+
+        .back-link:hover {
+            border-color: var(--merah);
+            background: var(--merah-bg);
+            color: var(--merah);
+        }
+
+        .back-link svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        /* Quick Region Switcher in Header */
+        .region-switcher-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .region-select {
+            padding: 7px 14px;
+            border-radius: 99px;
+            border: 1px solid var(--line-strong);
+            background: #ffffff;
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-hi);
+            outline: none;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(31, 36, 46, 0.05);
+        }
+
+        .region-select:focus {
+            border-color: var(--merah);
+        }
+
+        /* ---- Hero Header Card ---- */
+        .hero-card {
+            background: #ffffff;
+            border: 1px solid var(--line);
+            border-top: 3px solid var(--merah);
+            border-radius: var(--radius-l);
+            box-shadow: var(--shadow-card);
+            padding: 28px 30px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .hero-badge-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .type-badge {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: var(--cream-200);
+            color: var(--text-mid);
+        }
+
+        .type-badge.kota {
+            background: var(--sky-bg);
+            color: var(--sky);
+        }
+
+        .hero-prov {
+            font-size: 12.5px;
+            color: var(--merah);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+        }
+
+        .hero-name {
+            font-size: clamp(26px, 3.8vw, 38px);
+            line-height: 1.15;
+            font-weight: 800;
+            margin: 0 0 14px;
+            color: var(--text-hi);
+            letter-spacing: -0.02em;
+        }
+
+        .hero-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .hero-meter-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 320px;
+        }
+
+        .hero-meter-row .meter {
+            flex: 1;
+        }
+
+        .hero-meter-row span {
+            font-size: 11px;
+            color: var(--text-mid);
+            white-space: nowrap;
+        }
+
+        .hero-map {
+            height: 200px;
+            border-radius: var(--radius-m);
+            overflow: hidden;
+            position: relative;
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow-card);
+        }
+
+        .hero-map .coord {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 400;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--text-hi);
+            background: rgba(255, 255, 255, .92);
+            padding: 4px 8px;
+            border-radius: 99px;
+            border: 1px solid var(--line);
+            backdrop-filter: blur(4px);
+        }
+
+        /* ---- Sticky Section Navigation Tabs ---- */
+        .section-nav-sticky {
+            position: sticky;
+            top: 14px;
+            z-index: 500;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--line-strong);
+            border-radius: 99px;
+            padding: 4px 6px;
+            display: flex;
+            gap: 4px;
+            margin-bottom: 28px;
+            box-shadow: var(--shadow-card);
+            overflow-x: auto;
+        }
+
+        .sec-tab-link {
+            text-decoration: none;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-mid);
+            padding: 7px 16px;
+            border-radius: 99px;
+            white-space: nowrap;
+            transition: all .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sec-tab-link:hover,
+        .sec-tab-link.active {
+            background: var(--merah-bg);
+            color: var(--merah);
+            font-weight: 700;
+        }
+
+        /* ---- Content Cards & Sections ---- */
+        .content-card {
+            background: #ffffff;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-m);
+            box-shadow: var(--shadow-card);
+            padding: 26px 28px;
+            margin-bottom: 24px;
+        }
+
+        .card-head {
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .card-head h2 {
+            font-weight: 800;
+            font-size: 19px;
+            margin: 0;
+            color: var(--text-hi);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .card-head .subtitle {
+            font-size: 12px;
+            color: var(--text-low);
+            font-weight: 500;
+        }
+
+        /* Grid Layouts for Data Points */
+        .data-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .data-box {
+            background: var(--cream-50);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .data-box .num {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-hi);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+
+        .data-box .label {
+            font-size: 11.5px;
+            color: var(--text-mid);
+            font-weight: 600;
+        }
+
+        .data-box .unit {
+            font-size: 10.5px;
+            color: var(--text-low);
+        }
+
+        /* Geographical Boundaries Grid */
+        .borders-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .border-card {
+            background: var(--cream-50);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .border-tag {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 3px 6px;
+            border-radius: 4px;
+            background: var(--cream-200);
+            color: var(--text-mid);
+            flex-shrink: 0;
+            letter-spacing: 0.04em;
+        }
+
+        .border-content b {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--tan);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .border-content span {
+            font-size: 13px;
+            color: var(--text-hi);
+            font-weight: 600;
+        }
+
+        /* Topography Distribution */
+        .topo-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .topo-item {
+            background: var(--cream-50);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 10px 12px;
+            text-align: center;
+        }
+
+        .topo-item .t-val {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--text-hi);
+        }
+
+        .topo-item .t-lbl {
+            font-size: 11px;
+            color: var(--text-mid);
+            margin-top: 2px;
+            font-weight: 600;
+        }
+
+        /* Leadership Cards */
+        .leaders-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .leader-card {
+            background: var(--cream-50);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .leader-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--merah-light), var(--merah));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            color: #ffffff;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .leader-info b {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-hi);
+            display: block;
+        }
+
+        .leader-info small {
+            font-size: 11.5px;
+            color: var(--text-mid);
+        }
+
+        /* Parliament Composition Table */
+        .dprd-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .dprd-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .dprd-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .dprd-bar-track {
+            height: 8px;
+            border-radius: 6px;
+            background: var(--cream-200);
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .dprd-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            background: linear-gradient(90deg, var(--sky), var(--merah));
+        }
+
+        /* Demographic Charts Grid */
+        .demo-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+
+        .gender-bar {
+            display: flex;
+            height: 32px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 10px 0 8px;
+        }
+
+        .gender-bar .m {
+            background: linear-gradient(90deg, var(--sky), #60a5fa);
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .gender-bar .f {
+            background: linear-gradient(90deg, #f87171, var(--merah));
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .gender-caption {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11.5px;
+            color: var(--text-mid);
+            font-weight: 500;
+        }
+
+        /* IPM Highlight Gauge Card */
+        .ipm-spotlight-card {
+            background: linear-gradient(135deg, var(--cream-50), var(--tan-bg));
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+
+        .ipm-gauge-circle {
+            width: 80px;
+            height: 80px;
+            flex-shrink: 0;
+        }
+
+        .ipm-score {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-hi);
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+
+        .ipm-category {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--merah);
+            margin-top: 4px;
+        }
+
+        /* Sector Economy Row */
+        .sector-row {
+            display: grid;
+            grid-template-columns: 24px 1fr 90px 60px;
+            align-items: center;
+            gap: 12px;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--line);
+            font-size: 13px;
+        }
+
+        .sector-row:last-child {
+            border-bottom: none;
+        }
+
+        .sector-row .rank {
+            color: var(--text-low);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .sector-row .bar-track {
+            height: 7px;
+            border-radius: 6px;
+            background: var(--cream-200);
+            overflow: hidden;
+        }
+
+        .sector-row .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            background: linear-gradient(90deg, var(--tan-light), var(--tan));
+        }
+
+        .sector-row .pct {
+            text-align: right;
+            font-weight: 700;
+            color: var(--text-hi);
+        }
+
+        /* Footer */
+        .page-footer {
+            margin-top: 40px;
+            padding-top: 18px;
+            border-top: 1px solid var(--line);
+            font-size: 11.5px;
+            color: var(--text-low);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 820px) {
+            .hero-card {
+                grid-template-columns: 1fr;
+                padding: 20px;
+            }
+            .hero-map {
+                height: 170px;
+                order: -1;
+            }
+            .data-grid-4,
+            .topo-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .borders-grid,
+            .leaders-row,
+            .demo-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="shell">
+        <!-- Top Nav with Back Button & Quick Switcher -->
+        <nav class="topnav">
+            <a class="back-link" href="index.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 6l-6 6 6 6" />
+                </svg>
+                Kembali ke Peta &amp; Dashboard
+            </a>
+            <div class="region-switcher-wrap">
+                <select id="headerRegionSelect" class="region-select" aria-label="Ganti wilayah">
+                    <!-- Populated dynamically -->
+                </select>
+                <div id="topnavMeta"></div>
+            </div>
+        </nav>
+
+        <!-- Main Hero Card -->
+        <header class="hero-card">
+            <div class="hero-content">
+                <div class="hero-badge-row">
+                    <span class="type-badge" id="heroTypeBadge">KABUPATEN</span>
+                    <span class="hero-prov" id="heroProv">PROVINSI ...</span>
+                </div>
+                <h1 class="hero-name" id="heroName">Nama Wilayah</h1>
+                <div class="hero-chips" id="heroChips"></div>
+                <div class="hero-meter-row">
+                    <div class="meter"><i id="heroMeterFill"></i></div>
+                    <span id="heroMeterLabel">Kelengkapan BPS: <b>0%</b></span>
+                </div>
+            </div>
+            <div class="hero-map" id="heroMap">
+                <span class="coord" id="heroCoord">0°, 0°</span>
+            </div>
+        </header>
+
+        <!-- Sticky Section Navigation Tabs -->
+        <nav class="section-nav-sticky">
+            <a href="#sec-geografi" class="sec-tab-link active">Wilayah &amp; Geografi</a>
+            <a href="#sec-pemerintahan" class="sec-tab-link">Pemerintahan &amp; DPRD</a>
+            <a href="#sec-demografi" class="sec-tab-link">Kependudukan &amp; IPM</a>
+            <a href="#sec-ekonomi" class="sec-tab-link">Perekonomian &amp; PDRB</a>
+        </nav>
+
+        <!-- Main Content Sections -->
+        <main id="mainContent">
+            <!-- Populated dynamically by profil.js -->
+        </main>
+
+        <footer class="page-footer">
+            <span>Portal Data Kabupaten &amp; Kota Indonesia 2026 — Sumber Rujukan: Publikasi BPS Kabupaten/Kota Dalam Angka</span>
+            <span id="footerId"></span>
+        </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="data.js"></script>
+    <script src="profil.js"></script>
+</body>
+
+</html>
