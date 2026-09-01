@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
             shortLabel: 'Indeks IPM',
             tag: 'IPM',
             category: 'Kesejahteraan',
-            unit: 'skor (0-100)',
+            unit: 'skor 0–100',
             note: 'Mengukur capaian kesehatan, pendidikan, & standar hidup layak (Standar BPS).',
             getValue: (d) => (d.ipm_total !== null && !isNaN(d.ipm_total) ? Number(d.ipm_total) : null),
             format: (v) => `${v.toFixed(2)}`,
@@ -150,9 +150,11 @@ document.addEventListener('DOMContentLoaded', () => {
         zoom: 5,
         minZoom: 4,
         maxZoom: 13,
-        zoomControl: true,
+        zoomControl: false,
         attributionControl: true
     });
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // OpenStreetMap standard tile layer
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -161,6 +163,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }).addTo(map);
 
     const markersLayer = L.layerGroup().addTo(map);
+    const geojsonLayerGroup = L.layerGroup().addTo(map);
+
+    let allGeoJsonFeatures = [];
+
+    // Helper String Normalization & Matching
+    function normalizeStr(val) {
+        return String(val || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    }
+
+    function sameProvName(a, b) {
+        const x = normalizeStr(a);
+        const y = normalizeStr(b);
+        if (!x || !y) return false;
+        if (x === y) return true;
+
+        const aliases = {
+            'jakartaraya': 'dkijakarta', 'jakarta': 'dkijakarta', 'dki': 'dkijakarta',
+            'yogyakarta': 'diyogyakarta', 'daerahistimewayogyakarta': 'diyogyakarta',
+            'bangkabelitung': 'kepulauanbangkabelitung', 'kepbangkabelitung': 'kepulauanbangkabelitung'
+        };
+
+        const normX = aliases[x] || x;
+        const normY = aliases[y] || y;
+
+        if (normX === normY) return true;
+
+        // Match DOB Papua expansion provinces (Papua Pegunungan, Papua Tengah, Papua Selatan, Papua Barat Daya) with base Papua in GeoJSON
+        if (normX.startsWith('papua') && normY.startsWith('papua')) return true;
+
+        return false;
+    }
+
+    function findBpsRegionData(gCountry, gName) {
+        if (!gName) return null;
+
+        // 1. Primary match with province verification
+        let found = REGION_DATA.find(d => {
+            if (!sameProvName(d.prov, gCountry)) return false;
+            const bpsKab = normalizeStr(d.kabkota);
+            const gKab = normalizeStr(gName);
+            if (bpsKab === gKab) return true;
+            const cBps = bpsKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+            const cGeo = gKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+            return cBps === cGeo && cBps.length > 2;
+        });
+
+        if (found) return found;
+
+        // 2. Fallback match by regency name across all 514 regions
+        const gKab = normalizeStr(gName);
+        const cGeo = gKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+        if (cGeo.length > 2) {
+            found = REGION_DATA.find(d => {
+                const bpsKab = normalizeStr(d.kabkota);
+                const cBps = bpsKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+                return cBps === cGeo;
+            });
+        }
+
+        return found;
+    }
+
+    // Load Indonesia Regency/City GeoJSON
+    async function loadGeoJSON() {
+        if (typeof window !== 'undefined' && window.INDONESIA_KAB_GEOJSON && Array.isArray(window.INDONESIA_KAB_GEOJSON.features)) {
+            allGeoJsonFeatures = window.INDONESIA_KAB_GEOJSON.features.filter(f => f.geometry !== null);
+            console.log('GeoJSON loaded from script bundle:', allGeoJsonFeatures.length, 'features');
+            createOrUpdateMarkers();
+            return;
+        }
+        try {
+            const res = await fetch('indonesia-kab.json');
+            if (res.ok) {
+                const data = await res.json();
+                allGeoJsonFeatures = data.features.filter(f => f.geometry !== null);
+                console.log('GeoJSON successfully loaded:', allGeoJsonFeatures.length, 'features');
+                createOrUpdateMarkers();
+            }
+        } catch (e) {
+            console.warn('GeoJSON loading deferred or unavailable:', e);
+        }
+    }
+    loadGeoJSON();
 
     // 4. Calculate metric bounds and stats
     function getMetricBounds(metricKey, dataset = REGION_DATA) {
@@ -186,21 +271,62 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    function getColorForRatio(t) {
+    function getMetricGradientCSS(metricKey) {
+        if (metricKey === 'ipm_total') {
+            return 'linear-gradient(90deg, #ef4444, #f59e0b, #10b981)';
+        } else if (metricKey === 'persentase_miskin') {
+            return 'linear-gradient(90deg, #10b981, #f59e0b, #ef4444)';
+        } else if (metricKey === 'pdrb_perkapita') {
+            return 'linear-gradient(90deg, #93c5fd, #2563eb, #1e1b4b)';
+        } else if (metricKey === 'luas') {
+            return 'linear-gradient(90deg, #99f6e4, #0d9488, #134e4a)';
+        } else {
+            return 'linear-gradient(90deg, #818cf8, #4f46e5, #1e1b4b)';
+        }
+    }
+
+    function getColorForRatio(t, metricKey) {
         t = Math.max(0, Math.min(1, t));
+        let c1, c2, c3;
+
+        if (metricKey === 'ipm_total') {
+            // Low IPM = Red (#ef4444) -> Mid = Amber (#f59e0b) -> High = Green (#10b981)
+            c1 = [239, 68, 68];
+            c2 = [245, 158, 11];
+            c3 = [16, 185, 129];
+        } else if (metricKey === 'persentase_miskin') {
+            // Low Poverty = Green (#10b981) -> Mid = Amber (#f59e0b) -> High = Red (#ef4444)
+            c1 = [16, 185, 129];
+            c2 = [245, 158, 11];
+            c3 = [239, 68, 68];
+        } else if (metricKey === 'pdrb_perkapita') {
+            // Soft Slate -> Royal Indigo -> Deep Navy
+            c1 = [147, 197, 253];
+            c2 = [37, 99, 235];
+            c3 = [30, 27, 75];
+        } else if (metricKey === 'luas') {
+            // Soft Mint Teal -> Deep Teal -> Dark Teal
+            c1 = [153, 246, 228];
+            c2 = [13, 148, 136];
+            c3 = [19, 78, 74];
+        } else {
+            // Kependudukan: Soft Indigo -> Royal Indigo -> Dark Navy
+            c1 = [129, 140, 248];
+            c2 = [79, 70, 229];
+            c3 = [30, 27, 75];
+        }
+
         let r, g, b;
         if (t < 0.5) {
-            // sky blue (#3b82b8) -> Indonesian red (#cf1e2e)
             const k = t / 0.5;
-            r = Math.round(59 + (207 - 59) * k);
-            g = Math.round(130 + (30 - 130) * k);
-            b = Math.round(184 + (46 - 184) * k);
+            r = Math.round(c1[0] + (c2[0] - c1[0]) * k);
+            g = Math.round(c1[1] + (c2[1] - c1[1]) * k);
+            b = Math.round(c1[2] + (c2[2] - c1[2]) * k);
         } else {
-            // Indonesian red (#cf1e2e) -> warm tan (#b0804b)
             const k = (t - 0.5) / 0.5;
-            r = Math.round(207 + (176 - 207) * k);
-            g = Math.round(30 + (128 - 30) * k);
-            b = Math.round(46 + (75 - 46) * k);
+            r = Math.round(c2[0] + (c3[0] - c2[0]) * k);
+            g = Math.round(c2[1] + (c3[1] - c2[1]) * k);
+            b = Math.round(c2[2] + (c3[2] - c2[2]) * k);
         }
         return `rgb(${r}, ${g}, ${b})`;
     }
@@ -218,10 +344,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 6. Populate Province Dropdown
+    // 6. Populate Custom Searchable Province Dropdown
     const provFilter = document.getElementById('provFilter');
+    const provCustomSelect = document.getElementById('provCustomSelect');
+    const provSelectTrigger = document.getElementById('provSelectTrigger');
+    const provSelectLabel = document.getElementById('provSelectLabel');
+    const provSelectMenu = document.getElementById('provSelectMenu');
+    const provSearchInput = document.getElementById('provSearchInput');
+    const provOptionsList = document.getElementById('provOptionsList');
+
     if (provFilter) {
         const provinces = Array.from(new Set(REGION_DATA.map(d => d.prov).filter(Boolean))).sort();
+        
+        // Populate hidden select for fallback/sync
+        provFilter.innerHTML = '<option value="">Semua Provinsi (Nasional)</option>';
         provinces.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p;
@@ -229,8 +365,98 @@ document.addEventListener('DOMContentLoaded', () => {
             provFilter.appendChild(opt);
         });
 
+        function renderProvOptions(query = '') {
+            if (!provOptionsList) return;
+            const q = query.trim().toLowerCase();
+            
+            let html = `<div class="prov-opt-item ${!filterProv ? 'active' : ''}" data-value="">Semua Provinsi (Nasional)</div>`;
+            
+            const filtered = provinces.filter(p => p.toLowerCase().includes(q));
+            
+            if (filtered.length === 0) {
+                html += `<div class="prov-opt-empty">Tidak ada provinsi dengan nama "${escapeHtml(query)}"</div>`;
+            } else {
+                html += filtered.map(p => `
+                    <div class="prov-opt-item ${filterProv === p ? 'active' : ''}" data-value="${escapeHtml(p)}">
+                        Provinsi ${escapeHtml(p)}
+                    </div>
+                `).join('');
+            }
+            
+            provOptionsList.innerHTML = html;
+
+            provOptionsList.querySelectorAll('.prov-opt-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const val = item.getAttribute('data-value') || '';
+                    filterProv = val;
+                    if (provFilter) provFilter.value = val;
+                    if (provSelectLabel) {
+                        provSelectLabel.textContent = val ? `Provinsi ${val}` : 'Semua Provinsi (Nasional)';
+                    }
+                    closeProvSelect();
+                    applyFilters();
+
+                    // Auto zoom to province bounds if selected
+                    if (val && allGeoJsonFeatures.length > 0) {
+                        const provFeatures = allGeoJsonFeatures.filter(f => f.properties && sameProvName(f.properties.COUNTRY, val));
+                        if (provFeatures.length > 0) {
+                            const tempLayer = L.geoJSON(provFeatures);
+                            map.flyToBounds(tempLayer.getBounds(), { padding: [40, 40], duration: 1.0 });
+                        }
+                    } else if (!val) {
+                        map.flyTo([-1.2, 117.5], 5, { duration: 1.0 });
+                    }
+                });
+            });
+        }
+
+        function openProvSelect() {
+            if (!provCustomSelect || !provSelectMenu) return;
+            provCustomSelect.classList.add('open');
+            provSelectMenu.hidden = false;
+            if (provSearchInput) {
+                provSearchInput.value = '';
+                provSearchInput.focus();
+            }
+            renderProvOptions('');
+        }
+
+        function closeProvSelect() {
+            if (!provCustomSelect || !provSelectMenu) return;
+            provCustomSelect.classList.remove('open');
+            provSelectMenu.hidden = true;
+        }
+
+        provSelectTrigger?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (provSelectMenu?.hidden) {
+                openProvSelect();
+            } else {
+                closeProvSelect();
+            }
+        });
+
+        provSearchInput?.addEventListener('input', (e) => {
+            renderProvOptions(e.target.value);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (provCustomSelect && !provCustomSelect.contains(e.target)) {
+                closeProvSelect();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && provCustomSelect?.classList.contains('open')) {
+                closeProvSelect();
+            }
+        });
+
         provFilter.addEventListener('change', (e) => {
             filterProv = e.target.value;
+            if (provSelectLabel) {
+                provSelectLabel.textContent = filterProv ? `Provinsi ${filterProv}` : 'Semua Provinsi (Nasional)';
+            }
             applyFilters();
         });
     }
@@ -257,13 +483,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 9. Metric Indicator List (Clean sans-serif design, no emojis)
+    // 9. Metric Indicator List & Category Pills
+    let currentMetricCategory = 'all';
+    const catPills = document.querySelectorAll('.m-cat-pill');
+    catPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            catPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentMetricCategory = pill.getAttribute('data-cat');
+            renderMetricCards();
+        });
+    });
+
     const metricCardsContainer = document.getElementById('metricCards');
     function renderMetricCards() {
         if (!metricCardsContainer) return;
         metricCardsContainer.innerHTML = '';
 
         Object.values(METRICS).forEach(m => {
+            if (currentMetricCategory !== 'all' && m.category !== currentMetricCategory) {
+                return;
+            }
+
             const item = document.createElement('div');
             item.className = `metric-item ${m.id === currentMetric ? 'active' : ''}`;
             item.innerHTML = `
@@ -325,7 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stripMetricLabel) stripMetricLabel.textContent = `${m.label} (${m.unit})`;
         if (stripFilterLabel) {
             const provText = filterProv ? `Provinsi ${filterProv}` : 'Seluruh Indonesia';
-            const typeText = filterType === 'all' ? '514 Wilayah' : filterType === 'kabupaten' ? 'Kabupaten' : 'Kota';
+            const typeText = filterType === 'all' ? 'Wilayah' : filterType === 'kabupaten' ? 'Kabupaten' : 'Kota';
             stripFilterLabel.textContent = `${provText} • ${dataset.length} ${typeText}`;
         }
 
@@ -333,10 +574,57 @@ document.addEventListener('DOMContentLoaded', () => {
         const legTitle = document.getElementById('legendMetricTitle');
         const scaleMin = document.getElementById('scaleMin');
         const scaleMax = document.getElementById('scaleMax');
+        const scaleBar = document.querySelector('.legend-scale-bar, .scale-bar');
 
         if (legTitle) legTitle.textContent = `${m.label} (${m.unit})`;
         if (scaleMin) scaleMin.textContent = m.formatShort(bounds.min);
         if (scaleMax) scaleMax.textContent = m.formatShort(bounds.max);
+        if (scaleBar) scaleBar.style.background = getMetricGradientCSS(currentMetric);
+    }
+
+    // Helper to fly to a region with right drawer offset (440px right padding)
+    function focusRegionMap(target) {
+        if (!target) return;
+
+        // Locate exact GeoJSON feature bounds in allGeoJsonFeatures (WITHOUT altering filterProv)
+        let targetBounds = null;
+        if (allGeoJsonFeatures.length > 0 && target.prov && target.kabkota) {
+            const normProv = target.prov;
+            const normKab = target.kabkota;
+            const matchingFeature = allGeoJsonFeatures.find(f => {
+                if (!f.properties) return false;
+                if (!sameProvName(f.properties.COUNTRY, normProv)) return false;
+                const geoKab = normalizeStr(f.properties.NAME_1);
+                const bpsKab = normalizeStr(normKab);
+                if (geoKab === bpsKab) return true;
+                const cBps = bpsKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+                const cGeo = geoKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+                return cBps === cGeo && cBps.length > 2;
+            });
+
+            if (matchingFeature) {
+                const tempLayer = L.geoJSON(matchingFeature);
+                targetBounds = tempLayer.getBounds();
+            }
+        }
+
+        // Asymmetrical padding: 440px right padding keeps polygon centered in the visible map area (left of the 380px drawer)
+        const drawerPadding = {
+            paddingTopLeft: [60, 60],
+            paddingBottomRight: [440, 60],
+            maxZoom: 12,
+            duration: 1.2
+        };
+
+        if (targetBounds && targetBounds.isValid()) {
+            map.flyToBounds(targetBounds, drawerPadding);
+        } else if (typeof target.lat === 'number' && typeof target.lng === 'number') {
+            const ptBounds = L.latLngBounds(
+                [target.lat - 0.04, target.lng - 0.04],
+                [target.lat + 0.04, target.lng + 0.04]
+            );
+            map.flyToBounds(ptBounds, drawerPadding);
+        }
     }
 
     function updateLeaderboard(dataset) {
@@ -348,52 +636,141 @@ document.addEventListener('DOMContentLoaded', () => {
             .map(d => ({ region: d, val: m.getValue(d) }))
             .filter(item => item.val !== null && !isNaN(item.val));
 
-        if (leaderboardMode === 'top') {
-            validList.sort((a, b) => b.val - a.val);
-        } else {
-            validList.sort((a, b) => a.val - b.val);
-        }
+        validList.sort((a, b) => leaderboardMode === 'top' ? b.val - a.val : a.val - b.val);
+        const displayList = validList.slice(0, 5);
 
-        const items = validList.slice(0, 5);
-
-        if (items.length === 0) {
-            lbContainer.innerHTML = '<div style="font-size:12px; color:var(--text-low); padding:10px 0;">Tidak ada data untuk filter ini.</div>';
+        if (displayList.length === 0) {
+            lbContainer.innerHTML = '<div style="font-size: 11.5px; color: #8b95a5; padding: 6px 0;">Tidak ada data tersedia.</div>';
             return;
         }
 
-        lbContainer.innerHTML = items.map((item, idx) => `
-            <div class="rank-row" data-id="${item.region.id || ''}">
-                <div class="rank-left">
-                    <div class="rank-badge ${idx === 0 ? 'top-1' : ''}">#${idx + 1}</div>
-                    <div class="rank-name">
-                        <b>${escapeHtml(item.region.kabkota || '')}</b>
-                        <small>${escapeHtml(item.region.prov || '')}</small>
+        const maxVal = Math.max(...displayList.map(item => item.val));
+        lbContainer.innerHTML = displayList.map((item, idx) => {
+            const pct = maxVal > 0 ? Math.min(100, Math.max(8, (item.val / maxVal) * 100)) : 10;
+            return `
+                <div class="lb-item" data-id="${item.region.id}">
+                    <span class="lb-rank">${idx + 1}</span>
+                    <div class="lb-info">
+                        <div class="lb-name">${escapeHtml(item.region.kabkota || '')}</div>
+                        <div class="lb-prov">${escapeHtml(item.region.prov || '')}</div>
+                        <div class="lb-bar-wrap">
+                            <div class="lb-bar" style="width: ${pct}%;"></div>
+                        </div>
                     </div>
+                    <span class="lb-val">${m.formatShort(item.val)}</span>
                 </div>
-                <div class="rank-val">${m.formatShort(item.val)}</div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
-        lbContainer.querySelectorAll('.rank-row').forEach((row, i) => {
-            row.addEventListener('click', () => {
-                const target = items[i].region;
-                if (typeof target.lat === 'number' && typeof target.lng === 'number') {
-                    map.flyTo([target.lat, target.lng], 9, { duration: 1.2 });
+        lbContainer.querySelectorAll('.lb-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const regId = Number(el.getAttribute('data-id'));
+                const target = REGION_DATA.find(r => r.id === regId);
+                if (target) {
+                    focusRegionMap(target);
+                    selectRegion(target);
                 }
-                selectRegion(target);
             });
         });
     }
 
-    // 12. Render Markers on Map
+    // Attach CTA button to switch to Table View
+    const lbCtaTableBtn = document.getElementById('lbCtaTableBtn');
+    lbCtaTableBtn?.addEventListener('click', () => {
+        const btnViewTable = document.getElementById('btnViewTable');
+        btnViewTable?.click();
+    });
+
+    // 12. Render Markers or Polygons on Map
     function createOrUpdateMarkers() {
         markersLayer.clearLayers();
+        geojsonLayerGroup.clearLayers();
         markers.clear();
 
         const filtered = getFilteredData();
         const bounds = getMetricBounds(currentMetric, REGION_DATA);
         const m = METRICS[currentMetric];
 
+        // --- RENDER POLIGON KABUPATEN/KOTA (GEOJSON AVAILABLE) ---
+        if (allGeoJsonFeatures.length > 0) {
+            const displayFeatures = filterProv
+                ? allGeoJsonFeatures.filter(f => f.properties && sameProvName(f.properties.COUNTRY, filterProv))
+                : allGeoJsonFeatures;
+
+            if (displayFeatures.length > 0) {
+                const geoLayer = L.geoJSON(displayFeatures, {
+                    style: (feature) => {
+                        const props = feature.properties || {};
+                        const regData = findBpsRegionData(props.COUNTRY, props.NAME_1);
+                        const val = regData ? m.getValue(regData) : null;
+
+                        let fillColor = '#8b95a5';
+                        if (val !== null) {
+                            const ratio = bounds.p95 > bounds.p5 ? (val - bounds.p5) / (bounds.p95 - bounds.p5) : 0.5;
+                            fillColor = getColorForRatio(ratio, currentMetric);
+                        }
+
+                        return {
+                            fillColor: fillColor,
+                            weight: filterProv ? 1.0 : 0.4,
+                            opacity: 0.85,
+                            color: '#ffffff',
+                            fillOpacity: 0.40,
+                            className: 'r-polygon'
+                        };
+                    },
+                    onEachFeature: (feature, layer) => {
+                        const props = feature.properties || {};
+                        const regName = (props.NAME_1 || 'Wilayah').trim();
+                        const regType = (props.VARNAME_2 || '').trim();
+                        const fullName = `${regType} ${regName}`.trim();
+                        const provName = (props.COUNTRY || '').trim();
+                        const regData = findBpsRegionData(provName, regName);
+                        const val = regData ? m.getValue(regData) : null;
+                        const valDisplay = val !== null ? m.format(val) : 'Data belum tersedia';
+                        const classification = val !== null ? m.classify(val) : '';
+
+                        layer.bindTooltip(`
+                            <div style="font-family: var(--font-sans); font-size: 12px; line-height: 1.4;">
+                                <div style="font-size: 10px; text-transform: uppercase; color: #525c6e; letter-spacing: .03em; font-weight:600;">PROVINSI ${escapeHtml(provName)}</div>
+                                <strong style="color: #1f242e; font-size: 13.5px; font-weight:700;">${escapeHtml(fullName)}</strong>
+                                <div style="color: #cf1e2e; font-weight: 700; margin-top: 3px;">${m.label}: ${valDisplay}</div>
+                                ${classification ? `<div style="font-size: 10.5px; color: #525c6e; margin-top: 1px;">Kategori: <b>${classification}</b></div>` : ''}
+                            </div>
+                        `, {
+                            direction: 'top',
+                            offset: [0, -6],
+                            opacity: 1
+                        });
+
+                        layer.on({
+                            mouseover: (e) => {
+                                const l = e.target;
+                                l.setStyle({ weight: 2.5, color: '#dadde4ff', fillOpacity: 0.65 });
+                                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                                    l.bringToFront();
+                                }
+                            },
+                            mouseout: (e) => {
+                                geoLayer.resetStyle(e.target);
+                            },
+                            click: () => {
+                                if (regData) {
+                                    selectRegion(regData);
+                                }
+                            }
+                        });
+                    }
+                }).addTo(geojsonLayerGroup);
+
+                if (filterProv) {
+                    map.flyToBounds(geoLayer.getBounds(), { padding: [40, 40], duration: 1.0 });
+                }
+                return;
+            }
+        }
+
+        // --- FALLBACK: DOT MARKERS JIKA GEOJSON BELUM LOADED ---
         filtered.forEach(region => {
             if (typeof region.lat !== 'number' || typeof region.lng !== 'number' || isNaN(region.lat) || isNaN(region.lng)) {
                 return;
@@ -752,9 +1129,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const target = matches[idx];
                 searchResults.hidden = true;
                 if (searchInput) searchInput.value = target.kabkota || '';
-                if (typeof target.lat === 'number' && typeof target.lng === 'number') {
-                    map.flyTo([target.lat, target.lng], 9, { duration: 1.2 });
-                }
+
+                focusRegionMap(target);
                 selectRegion(target);
             });
         });
@@ -804,6 +1180,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 17.5. Collapsible Sidebar Toggle & Map Resize
+    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+    const sidebarEdgeToggle = document.getElementById('sidebarEdgeToggle');
+    const sidebarElement = document.querySelector('.sidebar');
+
+    function toggleSidebar() {
+        if (!sidebarElement) return;
+        sidebarElement.classList.toggle('collapsed');
+        // Redraw Leaflet canvas after CSS transition (320ms) so map is 100% full width
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 320);
+    }
+
+    sidebarToggleBtn?.addEventListener('click', toggleSidebar);
+    sidebarEdgeToggle?.addEventListener('click', toggleSidebar);
+
     // 18. Initial Render
     renderMetricCards();
     applyFilters();
@@ -832,7 +1225,7 @@ function formatShortNumber(n) {
     const num = Number(n);
     if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace('.0', '') + ' Jt';
     if (num >= 1_000) return (num / 1_000).toFixed(1).replace('.0', '') + ' Rb';
-    return num.toString();
+    return Number.isInteger(num) ? num.toString() : num.toFixed(1).replace('.0', '');
 }
 
 function escapeHtml(str) {

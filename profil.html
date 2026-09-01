@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Roboto+Mono:ital,wght@0,400..700;1,400..700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <link rel="stylesheet" href="styles.css">
@@ -17,7 +17,7 @@
             min-height: 100vh;
             background: var(--cream-100);
             color: var(--text-hi);
-            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            font-family: var(--font-sans);
         }
 
         .shell {
@@ -70,22 +70,218 @@
             gap: 10px;
         }
 
-        .region-select {
-            padding: 7px 14px;
+        .custom-region-picker {
+            position: relative;
+            min-width: 290px;
+        }
+
+        .picker-trigger {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 14px;
             border-radius: 99px;
             border: 1px solid var(--line-strong);
-            background: #ffffff;
+            background: var(--cream-50);
             font-family: inherit;
             font-size: 12.5px;
             font-weight: 600;
             color: var(--text-hi);
-            outline: none;
             cursor: pointer;
-            box-shadow: 0 1px 3px rgba(31, 36, 46, 0.05);
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+            transition: all .18s var(--ease);
         }
 
-        .region-select:focus {
+        .picker-trigger:hover,
+        .custom-region-picker.open .picker-trigger {
             border-color: var(--merah);
+            box-shadow: 0 0 0 3px var(--merah-bg);
+        }
+
+        .picker-trigger .icon-search {
+            width: 14px;
+            height: 14px;
+            color: var(--text-low);
+            flex-shrink: 0;
+        }
+
+        .picker-trigger .picker-current {
+            flex: 1;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-hi);
+            font-weight: 700;
+        }
+
+        .picker-trigger .picker-kbd {
+            font-size: 9.5px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            background: var(--cream-200);
+            color: var(--text-low);
+            letter-spacing: .02em;
+        }
+
+        .picker-trigger .icon-arrow {
+            width: 13px;
+            height: 13px;
+            color: var(--text-low);
+            flex-shrink: 0;
+            transition: transform .2s;
+        }
+
+        .custom-region-picker.open .icon-arrow {
+            transform: rotate(180deg);
+        }
+
+        /* Dropdown Search Modal */
+        .picker-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 380px;
+            max-width: 90vw;
+            background: var(--cream-50);
+            border: 1px solid var(--line-strong);
+            border-radius: var(--radius-m);
+            box-shadow: var(--shadow-panel);
+            padding: 12px;
+            z-index: 1500;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .picker-dropdown[hidden] {
+            display: none !important;
+        }
+
+        .picker-search-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: var(--radius-s);
+            background: var(--cream-100);
+            border: 1px solid var(--line);
+        }
+
+        .picker-search-bar svg {
+            width: 14px;
+            height: 14px;
+            color: var(--text-low);
+            flex-shrink: 0;
+        }
+
+        .picker-search-bar input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: inherit;
+            font-size: 12.5px;
+            color: var(--text-hi);
+        }
+
+        .picker-search-bar input::placeholder {
+            color: var(--text-low);
+        }
+
+        .picker-search-bar .clear-btn {
+            background: none;
+            border: none;
+            font-size: 15px;
+            color: var(--text-low);
+            cursor: pointer;
+            padding: 0 4px;
+        }
+
+        .picker-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .picker-filters .filter-pill {
+            padding: 3px 9px;
+            font-size: 10.5px;
+            font-weight: 600;
+            border-radius: 99px;
+            border: 1px solid var(--line);
+            background: var(--cream-100);
+            color: var(--text-mid);
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .picker-filters .filter-pill.active {
+            background: var(--merah);
+            color: #ffffff;
+            border-color: var(--merah);
+        }
+
+        .picker-results-count {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--text-low);
+            padding: 0 4px;
+        }
+
+        .picker-results-list {
+            max-height: 260px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .picker-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-radius: var(--radius-s);
+            cursor: pointer;
+            transition: background .12s;
+        }
+
+        .picker-item:hover,
+        .picker-item.selected {
+            background: var(--merah-bg);
+        }
+
+        .picker-item .item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .picker-item .item-name {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-hi);
+        }
+
+        .picker-item .item-prov {
+            font-size: 10.5px;
+            color: var(--text-mid);
+        }
+
+        .picker-item .item-badge {
+            font-size: 9.5px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--cream-200);
+            color: var(--text-mid);
+        }
+
+        .picker-item .item-badge.kota {
+            background: var(--sky-light);
+            color: var(--sky);
         }
 
         /* ---- Hero Header Card ---- */
@@ -615,10 +811,49 @@
                 </svg>
                 Kembali ke Peta &amp; Dashboard
             </a>
-            <div class="region-switcher-wrap">
-                <select id="headerRegionSelect" class="region-select" aria-label="Ganti wilayah">
-                    <!-- Populated dynamically -->
-                </select>
+            <div class="region-switcher-wrap" id="regionSwitcherWrap">
+                <div class="custom-region-picker" id="customRegionPicker">
+                    <button type="button" class="picker-trigger" id="pickerTrigger">
+                        <svg class="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <span class="picker-current" id="pickerCurrentName">Cari atau pilih 514 daerah...</span>
+                        <span class="picker-kbd">Ctrl K</span>
+                        <svg class="icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown Search Modal Container -->
+                    <div class="picker-dropdown" id="pickerDropdown" hidden>
+                        <div class="picker-search-bar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" id="pickerSearchInput" placeholder="Ketik nama kabupaten, kota, atau provinsi..." autocomplete="off">
+                            <button type="button" class="clear-btn" id="pickerSearchClear" hidden>×</button>
+                        </div>
+
+                        <!-- Island Filters -->
+                        <div class="picker-filters">
+                            <button type="button" class="filter-pill active" data-island="all">Semua</button>
+                            <button type="button" class="filter-pill" data-island="sumatera">Sumatera</button>
+                            <button type="button" class="filter-pill" data-island="jawa">Jawa</button>
+                            <button type="button" class="filter-pill" data-island="kalimantan">Kalimantan</button>
+                            <button type="button" class="filter-pill" data-island="sulawesi">Sulawesi</button>
+                            <button type="button" class="filter-pill" data-island="balinusa">Bali-Nusa</button>
+                            <button type="button" class="filter-pill" data-island="malukupapua">Maluku-Papua</button>
+                        </div>
+
+                        <!-- Results List -->
+                        <div class="picker-results-count" id="pickerResultsCount">Menampilkan 514 Daerah</div>
+                        <div class="picker-results-list" id="pickerResultsList">
+                            <!-- Dynamically rendered by Profil.js -->
+                        </div>
+                    </div>
+                </div>
                 <div id="topnavMeta"></div>
             </div>
         </nav>

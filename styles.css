@@ -5,42 +5,48 @@
    ============================================================ */
 
 :root {
-    --cream-50: #fffdf9;
-    --cream-100: #faf7f2;
-    --cream-200: #f2ece4;
-    --cream-300: #e5ddd3;
-    --line: rgba(130, 110, 90, 0.12);
-    --line-strong: rgba(130, 110, 90, 0.22);
-    --card: rgba(255, 255, 255, 0.9);
-    --card-strong: #ffffff;
-    --text-hi: #1f242e;
-    --text-mid: #525c6e;
-    --text-low: #8b95a5;
+    --font-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    /* Indonesian Merah-Putih & Pastel Accents */
-    --merah: #cf1e2e;
-    --merah-dark: #ad1422;
-    --merah-light: #fce8ea;
-    --merah-bg: #fff2f3;
-    --rose: #cf1e2e;
-    --rose-light: #fce8ea;
-    --rose-bg: #fff2f3;
+    /* Soft Slate Off-White System (Eye-Friendly Restful Palette) */
+    --cream-50: #f8fafc;       /* Off-white card surface */
+    --cream-100: #f1f5f9;      /* Main App Canvas Background */
+    --cream-200: #e2e8f0;      /* Soft Hover Surface */
+    --cream-300: #cbd5e1;      /* Subtle Dividers */
+    --line: rgba(148, 163, 184, 0.22);
+    --line-strong: rgba(148, 163, 184, 0.40);
+    --card: #f8fafc;
+    --card-strong: #f1f5f9;
+    --text-hi: #0f172a;        /* Deep Slate Text */
+    --text-mid: #475569;       /* Slate Subtext */
+    --text-low: #64748b;       /* Muted Label */
 
-    --sky: #3b82b8;
-    --sky-light: #dbeafe;
-    --sky-bg: #eff6ff;
-    --tan: #b0804b;
+    /* High-Contrast Deep Emerald & Ocean Teal System */
+    --brand-gradient: linear-gradient(135deg, #0d9488 0%, #0f766e 55%, #0369a1 100%);
+    --merah: #0d9488;          /* Rich Deep Emerald Teal (High WCAG Contrast) */
+    --merah-dark: #0f766e;     /* Darker Emerald Teal */
+    --merah-light: #ccf2ed;    /* Soft Mint Tint */
+    --merah-bg: #e6f7f5;       /* Very Soft Mint Hover BG */
+    --rose: #0d9488;
+    --rose-light: #ccf2ed;
+    --rose-bg: #e6f7f5;
+
+    /* Secondary Accents */
+    --sky: #2E9BD6;            /* Cerulean Ocean Blue */
+    --sky-light: #d8f0fa;
+    --sky-bg: #f0f9fc;
+    --tan: #d97706;
     --tan-light: #fef3c7;
     --tan-bg: #fffbeb;
-    --green: #2e7d32;
-    --green-light: #e8f5e9;
-    --coral: #d32f2f;
+    --green: #10b981;
+    --green-light: #d1fae5;
+    --coral: #ef4444;
 
     --radius-s: 8px;
     --radius-m: 14px;
     --radius-l: 20px;
-    --shadow-card: 0 2px 8px rgba(31, 36, 46, 0.05), 0 1px 2px rgba(31, 36, 46, 0.04);
-    --shadow-panel: 0 10px 30px rgba(31, 36, 46, 0.08), 0 2px 6px rgba(31, 36, 46, 0.04);
+    --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-panel: 0 10px 30px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
     --ease: cubic-bezier(.22, .9, .32, 1);
 }
 
@@ -58,7 +64,7 @@ body {
     margin: 0;
     background: var(--cream-100);
     color: var(--text-hi);
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     font-size: 14.5px;
@@ -190,14 +196,14 @@ button {
 }
 
 .btn-primary {
-    background: var(--merah);
+    background: var(--brand-gradient);
     color: #ffffff;
-    box-shadow: 0 4px 14px rgba(207, 30, 46, 0.25);
+    box-shadow: 0 4px 14px rgba(15, 181, 160, 0.35);
 }
 
 .btn-primary:hover {
-    background: var(--merah-dark);
-    box-shadow: 0 6px 18px rgba(207, 30, 46, 0.35);
+    background: linear-gradient(135deg, #0e9e9a 0%, #0c8a87 55%, #2581b5 130%);
+    box-shadow: 0 6px 18px rgba(15, 181, 160, 0.45);
 }
 
 .btn-ghost {
@@ -216,6 +222,21 @@ button {
     flex: none;
 }
 
+/* ---------- Numeric / Monospace Data Typography ---------- */
+.num,
+.val,
+.sp-val,
+.scale-vals,
+.rank-val,
+.highlight-col,
+.stat-num,
+.metric-num,
+.stat .num,
+.bm-item .val {
+    font-family: var(--font-mono) !important;
+    font-variant-numeric: tabular-nums;
+}
+
 /* ---------- section stat tile ---------- */
 .stat {
     display: flex;
@@ -224,7 +245,7 @@ button {
 }
 
 .stat .num {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: var(--font-mono);
     font-weight: 700;
     font-size: clamp(20px, 2.4vw, 26px);
     line-height: 1.1;
@@ -275,4 +296,14 @@ button {
         animation-duration: 0.001ms !important;
         transition-duration: 0.001ms !important;
     }
+}
+
+/* ---------- Leaflet Map Polygon Focus Outline Fix ---------- */
+.leaflet-interactive:focus,
+.leaflet-interactive:active,
+path.leaflet-interactive:focus,
+path.r-polygon:focus,
+svg path:focus {
+    outline: none !important;
+    box-shadow: none !important;
 }

@@ -31,24 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update document title
     document.title = `${region.kabkota || 'Wilayah'} — Profil Data & Statistik Resmi`;
 
-    // 2. Setup Header Region Switcher Dropdown
-    const headerRegionSelect = document.getElementById('headerRegionSelect');
-    if (headerRegionSelect) {
-        REGION_DATA.forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = r.id || r.slug;
-            opt.textContent = `${r.kabkota} (${r.prov})`;
-            if (String(r.id) === String(region.id)) {
-                opt.selected = true;
-            }
-            headerRegionSelect.appendChild(opt);
-        });
-
-        headerRegionSelect.addEventListener('change', (e) => {
-            const selectedVal = e.target.value;
-            window.location.href = `profil.html?id=${encodeURIComponent(selectedVal)}`;
-        });
-    }
+    // 2. Setup Custom Searchable & Filterable Region Picker
+    setupCustomRegionPicker(region);
 
     // 3. Render Hero Header
     const heroProv = document.getElementById('heroProv');
@@ -597,7 +581,112 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     mainContent.innerHTML = html;
+
+    // Initialize Sticky Navigation ScrollSpy & Click Synchronization
+    setupStickyNav();
 });
+
+// Sticky Navigation ScrollSpy & Smooth Scroll Sync
+function setupStickyNav() {
+    const tabLinks = document.querySelectorAll('.sec-tab-link');
+    const sections = document.querySelectorAll('section.content-card[id]');
+
+    if (tabLinks.length === 0 || sections.length === 0) return;
+
+    let isManualScrolling = false;
+
+    function setActiveTab(targetId) {
+        tabLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === targetId || href === `#${targetId.replace(/^#/, '')}`) {
+                link.classList.add('active');
+                // Scroll tab bar horizontally if needed
+                try {
+                    link.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } catch (err) {}
+            } else {
+                link.classList.remove('active');
+            }
+        });
+    }
+
+    // 1. Tab Click Event Listener (Smooth Scroll with Sticky Header Offset)
+    tabLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href');
+            if (!targetId || !targetId.startsWith('#')) return;
+
+            const targetSection = document.querySelector(targetId);
+            if (targetSection) {
+                isManualScrolling = true;
+                setActiveTab(targetId);
+                try {
+                    history.pushState(null, null, targetId);
+                } catch (err) {}
+
+                // Offset 75px for sticky navigation bar height
+                const targetTop = targetSection.getBoundingClientRect().top + window.scrollY - 75;
+                window.scrollTo({
+                    top: targetTop,
+                    behavior: 'smooth'
+                });
+
+                setTimeout(() => {
+                    isManualScrolling = false;
+                }, 750);
+            }
+        });
+    });
+
+    // 2. ScrollSpy Listener (Sync active tab with visible viewport section)
+    function onScrollSpy() {
+        if (isManualScrolling) return;
+
+        // Check if user has scrolled to the bottom of the page
+        const isAtBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 50);
+        if (isAtBottom && sections.length > 0) {
+            setActiveTab(`#${sections[sections.length - 1].id}`);
+            return;
+        }
+
+        // Use getBoundingClientRect().top relative to viewport (offset 160px for sticky nav bar)
+        const navThreshold = 160;
+        let currentSecId = null;
+
+        sections.forEach(sec => {
+            const rect = sec.getBoundingClientRect();
+            if (rect.top <= navThreshold) {
+                currentSecId = `#${sec.id}`;
+            }
+        });
+
+        // Fallback to first section if at top of page
+        if (!currentSecId && sections.length > 0) {
+            currentSecId = `#${sections[0].id}`;
+        }
+
+        if (currentSecId) {
+            setActiveTab(currentSecId);
+        }
+    }
+
+    window.addEventListener('scroll', onScrollSpy, { passive: true });
+    // Trigger initial check
+    onScrollSpy();
+
+    // 3. Initial check for direct URL hash navigation (e.g. #sec-demografi)
+    if (window.location.hash) {
+        const hashSection = document.querySelector(window.location.hash);
+        if (hashSection) {
+            setActiveTab(window.location.hash);
+            setTimeout(() => {
+                const targetTop = hashSection.getBoundingClientRect().top + window.scrollY - 75;
+                window.scrollTo({ top: targetTop, behavior: 'smooth' });
+            }, 250);
+        }
+    }
+}
 
 // Helper utilities
 function calculateCompleteness(d) {
@@ -652,4 +741,142 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+// Setup Custom Searchable & Filterable Region Picker Component
+function setupCustomRegionPicker(currentRegion) {
+    const customPicker = document.getElementById('customRegionPicker');
+    const trigger = document.getElementById('pickerTrigger');
+    const dropdown = document.getElementById('pickerDropdown');
+    const searchInput = document.getElementById('pickerSearchInput');
+    const searchClear = document.getElementById('pickerSearchClear');
+    const resultsCount = document.getElementById('pickerResultsCount');
+    const resultsList = document.getElementById('pickerResultsList');
+    const pickerCurrentName = document.getElementById('pickerCurrentName');
+
+    if (!customPicker || !trigger || !dropdown || !resultsList) return;
+
+    if (pickerCurrentName && currentRegion) {
+        pickerCurrentName.textContent = `${currentRegion.kabkota} (${currentRegion.prov})`;
+    }
+
+    let currentIsland = 'all';
+    let currentQuery = '';
+
+    function renderResults() {
+        const q = currentQuery.toLowerCase().trim();
+        const filtered = REGION_DATA.filter(r => {
+            // 1. Island filter
+            if (currentIsland !== 'all') {
+                const provNorm = (r.prov || '').toLowerCase();
+                const islandMap = {
+                    'sumatera': ['aceh', 'sumatera', 'riau', 'jambi', 'bengkulu', 'lampung', 'bangka'],
+                    'jawa': ['jakarta', 'jawa', 'banten', 'yogyakarta'],
+                    'kalimantan': ['kalimantan'],
+                    'sulawesi': ['sulawesi', 'gorontalo'],
+                    'balinusa': ['bali', 'nusa'],
+                    'malukupapua': ['maluku', 'papua']
+                };
+                const keywords = islandMap[currentIsland] || [];
+                const matchIsland = keywords.some(kw => provNorm.includes(kw));
+                if (!matchIsland) return false;
+            }
+
+            // 2. Search query filter
+            if (!q) return true;
+            const nameNorm = (r.kabkota || '').toLowerCase();
+            const provNorm = (r.prov || '').toLowerCase();
+            return nameNorm.includes(q) || provNorm.includes(q);
+        });
+
+        if (resultsCount) {
+            resultsCount.textContent = `Menampilkan ${filtered.length} Daerah`;
+        }
+
+        resultsList.innerHTML = '';
+        if (filtered.length === 0) {
+            resultsList.innerHTML = `<div style="padding: 16px; text-align: center; font-size: 12px; color: var(--text-low);">Tidak ada daerah yang cocok</div>`;
+            return;
+        }
+
+        filtered.slice(0, 100).forEach(r => {
+            const isSelected = String(r.id) === String(currentRegion.id);
+            const isKota = (r.kabkota || '').toUpperCase().startsWith('KOTA');
+
+            const item = document.createElement('div');
+            item.className = `picker-item ${isSelected ? 'selected' : ''}`;
+            item.innerHTML = `
+                <div class="item-info">
+                    <span class="item-name">${escapeHtml(r.kabkota)}</span>
+                    <span class="item-prov">${escapeHtml(r.prov)}</span>
+                </div>
+                <span class="item-badge ${isKota ? 'kota' : ''}">${isKota ? 'KOTA' : 'KAB'}</span>
+            `;
+
+            item.addEventListener('click', () => {
+                const targetVal = r.id || r.slug;
+                window.location.href = `profil.html?id=${encodeURIComponent(targetVal)}`;
+            });
+
+            resultsList.appendChild(item);
+        });
+    }
+
+    // Toggle dropdown visibility
+    function openPicker() {
+        customPicker.classList.add('open');
+        dropdown.hidden = false;
+        renderResults();
+        setTimeout(() => searchInput?.focus(), 50);
+    }
+
+    function closePicker() {
+        customPicker.classList.remove('open');
+        dropdown.hidden = true;
+    }
+
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (dropdown.hidden) openPicker();
+        else closePicker();
+    });
+
+    dropdown.addEventListener('click', (e) => e.stopPropagation());
+
+    // Instant Search Input Listener
+    searchInput?.addEventListener('input', (e) => {
+        currentQuery = e.target.value;
+        if (searchClear) searchClear.hidden = !currentQuery;
+        renderResults();
+    });
+
+    searchClear?.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        currentQuery = '';
+        if (searchClear) searchClear.hidden = true;
+        renderResults();
+        searchInput?.focus();
+    });
+
+    // Island Filter Pills Listener
+    const filterPills = dropdown.querySelectorAll('.filter-pill');
+    filterPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            filterPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentIsland = pill.getAttribute('data-island') || 'all';
+            renderResults();
+        });
+    });
+
+    // Close on click outside or Escape key
+    document.addEventListener('click', closePicker);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePicker();
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            if (dropdown.hidden) openPicker();
+            else closePicker();
+        }
+    });
 }
