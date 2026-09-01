@@ -1,51 +1,82 @@
-# Portal Data Kabupaten & Kota Indonesia
+# 🇮🇩 Portal Data Indonesia — Web GIS & Profil 514 Kabupaten/Kota
 
-## Overview
+Portal data visualisasi interaktif dan sistem informasi statistik wilayah untuk **514 Kabupaten & Kota di 38 Provinsi Indonesia**. Proyek ini menyajikan data statistik resmi BPS (Badan Pusat Statistik) secara visual melalui peta tematik (*Choropleth GIS Map*), indikator makro ekonomi, demografi, serta profil mendalam setiap wilayah.
 
-Portal Data Kabupaten & Kota Indonesia is a web-based geographic information system and statistical database that provides comprehensive data on various regencies and cities across Indonesia. The application offers an interactive map interface, data tables, and detailed profiling for each region, enabling users to explore demographics, economic indicators, and other key statistics intuitively.
+![Status Proyek](https://img.shields.io/badge/Status-Aktif%20%26%20Terintegrasi-0d9488?style=for-the-badge)
+![Teknologi](https://img.shields.io/badge/Tech-HTML5%20%7C%20CSS3%20%7C%20Vanilla%20JS%20%7C%20Leaflet-2E9BD6?style=for-the-badge)
 
-## Features
+---
 
-- **Interactive Map Interface**: Visualize regions across Indonesia using an interactive map powered by Leaflet.
-- **Comprehensive Region Profiles**: Access detailed demographic and statistical data for specific regencies and cities.
-- **Search and Filtering**: Quickly find specific regions using the integrated search functionality and filter data by categories or islands.
-- **Data Tables**: View and compare regional data through a structured, easy-to-read table format.
-- **Responsive Design**: A clean, modern user interface optimized for different screen sizes.
+## ✨ Fitur Utama Platform
 
-## Technologies Used
+### 1. 🗺️ Peta Tematik Interaktif (Web GIS Choropleth)
+* **Warna Poligon Dinamis (Metric-Specific Color Ramps)**:
+  * **IPM (Indeks Pembangunan Manusia)**: Skala warna intuitif Hijau Emerald (Sangat Tinggi) ➔ Kuning Amber ➔ Merah Coral (Rendah).
+  * **Tingkat Kemiskinan**: Skala indikator risiko Hijau (Rendah) ➔ Kuning ➔ Merah (Tinggi).
+  * **PDRB, Luas Wilayah, & Kependudukan**: Skala gradien profesional Ocean Slate & Teal.
+* **Presisi Kamera Asimetris (*Asymmetrical FlyToBounds*)**: Kamera peta otomatis bergeser memfokuskan wilayah di tengah area pandang tanpa terhalang oleh *drawer* detail kanan (380px).
+* **Dukungan 38 Provinsi (Termasuk Pemekaran DOB Papua 2022)**: Sinkronisasi presisi data BPS terbaru dengan poligon GeoJSON daerah pemekaran Papua Pegunungan, Papua Tengah, Papua Selatan, dan Papua Barat Daya.
 
-- **HTML5**: For semantic page structure.
-- **CSS3**: For styling, responsive layouts, and UI components.
-- **JavaScript (Vanilla)**: For application logic, data handling, and DOM manipulation.
-- **Leaflet.js**: For rendering the interactive map and geospatial data.
+### 2. 📊 Peringkat Daerah & Papan Statistik
+* **Peringkat Teratas & Terendah (*Top/Bottom Leaderboard*)**: Menampilkan 5 daerah tertinggi dan 5 terendah secara *real-time* berdasarkan metrik aktif.
+* **Tampilan Tabel Penuh (Table View)**: Mode tabel komprehensif untuk membandingkan 514 daerah di Indonesia secara keseluruhan.
+* **Ringkasan Rujukan Nasional**: Menampilkan nilai Terendah, Rata-Rata Nasional, dan Tertinggi untuk setiap metrik.
 
-## Project Structure
+### 3. 📄 Halaman Profil Wilayah Mendalam (`profil.html`)
+* **Pencarian & Filter Daerah Cepat (`Ctrl + K`)**: Pemilih daerah interaktif dengan filter pulau (*Sumatera, Jawa, Kalimantan, Sulawesi, Bali-Nusa, Maluku-Papua*) dan pencarian instan nama daerah/provinsi.
+* **Navigasi Melayang Mulus (*Sticky Nav ScrollSpy*)**: Bar navigasi melayang yang 100% tersinkronisasi dua arah (*Smooth Scroll* & *ScrollSpy*) mengikuti posisi layar.
+* **Rincian Data Sektoral**:
+  * **Wilayah & Geografi**: Luas daratan, kepadatan, elevasi, curah hujan, dan batas wilayah administratif 4 penjuru.
+  * **Pemerintahan & Parlemen**: Kepala daerah, wakil kepala, kecamatan, desa/kelurahan, dan distribusi kursi DPRD.
+  * **Kependudukan & IPM**: Gauge Indeks Pembangunan Manusia, proporsi jenis kelamin, kelompok umur, dan ketenagakerjaan.
+  * **Perekonomian & PDRB**: PDRB Total (ADHB), PDRB Per Kapita, laju pertumbuhan ekonomi, garis kemiskinan, serta 10 Sektor Penyumbang Ekonomi Terbesar Daerah.
 
-- `index.html`: The main dashboard containing the interactive map and data tables.
-- `profil.html`: The detailed profile page for individual regencies/cities.
-- `styles.css`: The central stylesheet for application design and layout.
-- `Data.js`: Contains the statistical and geographical data used throughout the application.
-- `Map.js`: Handles the initialization and logic of the Leaflet map.
-- `Profil.js`: Manages the logic and data rendering for the region profile pages.
+### 🎨 4. Desain Visual Premium & Bebas Silau (Eye-Friendly UI)
+* **Soft Slate Off-White Palette (`#f8fafc` / `#f1f5f9`)**: Menghilangkan 90% silau pantulan cahaya monitor (*glare*) untuk kenyamanan mata pengguna saat membaca data.
+* **Aksen Warna Deep Emerald & Ocean Cyan (`#0d9488` / `#0f766e`)**: Kontras tinggi berstandar aksesibilitas internasional (WCAG AAA).
+* **Top Navbar Frosted Glassmorphism**: Navbar gradien teal-cyan modern dengan efek kaca transparan dan bayangan lembut.
 
-## Getting Started
+---
 
-### Prerequisites
+## 🚀 Cara Menjalankan Proyek (Local Development)
 
-To run this project, you only need a modern web browser. No complex backend setup or build tools are required.
+Proyek ini dibuat menggunakan **Vanilla HTML5, CSS3, dan JavaScript (ES6)** tanpa membutuhkan proses kompilasi atau Node.js build tools.
 
-### Installation
-
-1. Clone the repository:
+### 1. Menjalankan di Localhost (Laragon / XAMPP / Live Server)
+1. Clone repositori ini ke folder server Anda (misal `c:\laragon\www\mockup-indonesia-data-portal` atau `htdocs`):
    ```bash
-   git clone https://github.com/Karnodinata/Mockup_Profil_Indonesia_IvosightsTask.git
+   git clone https://github.com/GigaLukmanMaulana/mockup-indonesia-data-portal.git
    ```
-2. Navigate to the project directory:
-   ```bash
-   cd Mockup_Profil_Indonesia_IvosightsTask
+2. Buka browser dan akses halaman utama:
+   ```text
+   http://localhost/mockup-indonesia-data-portal/index.html
    ```
-3. Open `index.html` in your preferred web browser to view the application.
+   Atau untuk halaman profil wilayah:
+   ```text
+   http://localhost/mockup-indonesia-data-portal/profil.html?id=158
+   ```
 
-## License
+3. Jika menggunakan Extension **Live Server** di VS Code, cukup klik kanan pada file `index.html` dan pilih **Open with Live Server**.
 
-This project is created for the Ivosights Task mockup.
+---
+
+## 📁 Struktur Direktori Project
+
+```text
+mockup-indonesia-data-portal/
+├── index.html         # Halaman Utama Dashboard & Peta Interaktif GIS
+├── profil.html        # Halaman Profil Detail Wilayah Kabupaten/Kota
+├── styles.css         # Custom Design System, Off-White Tokens & Layout
+├── Map.js             # Logika Peta Leaflet, Choropleth, Filter & Leaderboard
+├── Profil.js          # Logika Detail Profil, ScrollSpy & Custom Search Picker
+├── data.js            # Basis Data 514 Kabupaten/Kota & 38 Provinsi Indonesia
+├── indonesia-kab.json # Berkas Batas Poligon GeoJSON Kabupaten/Kota Indonesia
+└── README.md          # Dokumentasi Proyek
+```
+
+---
+
+## 📄 Lisensi & Sumber Data
+* **Sumber Data**: Publikasi Resmi Badan Pusat Statistik (BPS) Kabupaten/Kota Dalam Angka 2026.
+* **Peta Dasar**: OpenStreetMap & Leaflet.js GeoJSON Engine.
+* **Pengembang**: Giga Lukman Maulana.
