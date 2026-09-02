@@ -335,20 +335,34 @@ function getSpatialNeighbors(r) {
         const dy = b.cy - b0.cy; // positive = north
         const dx = b.cx - b0.cx; // positive = east
         const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 1.4) return null;
+
         const name = f.properties.NAME_1 || f.properties.KABKOTA || '';
-        return { name, dx, dy, dist, feature: f };
+        const type2 = f.properties.VARNAME_2 || '';
+        const displayName = type2 === 'Kota' && !name.startsWith('Kota') ? 'Kota ' + name : name;
+        return { name: displayName, dx, dy, dist, feature: f };
     }).filter(Boolean);
 
-    const north = list.filter(n => n.dy > 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.25).sort((a, b) => a.dist - b.dist)[0];
-    const south = list.filter(n => n.dy < 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.25).sort((a, b) => a.dist - b.dist)[0];
-    const east = list.filter(n => n.dx > 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.25).sort((a, b) => a.dist - b.dist)[0];
-    const west = list.filter(n => n.dx < 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.25).sort((a, b) => a.dist - b.dist)[0];
+    const north = list.filter(n => n.dy > 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.35).sort((a, b) => a.dist - b.dist);
+    const south = list.filter(n => n.dy < 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.35).sort((a, b) => a.dist - b.dist);
+    const east = list.filter(n => n.dx > 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.35).sort((a, b) => a.dist - b.dist);
+    const west = list.filter(n => n.dx < 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.35).sort((a, b) => a.dist - b.dist);
+
+    const fmtN = (items, fallback) => {
+        if (!items || items.length === 0) return fallback;
+        const names = [];
+        items.forEach(x => {
+            if (!names.includes(x.name) && names.length < 2) names.push(x.name);
+        });
+        return names.join(' & ');
+    };
+    const getFeat = items => items.slice(0, 2).map(x => x.feature);
 
     return {
-        utara: north ? { name: north.name, feature: north.feature } : null,
-        selatan: south ? { name: south.name, feature: south.feature } : null,
-        timur: east ? { name: east.name, feature: east.feature } : null,
-        barat: west ? { name: west.name, feature: west.feature } : null
+        utara: north.length > 0 ? { name: fmtN(north, ''), feature: getFeat(north) } : null,
+        selatan: south.length > 0 ? { name: fmtN(south, ''), feature: getFeat(south) } : null,
+        timur: east.length > 0 ? { name: fmtN(east, ''), feature: getFeat(east) } : null,
+        barat: west.length > 0 ? { name: fmtN(west, ''), feature: getFeat(west) } : null
     };
 }
 
