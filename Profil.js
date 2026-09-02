@@ -1,6 +1,6 @@
 /* ============================================================
    Portal Data Kabupaten & Kota — Profil Wilayah Controller (Profil.js)
-   Tampilan 9 Tab Lengkap, Kompas & Batas Wilayah Spasial (Leaflet fitBounds),
+   Tampilan 9 Tab Lengkap, Kompas & Batas Wilayah Spasial (Leaflet flyToBounds),
    Diagram Kursi DPRD 2024, Piramida Penduduk, & Bar PDRB 17 Sektor.
    ============================================================ */
 
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof INDONESIA_KAB_GEOJSON !== 'undefined' && INDONESIA_KAB_GEOJSON.features) {
             mainRegionLayer = L.geoJSON(INDONESIA_KAB_GEOJSON, {
                 style: (feature) => {
-                    const match = isRegionMatch(feature, r);
+                    const match = isRegionMatchStrict(feature, r);
                     return {
                         fillColor: match ? '#0FB5A0' : '#D2DEEA',
                         weight: match ? 2.5 : 0.8,
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }).addTo(map);
 
-            const matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => isRegionMatch(f, r));
+            const matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => isRegionMatchStrict(f, r));
             if (matchedFeatures.length > 0) {
                 const group = L.geoJSON(matchedFeatures);
                 map.fitBounds(group.getBounds(), { padding: [30, 30] });
@@ -97,22 +97,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function isRegionMatch(feature, regionObj) {
+    // Helper: Strict Kota vs Kabupaten matching to prevent cross-matching
+    function isRegionMatchStrict(feature, regionObj) {
         if (!feature || !feature.properties) return false;
         const props = feature.properties;
-        const name = (props.NAME_1 || props.KABKOTA || props.NAME_2 || '').toUpperCase();
+        const name1 = (props.NAME_1 || props.KABKOTA || '').toUpperCase();
+        const type2 = (props.VARNAME_2 || '').toUpperCase();
 
-        const cleanRName = (regionObj.kabkota || '').toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
-        const cleanFName = name.replace(/^(KABUPATEN|KOTA)\s+/, '');
+        const rName = (regionObj.kabkota || '').toUpperCase();
+        const rIsKota = rName.startsWith('KOTA ');
+        const fIsKota = type2 === 'KOTA' || name1.startsWith('KOTA ');
 
-        return cleanFName && cleanFName !== 'NA' && (cleanFName === cleanRName || cleanFName.includes(cleanRName) || cleanRName.includes(cleanFName));
+        const cleanRName = rName.replace(/^(KABUPATEN|KOTA)\s+/, '').trim();
+        const cleanFName = name1.replace(/^(KABUPATEN|KOTA)\s+/, '').trim();
+
+        if (!cleanFName || cleanFName === 'NA') return false;
+
+        const nameMatches = (cleanRName === cleanFName || cleanFName.includes(cleanRName) || cleanRName.includes(cleanFName));
+        return nameMatches && (rIsKota === fIsKota);
     }
 
-    // Helper: Show boundary region on Leaflet map & fitBounds
+    // Helper: Smoothly fly & fit bounds to boundary region on Leaflet map
     function showBoundaryOnMap(directionKey, targetText, boundaryFeature) {
         if (!targetText) return;
 
-        // Make sure map is initialized
         if (!map) {
             initMap();
         }
@@ -122,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let matchedFeatures = [];
 
         if (boundaryFeature) {
-            matchedFeatures = [boundaryFeature];
+            matchedFeatures = Array.isArray(boundaryFeature) ? boundaryFeature : [boundaryFeature];
         } else {
             const cleanTargetText = targetText.toUpperCase();
             matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => {
@@ -156,7 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const bounds = selectedBoundaryLayer.getBounds();
             if (bounds && bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 11, animate: true });
+                if (typeof map.flyToBounds === 'function') {
+                    map.flyToBounds(bounds, { padding: [40, 40], duration: 1.2 });
+                } else {
+                    map.fitBounds(bounds, { padding: [40, 40], animate: true });
+                }
                 showMapMessage(`${targetText} (${directionKey.toUpperCase()}) ditampilkan pada peta.`);
             }
         } else {
@@ -296,12 +308,19 @@ function getSpatialNeighbors(r) {
     if (typeof INDONESIA_KAB_GEOJSON === 'undefined' || !INDONESIA_KAB_GEOJSON.features) return null;
     const features = INDONESIA_KAB_GEOJSON.features;
 
+    const rName = (r.kabkota || '').toUpperCase();
+    const rIsKota = rName.startsWith('KOTA ');
+    const cleanRName = rName.replace(/^(KABUPATEN|KOTA)\s+/, '').trim();
+
     const curFeature = features.find(f => {
         if (!f || !f.properties) return false;
-        const name = (f.properties.NAME_1 || f.properties.KABKOTA || '').toUpperCase();
-        const cleanRName = (r.kabkota || '').toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
-        const cleanFName = name.replace(/^(KABUPATEN|KOTA)\s+/, '');
-        return cleanFName && cleanFName !== 'NA' && (cleanFName === cleanRName || cleanFName.includes(cleanRName) || cleanRName.includes(cleanFName));
+        const name1 = (f.properties.NAME_1 || f.properties.KABKOTA || '').toUpperCase();
+        const type2 = (f.properties.VARNAME_2 || '').toUpperCase();
+        const fIsKota = type2 === 'KOTA' || name1.startsWith('KOTA ');
+        const cleanFName = name1.replace(/^(KABUPATEN|KOTA)\s+/, '').trim();
+
+        if (!cleanFName || cleanFName === 'NA') return false;
+        return (cleanRName === cleanFName || cleanFName.includes(cleanRName) || cleanRName.includes(cleanFName)) && (rIsKota === fIsKota);
     });
 
     if (!curFeature) return null;
@@ -313,17 +332,17 @@ function getSpatialNeighbors(r) {
         if (f === curFeature) return null;
         const b = getFeatureBounds(f);
         if (!b) return null;
-        const dy = b.cy - b0.cy;
-        const dx = b.cx - b0.cx;
+        const dy = b.cy - b0.cy; // positive = north
+        const dx = b.cx - b0.cx; // positive = east
         const dist = Math.sqrt(dx * dx + dy * dy);
         const name = f.properties.NAME_1 || f.properties.KABKOTA || '';
         return { name, dx, dy, dist, feature: f };
     }).filter(Boolean);
 
-    const north = list.filter(n => n.dy > 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.3).sort((a, b) => a.dist - b.dist)[0];
-    const south = list.filter(n => n.dy < 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.3).sort((a, b) => a.dist - b.dist)[0];
-    const east = list.filter(n => n.dx > 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.3).sort((a, b) => a.dist - b.dist)[0];
-    const west = list.filter(n => n.dx < 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.3).sort((a, b) => a.dist - b.dist)[0];
+    const north = list.filter(n => n.dy > 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.25).sort((a, b) => a.dist - b.dist)[0];
+    const south = list.filter(n => n.dy < 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.25).sort((a, b) => a.dist - b.dist)[0];
+    const east = list.filter(n => n.dx > 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.25).sort((a, b) => a.dist - b.dist)[0];
+    const west = list.filter(n => n.dx < 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.25).sort((a, b) => a.dist - b.dist)[0];
 
     return {
         utara: north ? { name: north.name, feature: north.feature } : null,
