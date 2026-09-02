@@ -14,6 +14,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const targetId = urlParams.get('id');
     const targetSlug = urlParams.get('slug');
+    const returnView = urlParams.get('view') || urlParams.get('from');
+
+    // Dynamic Back Link adjustment based on origin view (Map vs Table)
+    const backLink = document.querySelector('.back-link');
+    if (backLink) {
+        if (returnView === 'table') {
+            backLink.href = 'index.html?view=table';
+            backLink.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 6l-6 6 6 6" />
+                </svg>
+                Kembali ke Tabel Peringkat
+            `;
+        } else {
+            backLink.href = 'index.html?view=map';
+            backLink.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 6l-6 6 6 6" />
+                </svg>
+                Kembali ke Peta &amp; Dashboard
+            `;
+        }
+    }
 
     let region = null;
     if (targetId) {
@@ -815,7 +838,8 @@ function setupCustomRegionPicker(currentRegion) {
 
             item.addEventListener('click', () => {
                 const targetVal = r.id || r.slug;
-                window.location.href = `profil.html?id=${encodeURIComponent(targetVal)}`;
+                const viewParam = returnView ? `&view=${encodeURIComponent(returnView)}` : '';
+                window.location.href = `profil.html?id=${encodeURIComponent(targetVal)}${viewParam}`;
             });
 
             resultsList.appendChild(item);

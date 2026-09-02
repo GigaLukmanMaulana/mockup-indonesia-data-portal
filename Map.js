@@ -868,7 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         tableBody.innerHTML = filtered.map((r, idx) => {
-            const targetUrl = `profil.html?id=${encodeURIComponent(r.id || '')}&slug=${encodeURIComponent(r.slug || '')}`;
+            const targetUrl = `profil.html?id=${encodeURIComponent(r.id || '')}&slug=${encodeURIComponent(r.slug || '')}&view=table`;
             const activeVal = m.getValue(r);
             const activeDisplay = activeVal !== null ? m.formatShort(activeVal) : '–';
 
@@ -934,6 +934,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnViewMap?.addEventListener('click', () => setViewMode('map'));
     btnViewTable?.addEventListener('click', () => setViewMode('table'));
+
+    // Check initial view mode from URL search param or hash
+    const initialViewParam = new URLSearchParams(window.location.search).get('view');
+    if (initialViewParam === 'table' || window.location.hash === '#table') {
+        setViewMode('table');
+    }
 
     // 15. Apply Filters & Update Views
     function applyFilters() {
