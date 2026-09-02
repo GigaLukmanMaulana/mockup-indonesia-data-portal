@@ -874,7 +874,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return `
                 <tr>
-                    <td style="color: var(--text-low); font-weight:600;">#${idx + 1}</td>
+                    <td style="color: var(--text-low); font-weight:600; text-align: center;">#${idx + 1}</td>
                     <td><strong>${escapeHtml(r.kabkota || '')}</strong></td>
                     <td style="color: var(--text-mid);">${escapeHtml(r.prov || '')}</td>
                     <td class="highlight-col">${activeDisplay}</td>
@@ -882,7 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><b>${r.ipm_total ? r.ipm_total.toFixed(2) : '–'}</b></td>
                     <td>${r.pdrb_perkapita ? 'Rp ' + Number(r.pdrb_perkapita).toFixed(1) + ' Jt' : '–'}</td>
                     <td>${r.persentase_miskin ? r.persentase_miskin.toFixed(2) + '%' : '–'}</td>
-                    <td><a href="${targetUrl}" class="action-btn">Lihat Profil &rarr;</a></td>
+                    <td style="text-align: center;"><a href="${targetUrl}" class="action-btn">Lihat Profil <span>&rarr;</span></a></td>
                 </tr>
             `;
         }).join('');
@@ -913,12 +913,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setViewMode(mode) {
         currentView = mode;
+        const leafletControls = document.querySelector('.leaflet-control-container');
         if (mode === 'map') {
             btnViewMap?.classList.add('active');
             btnViewTable?.classList.remove('active');
             tableViewWrap?.classList.remove('active');
             if (mapLegend) mapLegend.style.display = 'block';
             if (mapContextStrip) mapContextStrip.style.display = 'flex';
+            if (leafletControls) leafletControls.style.display = 'block';
             setTimeout(() => map.invalidateSize(), 100);
         } else {
             btnViewTable?.classList.add('active');
@@ -926,6 +928,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tableViewWrap?.classList.add('active');
             if (mapLegend) mapLegend.style.display = 'none';
             if (mapContextStrip) mapContextStrip.style.display = 'none';
+            if (leafletControls) leafletControls.style.display = 'none';
             renderTable();
         }
     }
