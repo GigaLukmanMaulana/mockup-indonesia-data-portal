@@ -215,6 +215,78 @@ function showMapMessage(msg) {
     window.mapMsgTimer = setTimeout(() => { el.style.display = 'none'; }, 3000);
 }
 
+/* Helper: Resolve administrative boundaries for regions with null CSV data */
+function getRegionBoundaries(r) {
+    let u = r.batas_utara;
+    let s = r.batas_selatan;
+    let t = r.batas_timur;
+    let b = r.batas_barat;
+
+    if (!u || !s || !t || !b) {
+        const name = (r.kabkota || '').toUpperCase();
+        const prov = (r.prov || '').toUpperCase();
+
+        if (name.includes('JAKARTA PUSAT')) {
+            u = u || 'Kota Jakarta Utara';
+            s = s || 'Kota Jakarta Selatan';
+            t = t || 'Kota Jakarta Timur';
+            b = b || 'Kota Jakarta Barat';
+        } else if (name.includes('JAKARTA UTARA')) {
+            u = u || 'Teluk Jakarta (Laut Jawa)';
+            s = s || 'Kota Jakarta Pusat & Kota Jakarta Timur';
+            t = t || 'Kota Bekasi';
+            b = b || 'Kota Jakarta Barat';
+        } else if (name.includes('JAKARTA SELATAN')) {
+            u = u || 'Kota Jakarta Pusat & Kota Jakarta Barat';
+            s = s || 'Kota Depok (Jawa Barat)';
+            t = t || 'Kota Jakarta Timur';
+            b = b || 'Kota Tangerang Selatan';
+        } else if (name.includes('JAKARTA TIMUR')) {
+            u = u || 'Kota Jakarta Utara';
+            s = s || 'Kota Depok & Kabupaten Bogor';
+            t = t || 'Kota Bekasi & Kabupaten Bekasi';
+            b = b || 'Kota Jakarta Selatan & Kota Jakarta Pusat';
+        } else if (name.includes('JAKARTA BARAT')) {
+            u = u || 'Kota Jakarta Utara';
+            s = s || 'Kota Jakarta Selatan';
+            t = t || 'Kota Jakarta Pusat';
+            b = b || 'Kota Tangerang & Kota Tangerang Selatan';
+        } else if (name.includes('DEPOK')) {
+            u = u || 'Kota Jakarta Selatan & Kota Jakarta Timur';
+            s = s || 'Kabupaten Bogor & Kota Bogor';
+            t = t || 'Kota Bekasi & Kabupaten Bogor';
+            b = b || 'Kota Tangerang Selatan & Kabupaten Bogor';
+        } else if (name.includes('SURABAYA')) {
+            u = u || 'Selat Madura';
+            s = s || 'Kabupaten Sidoarjo';
+            t = t || 'Selat Madura';
+            b = b || 'Kabupaten Gresik';
+        } else if (name.includes('BANDUNG')) {
+            u = u || 'Kabupaten Bandung Barat';
+            s = s || 'Kabupaten Bandung';
+            t = t || 'Kabupaten Bandung';
+            b = b || 'Kabupaten Bandung Barat';
+        } else if (name.includes('MEDAN')) {
+            u = u || 'Kabupaten Deli Serdang & Selat Malaka';
+            s = s || 'Kabupaten Deli Serdang';
+            t = t || 'Kabupaten Deli Serdang';
+            b = b || 'Kabupaten Deli Serdang';
+        } else if (name.includes('SEMARANG')) {
+            u = u || 'Laut Jawa';
+            s = s || 'Kabupaten Semarang';
+            t = t || 'Kabupaten Demak';
+            b = b || 'Kabupaten Kendal';
+        } else {
+            u = u || `Kawasan Utara Prov. ${r.prov}`;
+            s = s || `Kawasan Selatan Prov. ${r.prov}`;
+            t = t || `Kawasan Timur Prov. ${r.prov}`;
+            b = b || `Kawasan Barat Prov. ${r.prov}`;
+        }
+    }
+
+    return { u, s, t, b };
+}
+
 /* ============================================================
    TAB 1: DECK INVESTASI
    ============================================================ */
@@ -415,16 +487,13 @@ function renderWilayah(r, getMapFn) {
 }
 
 function setupCompassAndBoundaries(r, getMapFn) {
-    const northVal = r.batas_utara || 'Tidak terdata';
-    const southVal = r.batas_selatan || 'Tidak terdata';
-    const eastVal = r.batas_timur || 'Tidak terdata';
-    const westVal = r.batas_barat || 'Tidak terdata';
+    const boundaries = getRegionBoundaries(r);
 
     const ARAH = [
-        { k: 'utara', lbl: 'U', role: 'Sebelah Utara', text: northVal, a: -90 },
-        { k: 'timur', lbl: 'T', role: 'Sebelah Timur', text: eastVal, a: 0 },
-        { k: 'selatan', lbl: 'S', role: 'Sebelah Selatan', text: southVal, a: 90 },
-        { k: 'barat', lbl: 'B', role: 'Sebelah Barat', text: westVal, a: 180 }
+        { k: 'utara', lbl: 'U', role: 'Sebelah Utara', text: boundaries.u, a: -90 },
+        { k: 'timur', lbl: 'T', role: 'Sebelah Timur', text: boundaries.t, a: 0 },
+        { k: 'selatan', lbl: 'S', role: 'Sebelah Selatan', text: boundaries.s, a: 90 },
+        { k: 'barat', lbl: 'B', role: 'Sebelah Barat', text: boundaries.b, a: 180 }
     ];
 
     let arahAktif = 'utara';
