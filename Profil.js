@@ -53,7 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Leaflet Map Initialization
     let map = null;
-    let geojsonLayer = null;
+    let mainRegionLayer = null;
+    let selectedBoundaryLayer = null;
 
     function initMap() {
         const mapContainer = document.getElementById('map');
@@ -75,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).addTo(map);
 
         if (typeof INDONESIA_KAB_GEOJSON !== 'undefined' && INDONESIA_KAB_GEOJSON.features) {
-            geojsonLayer = L.geoJSON(INDONESIA_KAB_GEOJSON, {
+            mainRegionLayer = L.geoJSON(INDONESIA_KAB_GEOJSON, {
                 style: (feature) => {
                     const match = isRegionMatch(feature, r);
                     return {
@@ -83,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         weight: match ? 2.5 : 0.8,
                         opacity: 1,
                         color: match ? '#0E9E9A' : '#8398AC',
-                        fillOpacity: match ? 0.45 : 0.15
+                        fillOpacity: match ? 0.45 : 0.12
                     };
                 }
             }).addTo(map);
@@ -99,13 +100,64 @@ document.addEventListener('DOMContentLoaded', () => {
     function isRegionMatch(feature, regionObj) {
         if (!feature || !feature.properties) return false;
         const props = feature.properties;
-        const name = (props.KABKOTA || props.NAME_2 || props.kabkota || '').toUpperCase();
-        const prov = (props.PROVINSI || props.NAME_1 || props.prov || '').toUpperCase();
+        const name = (props.NAME_1 || props.KABKOTA || props.NAME_2 || '').toUpperCase();
 
         const cleanRName = (regionObj.kabkota || '').toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
         const cleanFName = name.replace(/^(KABUPATEN|KOTA)\s+/, '');
 
-        return cleanFName === cleanRName && (prov.includes((regionObj.prov || '').toUpperCase()) || (regionObj.prov || '').toUpperCase().includes(prov));
+        return cleanFName && cleanFName !== 'NA' && (cleanFName === cleanRName || cleanFName.includes(cleanRName) || cleanRName.includes(cleanFName));
+    }
+
+    // Helper: Show boundary region on Leaflet map & fitBounds
+    function showBoundaryOnMap(directionKey, targetText) {
+        if (!targetText) return;
+
+        // Make sure map is initialized
+        if (!map) {
+            initMap();
+        }
+
+        if (!map || typeof INDONESIA_KAB_GEOJSON === 'undefined') return;
+
+        const cleanTargetText = targetText.toUpperCase();
+
+        // Match features in GeoJSON using NAME_1 property
+        const matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => {
+            const name1 = (f.properties.NAME_1 || f.properties.KABKOTA || '').toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
+            if (!name1 || name1 === 'NA') return false;
+            return cleanTargetText.includes(name1) || name1.includes(cleanTargetText.replace(/^(KABUPATEN|KOTA)\s+/, ''));
+        });
+
+        // Clear previous boundary highlight layer if any
+        if (selectedBoundaryLayer) {
+            map.removeLayer(selectedBoundaryLayer);
+            selectedBoundaryLayer = null;
+        }
+
+        if (matchedFeatures.length > 0) {
+            selectedBoundaryLayer = L.geoJSON(matchedFeatures, {
+                style: {
+                    fillColor: '#0FB5A0',
+                    weight: 3,
+                    opacity: 1,
+                    color: '#0E9E9A',
+                    fillOpacity: 0.55
+                },
+                onEachFeature: (feature, layer) => {
+                    const name = feature.properties.NAME_1 || feature.properties.KABKOTA || 'Wilayah Tetangga';
+                    layer.bindTooltip(name, { sticky: true });
+                    layer.bindPopup(`<div style="font-family:sans-serif;font-size:12.5px;padding:4px"><b>${name}</b><br><span style="color:#0FB5A0;font-size:11px">Batas Wilayah (${directionKey.toUpperCase()})</span></div>`);
+                }
+            }).addTo(map);
+
+            const bounds = selectedBoundaryLayer.getBounds();
+            if (bounds && bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 11, animate: true });
+                showMapMessage(`${targetText} (${directionKey.toUpperCase()}) ditampilkan pada peta.`);
+            }
+        } else {
+            showMapMessage(`Batas Wilayah (${directionKey.toUpperCase()}): ${targetText}`);
+        }
     }
 
     // 5. Setup 9-Tab Switching Logic
@@ -164,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 6. Render All Tab Renderers
     renderInvestasi(r);
-    renderWilayah(r, () => map);
+    renderWilayah(r, showBoundaryOnMap);
     renderPemerintahan(r);
     renderPenduduk(r);
     renderEkonomi(r);
@@ -224,7 +276,6 @@ function getRegionBoundaries(r) {
 
     if (!u || !s || !t || !b) {
         const name = (r.kabkota || '').toUpperCase();
-        const prov = (r.prov || '').toUpperCase();
 
         if (name.includes('JAKARTA PUSAT')) {
             u = u || 'Kota Jakarta Utara';
@@ -232,13 +283,13 @@ function getRegionBoundaries(r) {
             t = t || 'Kota Jakarta Timur';
             b = b || 'Kota Jakarta Barat';
         } else if (name.includes('JAKARTA UTARA')) {
-            u = u || 'Teluk Jakarta (Laut Jawa)';
+            u = u || 'Teluk Jakarta';
             s = s || 'Kota Jakarta Pusat & Kota Jakarta Timur';
             t = t || 'Kota Bekasi';
             b = b || 'Kota Jakarta Barat';
         } else if (name.includes('JAKARTA SELATAN')) {
             u = u || 'Kota Jakarta Pusat & Kota Jakarta Barat';
-            s = s || 'Kota Depok (Jawa Barat)';
+            s = s || 'Kota Depok';
             t = t || 'Kota Jakarta Timur';
             b = b || 'Kota Tangerang Selatan';
         } else if (name.includes('JAKARTA TIMUR')) {
@@ -250,12 +301,12 @@ function getRegionBoundaries(r) {
             u = u || 'Kota Jakarta Utara';
             s = s || 'Kota Jakarta Selatan';
             t = t || 'Kota Jakarta Pusat';
-            b = b || 'Kota Tangerang & Kota Tangerang Selatan';
+            b = b || 'Kota Tangerang';
         } else if (name.includes('DEPOK')) {
             u = u || 'Kota Jakarta Selatan & Kota Jakarta Timur';
             s = s || 'Kabupaten Bogor & Kota Bogor';
-            t = t || 'Kota Bekasi & Kabupaten Bogor';
-            b = b || 'Kota Tangerang Selatan & Kabupaten Bogor';
+            t = t || 'Kota Bekasi';
+            b = b || 'Kota Tangerang Selatan';
         } else if (name.includes('SURABAYA')) {
             u = u || 'Selat Madura';
             s = s || 'Kabupaten Sidoarjo';
@@ -267,7 +318,7 @@ function getRegionBoundaries(r) {
             t = t || 'Kabupaten Bandung';
             b = b || 'Kabupaten Bandung Barat';
         } else if (name.includes('MEDAN')) {
-            u = u || 'Kabupaten Deli Serdang & Selat Malaka';
+            u = u || 'Kabupaten Deli Serdang';
             s = s || 'Kabupaten Deli Serdang';
             t = t || 'Kabupaten Deli Serdang';
             b = b || 'Kabupaten Deli Serdang';
@@ -399,7 +450,7 @@ function renderInvestasi(r) {
 /* ============================================================
    TAB 2: PROFIL WILAYAH & BATAS
    ============================================================ */
-function renderWilayah(r, getMapFn) {
+function renderWilayah(r, showBoundaryOnMapFn) {
     const pimpinan = document.getElementById('pimpinan');
     if (pimpinan) {
         pimpinan.innerHTML = `
@@ -479,14 +530,14 @@ function renderWilayah(r, getMapFn) {
     if (topoTotal) topoTotal.textContent = `total ${r.total_desa || r.desa_kel || totalTopo} desa`;
 
     // Interactive Compass & Boundary Handling
-    setupCompassAndBoundaries(r, getMapFn);
+    setupCompassAndBoundaries(r, showBoundaryOnMapFn);
 
     // Elevasi & Curah Hujan
     renderElevChart(r);
     renderRainChart(r);
 }
 
-function setupCompassAndBoundaries(r, getMapFn) {
+function setupCompassAndBoundaries(r, showBoundaryOnMapFn) {
     const boundaries = getRegionBoundaries(r);
 
     const ARAH = [
@@ -561,24 +612,7 @@ function setupCompassAndBoundaries(r, getMapFn) {
         const item = ARAH.find(x => x.k === dirKey);
         if (!item) return;
 
-        const map = getMapFn();
-        if (map && typeof INDONESIA_KAB_GEOJSON !== 'undefined' && INDONESIA_KAB_GEOJSON.features) {
-            const targetText = item.text.toUpperCase();
-            const matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => {
-                const fname = (f.properties.KABKOTA || f.properties.NAME_2 || f.properties.kabkota || '').toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
-                return targetText.includes(fname);
-            });
-
-            if (matchedFeatures.length > 0) {
-                const group = L.geoJSON(matchedFeatures);
-                map.fitBounds(group.getBounds(), { padding: [35, 35] });
-                showMapMessage(`${item.text} (${item.role}) ditampilkan pada peta.`);
-            } else {
-                showMapMessage(`${item.role}: ${item.text}`);
-            }
-        } else {
-            showMapMessage(`${item.role}: ${item.text}`);
-        }
+        showBoundaryOnMapFn(dirKey, item.text);
     }
 
     renderCompass();
