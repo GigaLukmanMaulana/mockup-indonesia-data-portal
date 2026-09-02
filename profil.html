@@ -56,6 +56,24 @@
             border-color: var(--merah);
             background: var(--merah-bg);
             color: var(--merah);
+            transform: translateY(-1px);
+        }
+
+        .back-link:active,
+        .picker-trigger:active,
+        .filter-pill:active,
+        .sec-nav-item:active {
+            transform: scale(0.95) !important;
+        }
+
+        .back-link,
+        .picker-trigger,
+        .filter-pill,
+        .sec-nav-item {
+            transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.4, 1),
+                        background-color 0.18s var(--ease),
+                        border-color 0.18s var(--ease),
+                        color 0.18s var(--ease) !important;
         }
 
         .back-link svg {

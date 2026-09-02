@@ -258,6 +258,7 @@
         .view-btn:hover {
             color: #ffffff;
             background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
         }
 
         .view-btn.active {
@@ -270,6 +271,57 @@
         .view-btn svg {
             width: 13px;
             height: 13px;
+        }
+
+        /* Dynamic Button & Clickable Card Micro-Interactions */
+        button,
+        .btn,
+        .chip,
+        .view-btn,
+        .m-cat-pill,
+        .type-pill,
+        .island-pill,
+        .filter-pill,
+        .lb-btn,
+        .prov-select-trigger,
+        .prov-opt-item,
+        .metric-item,
+        .lb-item,
+        .sidebar-toggle-btn,
+        .sidebar-edge-toggle,
+        .lb-cta-btn {
+            transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.4, 1),
+                        background-color 0.18s var(--ease),
+                        border-color 0.18s var(--ease),
+                        box-shadow 0.18s var(--ease),
+                        color 0.18s var(--ease) !important;
+        }
+
+        button:active,
+        .btn:active,
+        .chip:active,
+        .view-btn:active,
+        .m-cat-pill:active,
+        .type-pill:active,
+        .island-pill:active,
+        .filter-pill:active,
+        .lb-btn:active,
+        .prov-select-trigger:active,
+        .metric-item:active,
+        .lb-item:active,
+        .sidebar-toggle-btn:active,
+        .sidebar-edge-toggle:active,
+        .lb-cta-btn:active {
+            transform: scale(0.94) !important;
+        }
+
+        .m-cat-pill:hover,
+        .type-pill:hover,
+        .island-pill:hover,
+        .lb-btn:hover,
+        .sidebar-toggle-btn:hover,
+        .sidebar-edge-toggle:hover {
+            transform: translateY(-1px);
         }
 
         /* ---------------- Split Layout ---------------- */
