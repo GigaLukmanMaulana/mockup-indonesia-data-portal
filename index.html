@@ -1094,6 +1094,20 @@
             background: var(--merah-bg);
         }
 
+        .data-table tbody tr.table-row-clickable {
+            cursor: pointer;
+            transition: background 0.15s var(--ease);
+        }
+
+        .data-table tbody tr.table-row-clickable:hover td {
+            background: var(--merah-bg);
+        }
+
+        .data-table tbody tr.table-row-clickable:hover .row-title {
+            color: var(--merah);
+            text-decoration: underline;
+        }
+
         .data-table .highlight-col {
             font-weight: 700;
             color: var(--merah);
@@ -1584,7 +1598,6 @@
                                     <th data-sort="ipm_total">IPM</th>
                                     <th data-sort="pdrb_perkapita">PDRB/Kap</th>
                                     <th data-sort="persentase_miskin">Kemiskinan</th>
-                                    <th style="text-align: center; width: 130px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">

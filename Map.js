@@ -873,16 +873,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const activeDisplay = activeVal !== null ? m.formatShort(activeVal) : '–';
 
             return `
-                <tr>
+                <tr class="table-row-clickable" onclick="window.location.href='${targetUrl}'" title="Klik untuk melihat detail profil ${escapeHtml(r.kabkota || '')}">
                     <td style="color: var(--text-low); font-weight:600; text-align: center;">#${idx + 1}</td>
-                    <td><strong>${escapeHtml(r.kabkota || '')}</strong></td>
+                    <td><strong class="row-title">${escapeHtml(r.kabkota || '')}</strong></td>
                     <td style="color: var(--text-mid);">${escapeHtml(r.prov || '')}</td>
                     <td class="highlight-col">${activeDisplay}</td>
                     <td>${r.penduduk ? formatNumber(r.penduduk) : '–'}</td>
                     <td><b>${r.ipm_total ? r.ipm_total.toFixed(2) : '–'}</b></td>
                     <td>${r.pdrb_perkapita ? 'Rp ' + Number(r.pdrb_perkapita).toFixed(1) + ' Jt' : '–'}</td>
                     <td>${r.persentase_miskin ? r.persentase_miskin.toFixed(2) + '%' : '–'}</td>
-                    <td style="text-align: center;"><a href="${targetUrl}" class="action-btn">Lihat Profil <span>&rarr;</span></a></td>
                 </tr>
             `;
         }).join('');
