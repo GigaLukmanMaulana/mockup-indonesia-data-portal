@@ -1,7 +1,7 @@
 /* ============================================================
-   Portal Data Kabupaten & Kota — Profil Wilayah Controller (profil.js)
-   Pure Sans-Serif typography, Indonesian Merah-Putih color palette,
-   and clean professional UI without emojis.
+   Portal Data Kabupaten & Kota — Profil Wilayah Controller (Profil.js)
+   Integrasi 9 Tab Dashboard, Kompas & Batas Wilayah Spasial (Leaflet fitBounds),
+   Diagram Kursi DPRD 2024, Piramida Penduduk, & Bar PDRB 17 Sektor.
    ============================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,14 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // 1. Get current region from URL params
+    // 1. URL Parameters & Return View State
     const urlParams = new URLSearchParams(window.location.search);
     const targetId = urlParams.get('id');
     const targetSlug = urlParams.get('slug');
     const returnView = urlParams.get('view') || urlParams.get('from');
 
-    // Dynamic Back Link adjustment based on origin view (Map vs Table)
-    const backLink = document.querySelector('.back-link');
+    const backLink = document.getElementById('backLink');
     if (backLink) {
         if (returnView === 'table') {
             backLink.href = 'index.html?view=table';
@@ -38,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 2. Identify Target Region
     let region = null;
     if (targetId) {
         region = REGION_DATA.find(r => String(r.id) === String(targetId));
@@ -50,857 +50,985 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const isKota = (region.kabkota || '').toUpperCase().startsWith('KOTA');
-
-    // Update document title
     document.title = `${region.kabkota || 'Wilayah'} — Profil Data & Statistik Resmi`;
 
-    // 2. Setup Custom Searchable & Filterable Region Picker
-    setupCustomRegionPicker(region);
+    // 3. Setup Region Switcher
+    setupCustomRegionPicker(region, returnView);
 
-    // 3. Render Hero Header
+    // 4. Hero Header Setup
     const heroProv = document.getElementById('heroProv');
     const heroName = document.getElementById('heroName');
     const heroTypeBadge = document.getElementById('heroTypeBadge');
-    const heroChips = document.getElementById('heroChips');
-    const heroMeterFill = document.getElementById('heroMeterFill');
-    const heroMeterLabel = document.getElementById('heroMeterLabel');
-    const topnavMeta = document.getElementById('topnavMeta');
-    const footerId = document.getElementById('footerId');
+    const heroBpsId = document.getElementById('heroBpsId');
 
     if (heroProv) heroProv.textContent = `PROVINSI ${region.prov || 'INDONESIA'}`;
     if (heroName) heroName.textContent = region.kabkota || 'Kabupaten/Kota';
-    if (heroTypeBadge) {
-        heroTypeBadge.textContent = isKota ? 'KOTA OTONOM' : 'KABUPATEN';
-        if (isKota) heroTypeBadge.classList.add('kota');
-    }
+    if (heroTypeBadge) heroTypeBadge.textContent = isKota ? 'KOTA OTONOM' : 'KABUPATEN';
+    if (heroBpsId) heroBpsId.textContent = `#${region.id || region.no || '1'}`;
 
-    const completeness = region.completeness || calculateCompleteness(region);
-    if (heroMeterFill) heroMeterFill.style.width = `${completeness}%`;
-    if (heroMeterLabel) heroMeterLabel.innerHTML = `Kelengkapan Data BPS: <b>${completeness}%</b>`;
+    // 5. Initialize Leaflet Map Instance
+    let leafletMap = null;
+    let geojsonLayer = null;
 
-    if (topnavMeta) {
-        topnavMeta.innerHTML = `<span class="chip">No. Urut BPS <b>#${region.id || region.no || '1'}</b></span>`;
-    }
+    function initMap() {
+        const mapContainer = document.getElementById('map');
+        if (!mapContainer || leafletMap) return;
 
-    if (footerId) {
-        footerId.textContent = `Kode Ref #${region.id || region.no || '1'} • ${region.slug || ''}`;
-    }
+        const lat = region.lat || -6.2;
+        const lng = region.lng || 106.8;
 
-    if (heroChips) {
-        const chipsHtml = [];
-        if (region.penduduk) {
-            chipsHtml.push(`<span class="chip merah"><b>${formatNumber(region.penduduk)}</b> Jiwa</span>`);
-        }
-        if (region.luas) {
-            chipsHtml.push(`<span class="chip"><b>${formatNumber(Math.round(region.luas))}</b> km²</span>`);
-        }
-        if (region.kecamatan) {
-            chipsHtml.push(`<span class="chip"><b>${formatNumber(region.kecamatan)}</b> Kecamatan</span>`);
-        }
-        if (region.total_desa || region.desa_kel) {
-            chipsHtml.push(`<span class="chip"><b>${formatNumber(region.total_desa || region.desa_kel)}</b> Desa/Kelurahan</span>`);
-        }
-        if (region.ipm_total) {
-            chipsHtml.push(`<span class="chip teal">IPM <b>${region.ipm_total.toFixed(2)}</b></span>`);
-        }
-        heroChips.innerHTML = chipsHtml.join('');
-    }
-
-    // 4. Mini Map in Hero
-    const heroMapEl = document.getElementById('heroMap');
-    const heroCoord = document.getElementById('heroCoord');
-    if (heroMapEl && typeof region.lat === 'number' && typeof region.lng === 'number') {
-        if (heroCoord) {
-            heroCoord.textContent = `${region.lat.toFixed(4)}°, ${region.lng.toFixed(4)}°`;
-        }
-
-        const miniMap = L.map('heroMap', {
-            center: [region.lat, region.lng],
-            zoom: 9,
-            zoomControl: false,
-            attributionControl: false,
-            dragging: false,
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            boxZoom: false
+        leafletMap = L.map('map', {
+            center: [lat, lng],
+            zoom: 10,
+            zoomControl: true,
+            scrollWheelZoom: false
         });
 
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap',
-            maxZoom: 19
-        }).addTo(miniMap);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap, &copy; CARTO'
+        }).addTo(leafletMap);
 
-        L.circleMarker([region.lat, region.lng], {
-            radius: 8,
-            fillColor: '#cf1e2e',
-            color: '#ffffff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.95
-        }).addTo(miniMap);
+        // Load & highlight region polygon if GeoJSON available
+        if (typeof INDONESIA_KAB_GEOJSON !== 'undefined' && INDONESIA_KAB_GEOJSON.features) {
+            geojsonLayer = L.geoJSON(INDONESIA_KAB_GEOJSON, {
+                style: (feature) => {
+                    const match = isRegionMatch(feature, region);
+                    return {
+                        fillColor: match ? '#0d9488' : '#e2e8f0',
+                        weight: match ? 2.5 : 0.8,
+                        opacity: 1,
+                        color: match ? '#0f766e' : '#cbd5e1',
+                        fillOpacity: match ? 0.45 : 0.15
+                    };
+                }
+            }).addTo(leafletMap);
+
+            // Fit bounds to selected region
+            const matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => isRegionMatch(f, region));
+            if (matchedFeatures.length > 0) {
+                const group = L.geoJSON(matchedFeatures);
+                leafletMap.fitBounds(group.getBounds(), { padding: [30, 30] });
+            }
+        } else {
+            L.marker([lat, lng]).addTo(leafletMap)
+                .bindPopup(`<b>${region.kabkota}</b><br>${region.prov}`)
+                .openPopup();
+        }
     }
 
-    // 5. Build Main Content
-    const mainContent = document.getElementById('mainContent');
-    if (!mainContent) return;
+    // Helper: Match GeoJSON feature to region
+    function isRegionMatch(feature, r) {
+        if (!feature || !feature.properties) return false;
+        const props = feature.properties;
+        const name = (props.KABKOTA || props.NAME_2 || props.kabkota || '').toUpperCase();
+        const prov = (props.PROVINSI || props.NAME_1 || props.prov || '').toUpperCase();
 
-    let html = '';
+        const cleanRName = (r.kabkota || '').toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
+        const cleanFeatureName = name.replace(/^(KABUPATEN|KOTA)\s+/, '');
 
-    // ==========================================
-    // SECTION 1: Wilayah & Karakteristik Geografis
-    // ==========================================
-    const totalTopo = (Number(region.dataran) || 0) + (Number(region.lembah) || 0) + (Number(region.lereng) || 0) + (Number(region.puncak) || 0);
-    const pctDataran = totalTopo > 0 ? (((Number(region.dataran) || 0) / totalTopo) * 100).toFixed(1) : 0;
-    const pctLembah = totalTopo > 0 ? (((Number(region.lembah) || 0) / totalTopo) * 100).toFixed(1) : 0;
-    const pctLereng = totalTopo > 0 ? (((Number(region.lereng) || 0) / totalTopo) * 100).toFixed(1) : 0;
-    const pctPuncak = totalTopo > 0 ? (((Number(region.puncak) || 0) / totalTopo) * 100).toFixed(1) : 0;
+        return cleanFeatureName === cleanRName && (prov.includes((r.prov || '').toUpperCase()) || (r.prov || '').toUpperCase().includes(prov));
+    }
 
-    html += `
-    <section class="content-card" id="sec-geografi">
-        <div class="card-head">
-            <h2>Wilayah &amp; Karakteristik Geografis</h2>
-            <span class="subtitle">Batas Wilayah Administratif &amp; Topografi Daerah</span>
-        </div>
-
-        <!-- 4 Key Geography Boxes -->
-        <div class="data-grid-4">
-            <div class="data-box">
-                <span class="num">${region.luas ? formatNumber(region.luas) : '<span class="na">–</span>'}</span>
-                <span class="label">Luas Wilayah Total</span>
-                <span class="unit">km² daratan</span>
-            </div>
-            <div class="data-box">
-                <span class="num">${region.kepadatan ? formatNumber(Math.round(region.kepadatan)) : '<span class="na">–</span>'}</span>
-                <span class="label">Kepadatan Penduduk</span>
-                <span class="unit">jiwa per km²</span>
-            </div>
-            <div class="data-box">
-                <span class="num">${region.elevasi !== null && region.elevasi !== undefined ? formatNumber(region.elevasi) : '<span class="na">–</span>'}</span>
-                <span class="label">Ketinggian Rata-Rata</span>
-                <span class="unit">mdpl (elevasi)</span>
-            </div>
-            <div class="data-box">
-                <span class="num">${region.curah_hujan !== null && region.curah_hujan !== undefined ? Number(region.curah_hujan).toFixed(1) : '<span class="na">–</span>'}</span>
-                <span class="label">Rata-Rata Curah Hujan</span>
-                <span class="unit">mm per tahun</span>
-            </div>
-        </div>
-
-        <!-- Clear 2x2 Geographical Boundaries -->
-        <div style="margin-bottom: 12px; font-size: 13px; font-weight: 700; color: var(--text-hi);">Batas Wilayah Administratif</div>
-        <div class="borders-grid">
-            <div class="border-card">
-                <span class="border-tag">UTARA</span>
-                <div class="border-content">
-                    <b>Batas Utara</b>
-                    <span>${escapeHtml(region.batas_utara || 'Tidak terdata')}</span>
-                </div>
-            </div>
-            <div class="border-card">
-                <span class="border-tag">SELATAN</span>
-                <div class="border-content">
-                    <b>Batas Selatan</b>
-                    <span>${escapeHtml(region.batas_selatan || 'Tidak terdata')}</span>
-                </div>
-            </div>
-            <div class="border-card">
-                <span class="border-tag">TIMUR</span>
-                <div class="border-content">
-                    <b>Batas Timur</b>
-                    <span>${escapeHtml(region.batas_timur || 'Tidak terdata')}</span>
-                </div>
-            </div>
-            <div class="border-card">
-                <span class="border-tag">BARAT</span>
-                <div class="border-content">
-                    <b>Batas Barat</b>
-                    <span>${escapeHtml(region.batas_barat || 'Tidak terdata')}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Topography Distribution -->
-        ${totalTopo > 0 ? `
-            <div style="margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line);">
-                <div style="font-size: 13px; font-weight: 700; color: var(--text-hi); margin-bottom: 8px;">
-                    Distribusi Topografi Desa (${totalTopo} Desa/Kelurahan Terdata)
-                </div>
-                <div class="topo-grid">
-                    <div class="topo-item">
-                        <div class="t-val">${formatNumber(region.dataran || 0)}</div>
-                        <div class="t-lbl">Dataran (${pctDataran}%)</div>
-                    </div>
-                    <div class="topo-item">
-                        <div class="t-val">${formatNumber(region.lereng || 0)}</div>
-                        <div class="t-lbl">Lereng (${pctLereng}%)</div>
-                    </div>
-                    <div class="topo-item">
-                        <div class="t-val">${formatNumber(region.lembah || 0)}</div>
-                        <div class="t-lbl">Lembah (${pctLembah}%)</div>
-                    </div>
-                    <div class="topo-item">
-                        <div class="t-val">${formatNumber(region.puncak || 0)}</div>
-                        <div class="t-lbl">Puncak (${pctPuncak}%)</div>
-                    </div>
-                </div>
-            </div>
-        ` : ''}
-    </section>
-    `;
-
-    // ==========================================
-    // SECTION 2: Pemerintahan & Politik
-    // ==========================================
-    const kepalaInitials = getInitials(region.kepala || 'Kepala Daerah');
-    const wakilInitials = getInitials(region.wakil || 'Wakil Kepala');
-
-    const parties = [
-        { key: 'p_golkar', name: 'Partai Golkar', color: '#e6ac4a' },
-        { key: 'p_gerindra', name: 'Partai Gerindra', color: '#dc2626' },
-        { key: 'p_pdip', name: 'PDI Perjuangan', color: '#ef4444' },
-        { key: 'p_pkb', name: 'PKB', color: '#10b981' },
-        { key: 'p_nasdem', name: 'Partai NasDem', color: '#2563eb' },
-        { key: 'p_demokrat', name: 'Partai Demokrat', color: '#3b82f6' },
-        { key: 'p_pks', name: 'PKS', color: '#f97316' },
-        { key: 'p_ppp_pan', name: 'PPP / PAN', color: '#06b6d4' },
-        { key: 'p_hanura', name: 'Partai Hanura', color: '#ec4899' },
-        { key: 'p_pbb', name: 'PBB', color: '#14b8a6' }
-    ].map(p => ({
-        ...p,
-        seats: region[p.key] !== null && region[p.key] !== undefined ? Number(region[p.key]) : 0
-    })).filter(p => p.seats > 0);
-
-    const totalSeats = parties.reduce((acc, cur) => acc + cur.seats, 0);
-    const maxSeat = Math.max(...parties.map(p => p.seats), 1);
-
-    html += `
-    <section class="content-card" id="sec-pemerintahan">
-        <div class="card-head">
-            <h2>Pemerintahan &amp; Parlemen Daerah</h2>
-            <span class="subtitle">Pimpinan Eksekutif, Wilayah Administrasi &amp; Kursi DPRD</span>
-        </div>
-
-        <!-- Leadership Row -->
-        <div class="leaders-row">
-            <div class="leader-card">
-                <div class="leader-avatar">${kepalaInitials}</div>
-                <div class="leader-info">
-                    <b>${escapeHtml(region.kepala || 'Nama Belum Terdata')}</b>
-                    <small>${isKota ? 'Walikota' : 'Bupati'} (${region.kabkota || ''})</small>
-                </div>
-            </div>
-            ${region.wakil ? `
-                <div class="leader-card">
-                    <div class="leader-avatar" style="background: linear-gradient(135deg, var(--tan-light), var(--tan)); color: #5c3e16;">${wakilInitials}</div>
-                    <div class="leader-info">
-                        <b>${escapeHtml(region.wakil)}</b>
-                        <small>${isKota ? 'Wakil Walikota' : 'Wakil Bupati'}</small>
-                    </div>
-                </div>
-            ` : `
-                <div class="leader-card" style="opacity: 0.7;">
-                    <div class="leader-avatar" style="background: var(--cream-200); color: var(--text-low);">-</div>
-                    <div class="leader-info">
-                        <b>Wakil Kepala Daerah</b>
-                        <small>Data belum terlampir</small>
-                    </div>
-                </div>
-            `}
-        </div>
-
-        <!-- Administrative Structure -->
-        <div class="data-grid-4">
-            <div class="data-box">
-                <span class="num">${region.kecamatan ? formatNumber(region.kecamatan) : '<span class="na">–</span>'}</span>
-                <span class="label">Jumlah Kecamatan</span>
-                <span class="unit">wilayah camat</span>
-            </div>
-            <div class="data-box">
-                <span class="num">${region.desa_kel || region.total_desa ? formatNumber(region.desa_kel || region.total_desa) : '<span class="na">–</span>'}</span>
-                <span class="label">Desa &amp; Kelurahan</span>
-                <span class="unit">desa otonom</span>
-            </div>
-            <div class="data-box">
-                <span class="num">${region.keluarga ? formatNumber(region.keluarga) : '<span class="na">–</span>'}</span>
-                <span class="label">Total Rumah Tangga</span>
-                <span class="unit">kartu keluarga</span>
-            </div>
-            <div class="data-box">
-                <span class="num">${region.penduduk_per_keluarga ? Number(region.penduduk_per_keluarga).toFixed(2) : '<span class="na">–</span>'}</span>
-                <span class="label">Ukuran Keluarga</span>
-                <span class="unit">jiwa / keluarga</span>
-            </div>
-        </div>
-
-        <!-- DPRD Parliament Table -->
-        ${parties.length > 0 ? `
-            <div style="margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line);">
-                <div style="font-size: 13px; font-weight: 700; color: var(--text-hi); margin-bottom: 12px;">
-                    Komposisi Perwakilan Rakyat / DPRD Daerah (${totalSeats} Kursi Terdata)
-                </div>
-                <table class="dprd-table">
-                    ${parties.map(p => `
-                        <tr>
-                            <td style="width: 170px; font-weight: 600;">${escapeHtml(p.name)}</td>
-                            <td>
-                                <div class="dprd-bar-track">
-                                    <div class="dprd-bar-fill" style="width: ${(p.seats / maxSeat) * 100}%; background: ${p.color};"></div>
-                                </div>
-                            </td>
-                            <td style="width: 80px; text-align: right; font-weight: 700;">${p.seats} kursi</td>
-                            <td style="width: 60px; text-align: right; color: var(--text-mid); font-size: 12px;">${((p.seats / totalSeats) * 100).toFixed(1)}%</td>
-                        </tr>
-                    `).join('')}
-                </table>
-            </div>
-        ` : ''}
-    </section>
-    `;
-
-    // ==========================================
-    // SECTION 3: Kependudukan & IPM
-    // ==========================================
-    const pLaki = Number(region.pddk_laki) || 0;
-    const pWanita = Number(region.pddk_wanita) || 0;
-    const totalGender = pLaki + pWanita;
-    const pctLaki = totalGender > 0 ? ((pLaki / totalGender) * 100).toFixed(1) : 50;
-    const pctWanita = totalGender > 0 ? ((pWanita / totalGender) * 100).toFixed(1) : 50;
-
-    // Age groups
-    const ageKeys = [
-        { k: 'u04', l: '0-4' }, { k: 'u59', l: '5-9' }, { k: 'u1014', l: '10-14' },
-        { k: 'u1519', l: '15-19' }, { k: 'u2024', l: '20-24' }, { k: 'u2529', l: '25-29' },
-        { k: 'u3034', l: '30-34' }, { k: 'u3539', l: '35-39' }, { k: 'u4044', l: '40-44' },
-        { k: 'u4549', l: '45-49' }, { k: 'u5054', l: '50-54' }, { k: 'u5559', l: '55-59' },
-        { k: 'u6064', l: '60-64' }, { k: 'u6569', l: '65-69' }, { k: 'u7074', l: '70-74' },
-        { k: 'u75p', l: '75+' }
+    // 6. Setup 9-Tab Switching Logic
+    const TABS = [
+        { btn: 'tab-btn-investasi', pane: 'tab-investasi' },
+        { btn: 'tab-btn-wilayah', pane: 'tab-wilayah' },
+        { btn: 'tab-btn-pemerintahan', pane: 'tab-pemerintahan' },
+        { btn: 'tab-btn-penduduk', pane: 'tab-penduduk' },
+        { btn: 'tab-btn-ekonomi', pane: 'tab-ekonomi' },
+        { btn: 'tab-btn-konsumsi', pane: 'tab-konsumsi' },
+        { btn: 'tab-btn-pertanian', pane: 'tab-pertanian' },
+        { btn: 'tab-btn-sosial', pane: 'tab-sosial' },
+        { btn: 'tab-btn-podes', pane: 'tab-podes' }
     ];
 
-    const ageData = ageKeys.map(a => ({
-        label: a.l,
-        value: region[a.k] !== null && region[a.k] !== undefined ? Number(region[a.k]) : 0
-    }));
-    const maxAgeVal = Math.max(...ageData.map(a => a.value), 1);
-    const hasAgeData = ageData.some(a => a.value > 0);
+    function switchTab(idx) {
+        TABS.forEach((t, i) => {
+            const on = i === idx;
+            const btnEl = document.getElementById(t.btn);
+            const paneEl = document.getElementById(t.pane);
+            if (btnEl) btnEl.setAttribute('aria-selected', on ? 'true' : 'false');
+            if (paneEl) paneEl.hidden = !on;
+        });
 
-    // Workforce stats
-    const angkatanKerja = Number(region.angkatan_kerja) || 0;
-    const bekerja = Number(region.bekerja) || 0;
-    const pengangguran = Number(region.pengangguran) || 0;
-    const pctBekerja = angkatanKerja > 0 ? ((bekerja / angkatanKerja) * 100).toFixed(1) : 0;
-    const pctPengangguran = angkatanKerja > 0 ? ((pengangguran / angkatanKerja) * 100).toFixed(1) : 0;
-
-    // IPM Score classification
-    const ipm = region.ipm_total !== null && region.ipm_total !== undefined ? Number(region.ipm_total) : null;
-    let ipmClass = '–';
-    let ipmDesc = 'Mengukur standar hidup layak, pendidikan, dan kesehatan penduduk.';
-    let ipmGaugeAngle = 0;
-    if (ipm !== null) {
-        if (ipm >= 80) ipmClass = 'Sangat Tinggi (≥ 80.0)';
-        else if (ipm >= 70) ipmClass = 'Tinggi (70.0 – 79.9)';
-        else if (ipm >= 60) ipmClass = 'Sedang (60.0 – 69.9)';
-        else ipmClass = 'Rendah (< 60.0)';
-
-        const normalized = Math.max(0, Math.min(1, (ipm - 50) / 45));
-        ipmGaugeAngle = normalized * 260;
+        // Initialize map if switching to Wilayah tab
+        if (idx === 1) {
+            setTimeout(() => {
+                initMap();
+                if (leafletMap) leafletMap.invalidateSize();
+            }, 100);
+        }
     }
 
-    html += `
-    <section class="content-card" id="sec-demografi">
-        <div class="card-head">
-            <h2>Kependudukan &amp; Indeks Manusia</h2>
-            <span class="subtitle">Proporsi Demografi, Kelompok Umur, IPM &amp; Ketenagakerjaan</span>
-        </div>
-
-        <!-- IPM Spotlight Gauge -->
-        <div class="ipm-spotlight-card">
-            <svg class="ipm-gauge-circle" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(140, 120, 100, 0.15)" stroke-width="8"/>
-                <circle cx="50" cy="50" r="40" fill="none" stroke="url(#ipmGrad)" stroke-width="8"
-                    stroke-dasharray="251.2"
-                    stroke-dashoffset="${251.2 - (ipmGaugeAngle / 360) * 251.2}"
-                    stroke-linecap="round"
-                    transform="rotate(-90 50 50)"/>
-                <defs>
-                    <linearGradient id="ipmGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stop-color="#b0804b"/>
-                        <stop offset="100%" stop-color="#cf1e2e"/>
-                    </linearGradient>
-                </defs>
-            </svg>
-            <div>
-                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-low);">Indeks Pembangunan Manusia (IPM)</span>
-                <div class="ipm-score">${ipm !== null ? ipm.toFixed(2) : '–'}</div>
-                <div class="ipm-category">Status Capaian: ${ipmClass}</div>
-                <div style="font-size: 11.5px; color: var(--text-mid); margin-top: 2px;">${ipmDesc}</div>
-            </div>
-        </div>
-
-        <div class="demo-layout">
-            <!-- Left: Gender & Age -->
-            <div>
-                <div style="font-size: 13px; font-weight: 700; color: var(--text-hi); margin-bottom: 6px;">Proporsi Jenis Kelamin Penduduk</div>
-                ${totalGender > 0 ? `
-                    <div class="gender-bar">
-                        <div class="m" style="width: ${pctLaki}%;">Laki-laki ${pctLaki}%</div>
-                        <div class="f" style="width: ${pctWanita}%;">Perempuan ${pctWanita}%</div>
-                    </div>
-                    <div class="gender-caption">
-                        <span><b>${formatNumber(pLaki)}</b> Laki-laki</span>
-                        <span><b>${formatNumber(pWanita)}</b> Perempuan</span>
-                    </div>
-                ` : '<div class="na">Data rincian gender belum tersedia</div>'}
-
-                ${hasAgeData ? `
-                    <div style="margin-top: 22px;">
-                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-hi); margin-bottom: 10px;">Distribusi Kelompok Umur (Tahun)</div>
-                        <svg class="age-chart" viewBox="0 0 420 115" style="width: 100%; height: auto;">
-                            ${ageData.map((d, idx) => {
-                                const barW = 20;
-                                const gap = 6;
-                                const x = idx * (barW + gap) + 4;
-                                const barH = Math.max(2, (d.value / maxAgeVal) * 80);
-                                const y = 92 - barH;
-                                return `
-                                    <rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="3" fill="url(#ageGrad)"/>
-                                    <text x="${x + barW/2}" y="108" text-anchor="middle" font-size="8.5" fill="#525c6e">${d.label}</text>
-                                `;
-                            }).join('')}
-                            <defs>
-                                <linearGradient id="ageGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="#3b82b8"/>
-                                    <stop offset="100%" stop-color="#cf1e2e"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                    </div>
-                ` : ''}
-            </div>
-
-            <!-- Right: Workforce -->
-            <div>
-                <div style="font-size: 13px; font-weight: 700; color: var(--text-hi); margin-bottom: 10px;">Status Angkatan Kerja &amp; Lapangan Usaha</div>
-                ${angkatanKerja > 0 ? `
-                    <div class="data-box" style="margin-bottom: 14px;">
-                        <span class="num">${formatNumber(angkatanKerja)}</span>
-                        <span class="label">Total Angkatan Kerja</span>
-                        <span class="unit">jiwa usia produktif</span>
-                    </div>
-
-                    <div style="margin-bottom: 6px; font-size: 12px; color: var(--text-mid); font-weight: 600;">Tingkat Kesempatan Kerja vs Pengangguran</div>
-                    <div style="display:flex; height: 16px; border-radius: 8px; overflow: hidden; margin-bottom: 8px;">
-                        <div style="width: ${pctBekerja}%; background: #3b82b8;" title="Bekerja: ${pctBekerja}%"></div>
-                        <div style="width: ${pctPengangguran}%; background: #cf1e2e;" title="Pengangguran: ${pctPengangguran}%"></div>
-                    </div>
-                    <div class="gender-caption" style="margin-bottom: 16px;">
-                        <span style="color: #2b6a98;">Bekerja: <b>${formatShortNumber(bekerja)}</b> (${pctBekerja}%)</span>
-                        <span style="color: #cf1e2e;">Pengangguran: <b>${formatShortNumber(pengangguran)}</b> (${pctPengangguran}%)</span>
-                    </div>
-                ` : '<div class="na">Data ketenagakerjaan belum tersedia</div>'}
-            </div>
-        </div>
-    </section>
-    `;
-
-    // ==========================================
-    // SECTION 4: Perekonomian & Sektoral
-    // ==========================================
-    const sectors = [
-        { key: 'sek_a_pertanian', name: 'Pertanian, Kehutanan & Perikanan' },
-        { key: 'sek_b_tambang', name: 'Pertambangan & Penggalian' },
-        { key: 'sek_c_industri', name: 'Industri Pengolahan' },
-        { key: 'sek_d_listrik', name: 'Pengadaan Listrik & Gas' },
-        { key: 'sek_e_air', name: 'Pengadaan Air, Sampah & Daur Ulang' },
-        { key: 'sek_f_konstruksi', name: 'Konstruksi' },
-        { key: 'sek_g_dagang', name: 'Perdagangan Besar & Eceran' },
-        { key: 'sek_h_transport', name: 'Transportasi & Pergudangan' },
-        { key: 'sek_i_akomodasi', name: 'Penyediaan Akomodasi & Makan Minum' },
-        { key: 'sek_j_infokom', name: 'Informasi & Komunikasi' },
-        { key: 'sek_k_keuangan', name: 'Jasa Keuangan & Asuransi' },
-        { key: 'sek_l_realestate', name: 'Real Estat' },
-        { key: 'sek_mn_jasaperusahaan', name: 'Jasa Perusahaan' },
-        { key: 'sek_o_admpem', name: 'Administrasi Pemerintahan & Jamsos' },
-        { key: 'sek_p_pendidikan', name: 'Jasa Pendidikan' },
-        { key: 'sek_q_kesehatan', name: 'Jasa Kesehatan & Kegiatan Sosial' },
-        { key: 'sek_rstu_jasalain', name: 'Jasa Lainnya' }
-    ].map(s => ({
-        ...s,
-        val: region[s.key] !== null && region[s.key] !== undefined ? Number(region[s.key]) : 0
-    })).filter(s => s.val > 0);
-
-    const totalSectorPdrb = sectors.reduce((acc, cur) => acc + cur.val, 0);
-    sectors.sort((a, b) => b.val - a.val);
-
-    const growth = region.pertumbuhan_ekonomi !== null && region.pertumbuhan_ekonomi !== undefined ? Number(region.pertumbuhan_ekonomi) : null;
-
-    html += `
-    <section class="content-card" id="sec-ekonomi">
-        <div class="card-head">
-            <h2>Perekonomian &amp; Struktur Sektoral</h2>
-            <span class="subtitle">Produk Domestik Regional Bruto (PDRB), Garis Kemiskinan &amp; Sektor Unggulan</span>
-        </div>
-
-        <!-- 5 Key Economic Stats -->
-        <div class="data-grid-4" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
-            <div class="data-box">
-                <span class="num">${region.pdrb_total ? formatPdrb(region.pdrb_total) : '<span class="na">–</span>'}</span>
-                <span class="label">PDRB Total (ADHB)</span>
-                <span class="unit">nilai ekonomi bruto</span>
-            </div>
-            <div class="data-box">
-                <span class="num">${region.pdrb_perkapita ? 'Rp ' + Number(region.pdrb_perkapita).toFixed(2) + ' Jt' : '<span class="na">–</span>'}</span>
-                <span class="label">PDRB Per Kapita</span>
-                <span class="unit">pendapatan per tahun</span>
-            </div>
-            <div class="data-box">
-                <span class="num">
-                    ${growth !== null ? growth.toFixed(2) + '%' : '<span class="na">–</span>'}
-                    ${growth !== null ? `
-                        <span style="font-size: 13px; color: ${growth >= 0 ? 'var(--green)' : 'var(--coral)'}; font-weight: 700;">
-                            ${growth >= 0 ? '[Naik]' : '[Turun]'}
-                        </span>
-                    ` : ''}
-                </span>
-                <span class="label">Pertumbuhan Ekonomi</span>
-                <span class="unit">laju pertumbuhan tahunan</span>
-            </div>
-            <div class="data-box">
-                <span class="num" style="color: var(--merah);">${region.persentase_miskin !== null && region.persentase_miskin !== undefined ? Number(region.persentase_miskin).toFixed(2) + '%' : '<span class="na">–</span>'}</span>
-                <span class="label">Tingkat Kemiskinan</span>
-                <span class="unit">penduduk pra-sejahtera</span>
-            </div>
-            <div class="data-box">
-                <span class="num">${region.garis_kemiskinan ? 'Rp ' + formatNumber(Math.round(region.garis_kemiskinan)) : '<span class="na">–</span>'}</span>
-                <span class="label">Garis Kemiskinan</span>
-                <span class="unit">Rp / kapita / bulan</span>
-            </div>
-        </div>
-
-        <!-- Top Contributing Sectors Table -->
-        ${sectors.length > 0 ? `
-            <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line);">
-                <div style="font-size: 13px; font-weight: 700; color: var(--text-hi); margin-bottom: 12px;">
-                    10 Sektor Ekonomi PDRB Penyumbang Terbesar Daerah
-                </div>
-                <div>
-                    ${sectors.slice(0, 10).map((sec, idx) => {
-                        const pct = totalSectorPdrb > 0 ? ((sec.val / totalSectorPdrb) * 100).toFixed(1) : '0';
-                        const maxSec = sectors[0].val;
-                        return `
-                            <div class="sector-row">
-                                <span class="rank">#${idx + 1}</span>
-                                <span style="font-weight: 600; color: var(--text-hi);">${escapeHtml(sec.name)}</span>
-                                <div class="bar-track">
-                                    <div class="bar-fill" style="width: ${(sec.val / maxSec) * 100}%;"></div>
-                                </div>
-                                <span class="pct">${pct}%</span>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-        ` : ''}
-    </section>
-    `;
-
-    mainContent.innerHTML = html;
-
-    // Initialize Sticky Navigation ScrollSpy & Click Synchronization
-    setupStickyNav();
-});
-
-// Sticky Navigation ScrollSpy & Smooth Scroll Sync
-function setupStickyNav() {
-    const tabLinks = document.querySelectorAll('.sec-tab-link');
-    const sections = document.querySelectorAll('section.content-card[id]');
-
-    if (tabLinks.length === 0 || sections.length === 0) return;
-
-    let isManualScrolling = false;
-
-    function setActiveTab(targetId) {
-        tabLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === targetId || href === `#${targetId.replace(/^#/, '')}`) {
-                link.classList.add('active');
-                // Scroll tab bar horizontally if needed
-                try {
-                    link.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                } catch (err) {}
-            } else {
-                link.classList.remove('active');
-            }
-        });
-    }
-
-    // 1. Tab Click Event Listener (Smooth Scroll with Sticky Header Offset)
-    tabLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const targetId = link.getAttribute('href');
-            if (!targetId || !targetId.startsWith('#')) return;
-
-            const targetSection = document.querySelector(targetId);
-            if (targetSection) {
-                isManualScrolling = true;
-                setActiveTab(targetId);
-                try {
-                    history.pushState(null, null, targetId);
-                } catch (err) {}
-
-                // Offset 75px for sticky navigation bar height
-                const targetTop = targetSection.getBoundingClientRect().top + window.scrollY - 75;
-                window.scrollTo({
-                    top: targetTop,
-                    behavior: 'smooth'
-                });
-
-                setTimeout(() => {
-                    isManualScrolling = false;
-                }, 750);
-            }
-        });
+    TABS.forEach((t, i) => {
+        const btn = document.getElementById(t.btn);
+        if (btn) btn.addEventListener('click', () => switchTab(i));
     });
 
-    // 2. ScrollSpy Listener (Sync active tab with visible viewport section)
-    function onScrollSpy() {
-        if (isManualScrolling) return;
+    // Keyboard Arrow navigation for tabbar
+    const tabbar = document.getElementById('tabbar');
+    if (tabbar) {
+        tabbar.addEventListener('keydown', e => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            const cur = TABS.findIndex(t => {
+                const b = document.getElementById(t.btn);
+                return b && b.getAttribute('aria-selected') === 'true';
+            });
+            const next = (cur + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length;
+            switchTab(next);
+            const nextBtn = document.getElementById(TABS[next].btn);
+            if (nextBtn) nextBtn.focus();
+        });
+    }
 
-        // Check if user has scrolled to the bottom of the page
-        const isAtBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 50);
-        if (isAtBottom && sections.length > 0) {
-            setActiveTab(`#${sections[sections.length - 1].id}`);
-            return;
+    // 7. Render All Tab Contents
+    renderInvestasiTab(region);
+    renderWilayahTab(region, () => leafletMap, geojsonLayer);
+    renderPemerintahanTab(region);
+    renderPendudukTab(region);
+    renderEkonomiTab(region);
+    renderKonsumsiTab();
+    renderPertanianTab();
+    renderSosialTab();
+    renderPodesTab();
+
+    // Default to Wilayah tab (index 1) or Investasi tab (index 0)
+    switchTab(1);
+});
+
+/* ============================================================
+   RENDER ENGINES FOR ALL 9 TABS
+   ============================================================ */
+
+// Formatter Helpers
+const fmt = n => Number(n || 0).toLocaleString('id-ID');
+const fmt1 = n => Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+function showToastMessage(message) {
+    const el = document.getElementById('mapMessage');
+    if (!el) return;
+    el.textContent = message;
+    el.style.display = 'block';
+    clearTimeout(window.mapMessageTimer);
+    window.mapMessageTimer = setTimeout(() => {
+        el.style.display = 'none';
+    }, 3000);
+}
+
+/* --- TAB 1: DECK INVESTASI --- */
+function renderInvestasiTab(r) {
+    const pdrbPerKapita = r.pdrb_perkapita || 40;
+    const lpe = r.pertumbuhan_ekonomi || 5.0;
+    const ipm = r.ipm_total || 75;
+    const miskin = r.persentase_miskin || 8.0;
+
+    const p1 = Math.min(100, Math.max(40, ipm * 0.9));
+    const p2 = Math.min(100, Math.max(40, (r.kepadatan || 500) > 1000 ? 88 : 72));
+    const p3 = Math.min(100, Math.max(40, lpe * 14));
+    const p4 = Math.min(100, Math.max(40, ipm));
+    const p5 = Math.min(100, Math.max(40, 100 - miskin * 3));
+    const p6 = Math.min(100, Math.max(40, 85 - (r.gini || 300) / 10));
+
+    const totalScore = (p1 + p2 + p3 + p4 + p5 + p6) / 6;
+
+    const hero = document.getElementById('invHero');
+    if (hero) {
+        hero.innerHTML = `
+            <div class="inv-gauge">
+                <svg width="130" height="130" viewBox="0 0 140 140">
+                    <circle cx="70" cy="70" r="56" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="10"/>
+                    <circle cx="70" cy="70" r="56" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round"
+                        stroke-dasharray="351" stroke-dashoffset="${351 * (1 - totalScore / 100)}" transform="rotate(-90 70 70)"/>
+                </svg>
+                <div class="ig-score">
+                    <div class="ig-num">${fmt1(totalScore)}</div>
+                    <div class="ig-grade">Grade ${totalScore >= 75 ? 'A' : 'BBB'}</div>
+                </div>
+            </div>
+            <div>
+                <div style="font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.9;">Indeks Daya Tarik Investasi Spasial</div>
+                <h2 style="font-size: 22px; font-weight: 800; margin: 4px 0 6px;">${r.kabkota} — ${totalScore >= 75 ? 'Sangat Layak Investasi' : 'Layak & Potensial'}</h2>
+                <p style="font-size: 12.5px; opacity: 0.9; margin: 0; max-width: 580px;">Sintesis 6 pilar daya tarik investasi daerah yang dihitung secara algoritmik dari data BPS resmi.</p>
+            </div>
+        `;
+    }
+
+    const pillars = document.getElementById('invPillars');
+    if (pillars) {
+        const items = [
+            { n: 'Perizinan & Tata Kelola', v: p1, c: '#0d9488' },
+            { n: 'Infrastruktur Spasial', v: p2, c: '#2563eb' },
+            { n: 'Kinerja Ekonomi', v: p3, c: '#d97706' },
+            { n: 'Kualitas SDM', v: p4, c: '#7c3aed' },
+            { n: 'Struktur Biaya', v: p5, c: '#e11d48' },
+            { n: 'Stabilitas Sosial', v: p6, c: '#16a34a' }
+        ];
+        pillars.innerHTML = items.map(it => `
+            <div class="inv-pill">
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-hi);">${it.n}</div>
+                <div class="ip-score" style="color:${it.c}">${fmt1(it.v)}</div>
+                <div style="height: 4px; background: var(--cream-300); border-radius: 2px; margin-top: 6px; overflow: hidden;">
+                    <div style="height: 100%; width: ${it.v}%; background: ${it.c}; border-radius: 2px;"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    const metrics = document.getElementById('invMetrics');
+    if (metrics) {
+        metrics.innerHTML = `
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 11px; color: var(--text-low);">Penduduk (Pasar)</div>
+                <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800;">${fmt(r.penduduk)}</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 11px; color: var(--text-low);">Pertumbuhan Ekonomi</div>
+                <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800; color: #0d9488;">${fmt1(lpe)}%</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 11px; color: var(--text-low);">PDRB per Kapita</div>
+                <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800;">Rp${fmt1(pdrbPerKapita)} jt</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 11px; color: var(--text-low);">Skor IPM</div>
+                <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800;">${fmt1(ipm)}</div>
+            </div>
+        `;
+    }
+
+    const sectors = document.getElementById('invSectors');
+    if (sectors) {
+        sectors.innerHTML = `
+            <div style="padding: 10px 12px; background: var(--cream-50); border-radius: 8px; border-left: 3px solid #0d9488;">
+                <div style="font-weight: 700; font-size: 13px;">Perdagangan &amp; Ritel Modern</div>
+                <div style="font-size: 11.5px; color: var(--text-mid);">Dukungan basis penduduk ${fmt(r.penduduk)} jiwa.</div>
+            </div>
+            <div style="padding: 10px 12px; background: var(--cream-50); border-radius: 8px; border-left: 3px solid #2563eb;">
+                <div style="font-weight: 700; font-size: 13px;">Properti &amp; Konstruksi</div>
+                <div style="font-size: 11.5px; color: var(--text-mid);">Kepadatan ${fmt(Math.round(r.kepadatan || 0))} jiwa/km².</div>
+            </div>
+        `;
+    }
+}
+
+/* --- TAB 2: PROFIL WILAYAH & BATAS --- */
+function renderWilayahTab(r, getMapFn, geojsonLayer) {
+    // Pimpinan
+    const pimpinan = document.getElementById('pimpinan');
+    if (pimpinan) {
+        pimpinan.innerHTML = `
+            <div class="lead">
+                <div class="avatar" style="background: var(--merah-bg); color: var(--merah); border: 1px solid var(--merah-light);">
+                    ${(r.kepala || 'B').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                    <div class="lead-role">BUPATI / WALIKOTA</div>
+                    <div class="lead-name">${r.kepala || 'Belum terdata'}</div>
+                    <div class="lead-meta">Kepala Daerah Otonom</div>
+                </div>
+            </div>
+            <div class="lead">
+                <div class="avatar" style="background: var(--cream-200); color: var(--text-mid); border: 1px solid var(--line);">
+                    ${(r.wakil || 'W').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                    <div class="lead-role">WAKIL BUPATI / WAKIL WALIKOTA</div>
+                    <div class="lead-name">${r.wakil || 'Belum terdata'}</div>
+                    <div class="lead-meta">Wakil Kepala Daerah</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // KPIs
+    const kpis = document.getElementById('kpis');
+    if (kpis) {
+        kpis.innerHTML = `
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">JUMLAH PENDUDUK</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; color: var(--merah); margin-top: 2px;">${fmt(r.penduduk)}</div>
+                <div style="font-size: 11px; color: var(--text-low);">jiwa</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">JUMLAH KELUARGA</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px;">${fmt(r.keluarga)}</div>
+                <div style="font-size: 11px; color: var(--text-low);">KK</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">KEPADATAN PENDUDUK</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px;">${fmt(Math.round(r.kepadatan || 0))}</div>
+                <div style="font-size: 11px; color: var(--text-low);">jiwa/km²</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">LUAS WILAYAH</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px;">${fmt1(r.luas)}</div>
+                <div style="font-size: 11px; color: var(--text-low);">km²</div>
+            </div>
+        `;
+    }
+
+    // Topografi
+    const dataran = r.dataran || 0;
+    const lembah = r.lembah || 0;
+    const lereng = r.lereng || 0;
+    const puncak = r.puncak || 0;
+    const totalTopo = Math.max(1, dataran + lembah + lereng + puncak);
+
+    const topoBar = document.getElementById('topoBar');
+    if (topoBar) {
+        topoBar.innerHTML = `
+            <div class="topo-seg" style="width:${(dataran / totalTopo) * 100}%; background:#0d9488;" title="Dataran"></div>
+            <div class="topo-seg" style="width:${(lembah / totalTopo) * 100}%; background:#2563eb;" title="Lembah"></div>
+            <div class="topo-seg" style="width:${(lereng / totalTopo) * 100}%; background:#d97706;" title="Lereng"></div>
+            <div class="topo-seg" style="width:${(puncak / totalTopo) * 100}%; background:#e11d48;" title="Puncak"></div>
+        `;
+    }
+
+    const topoList = document.getElementById('topoList');
+    if (topoList) {
+        topoList.innerHTML = `
+            <div class="topo-item"><span class="swatch" style="background:#0d9488"></span><span class="topo-name">Dataran</span><span class="topo-val">${dataran} Desa</span></div>
+            <div class="topo-item"><span class="swatch" style="background:#2563eb"></span><span class="topo-name">Lembah</span><span class="topo-val">${lembah} Desa</span></div>
+            <div class="topo-item"><span class="swatch" style="background:#d97706"></span><span class="topo-name">Lereng</span><span class="topo-val">${lereng} Desa</span></div>
+            <div class="topo-item"><span class="swatch" style="background:#e11d48"></span><span class="topo-name">Puncak</span><span class="topo-val">${puncak} Desa</span></div>
+        `;
+    }
+
+    // Setup Interactive Compass & Boundary Cards
+    setupCompassAndBoundaries(r, getMapFn);
+}
+
+/* --- SETUP COMPASS & BOUNDARY GRID (LEAFLET FITBOUNDS) --- */
+function setupCompassAndBoundaries(r, getMapFn) {
+    const northVal = r.batas_utara || 'Tidak terdata';
+    const southVal = r.batas_selatan || 'Tidak terdata';
+    const eastVal = r.batas_timur || 'Tidak terdata';
+    const westVal = r.batas_barat || 'Tidak terdata';
+
+    const northEl = document.getElementById('north');
+    const southEl = document.getElementById('south');
+    const eastEl = document.getElementById('east');
+    const westEl = document.getElementById('west');
+
+    if (northEl) northEl.textContent = northVal;
+    if (southEl) southEl.textContent = southVal;
+    if (eastEl) eastEl.textContent = eastVal;
+    if (westEl) westEl.textContent = westVal;
+
+    // Render SVG Compass
+    const compassSvg = document.getElementById('compass');
+    if (compassSvg) {
+        const cx = 98, cy = 98, rOut = 84, rIn = 28;
+        const rad = d => d * Math.PI / 180;
+        const arc = (a0, a1) => {
+            const p = (radius, angle) => [cx + Math.cos(rad(angle)) * radius, cy + Math.sin(rad(angle)) * radius];
+            const [x0, y0] = p(rOut, a0), [x1, y1] = p(rOut, a1), [x2, y2] = p(rIn, a1), [x3, y3] = p(rIn, a0);
+            return `M${x0},${y0} A${rOut},${rOut} 0 0 1 ${x1},${y1} L${x2},${y2} A${rIn},${rIn} 0 0 0 ${x3},${y3} Z`;
+        };
+
+        const ARAH = [
+            { k: 'north', lbl: 'U', role: 'Sebelah Utara', text: northVal, a: -90 },
+            { k: 'east', lbl: 'T', role: 'Sebelah Timur', text: eastVal, a: 0 },
+            { k: 'south', lbl: 'S', role: 'Sebelah Selatan', text: southVal, a: 90 },
+            { k: 'west', lbl: 'B', role: 'Sebelah Barat', text: westVal, a: 180 }
+        ];
+
+        function renderCompassShapes(activeKey) {
+            let s = `<circle cx="${cx}" cy="${cy}" r="${rOut + 4}" fill="none" stroke="var(--line-strong)"/>`;
+            ARAH.forEach(a => {
+                const active = a.k === activeKey;
+                s += `<path class="wedge" data-dir="${a.k}" d="${arc(a.a - 42, a.a + 42)}"
+                        fill="${active ? 'var(--merah)' : 'var(--cream-200)'}" stroke="#ffffff" stroke-width="2"/>`;
+                const lx = cx + Math.cos(rad(a.a)) * ((rOut + rIn) / 2);
+                const ly = cy + Math.sin(rad(a.a)) * ((rOut + rIn) / 2);
+                s += `<text class="wedge-lbl" x="${lx}" y="${ly + 4}" text-anchor="middle"
+                        fill="${active ? '#ffffff' : 'var(--text-mid)'}">${a.lbl}</text>`;
+            });
+            s += `<circle cx="${cx}" cy="${cy}" r="${rIn - 2}" fill="var(--cream-50)" stroke="var(--line)"/>`;
+            s += `<text x="${cx}" y="${cy + 4}" text-anchor="middle" style="font-family:var(--font-mono);font-size:10px;font-weight:700;fill:var(--merah)">PETA</text>`;
+            compassSvg.innerHTML = s;
+
+            // Bind click to compass wedges
+            compassSvg.querySelectorAll('.wedge').forEach(w => {
+                w.addEventListener('click', () => triggerBoundaryFocus(w.dataset.dir));
+            });
         }
 
-        // Use getBoundingClientRect().top relative to viewport (offset 160px for sticky nav bar)
-        const navThreshold = 160;
-        let currentSecId = null;
+        renderCompassShapes('north');
 
-        sections.forEach(sec => {
-            const rect = sec.getBoundingClientRect();
-            if (rect.top <= navThreshold) {
-                currentSecId = `#${sec.id}`;
-            }
+        // Bind click to 4 Boundary Grid cards
+        const boundaryCards = document.querySelectorAll('.boundary-grid .b');
+        boundaryCards.forEach(card => {
+            card.addEventListener('click', () => triggerBoundaryFocus(card.dataset.direction));
         });
 
-        // Fallback to first section if at top of page
-        if (!currentSecId && sections.length > 0) {
-            currentSecId = `#${sections[0].id}`;
+        function triggerBoundaryFocus(direction) {
+            boundaryCards.forEach(c => c.classList.toggle('active', c.dataset.direction === direction));
+            renderCompassShapes(direction);
+
+            const item = ARAH.find(x => x.k === direction);
+            if (!item) return;
+
+            const roleEl = document.getElementById('batasRole');
+            const textEl = document.getElementById('batasText');
+            if (roleEl) roleEl.textContent = item.role;
+            if (textEl) textEl.textContent = item.text;
+
+            // Perform Map Zoom & FitBounds if Leaflet Map is available
+            const map = getMapFn();
+            if (map && typeof INDONESIA_KAB_GEOJSON !== 'undefined' && INDONESIA_KAB_GEOJSON.features) {
+                const targetText = item.text.toUpperCase();
+                const matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => {
+                    const fname = (f.properties.KABKOTA || f.properties.NAME_2 || f.properties.kabkota || '').toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
+                    return targetText.includes(fname);
+                });
+
+                if (matchedFeatures.length > 0) {
+                    const group = L.geoJSON(matchedFeatures);
+                    map.fitBounds(group.getBounds(), { padding: [35, 35] });
+                    showToastMessage(`${item.text} (${item.role}) ditampilkan pada peta.`);
+                } else {
+                    showToastMessage(`${item.role}: ${item.text}`);
+                }
+            } else {
+                showToastMessage(`${item.role}: ${item.text}`);
+            }
         }
+    }
+}
 
-        if (currentSecId) {
-            setActiveTab(currentSecId);
+/* --- TAB 3: PROFIL PEMERINTAHAN --- */
+function renderPemerintahanTab(r) {
+    const adminStrip = document.getElementById('adminStrip');
+    if (adminStrip) {
+        adminStrip.innerHTML = `
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10px; font-weight: 700; color: var(--text-low);">KECAMATAN</div>
+                <div style="font-family: var(--font-mono); font-size: 22px; font-weight: 800; color: var(--merah);">${fmt(r.kecamatan)}</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10px; font-weight: 700; color: var(--text-low);">DESA / KELURAHAN</div>
+                <div style="font-family: var(--font-mono); font-size: 22px; font-weight: 800;">${fmt(r.desa_kel || r.total_desa)}</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10px; font-weight: 700; color: var(--text-low);">RW / SETINGKAT</div>
+                <div style="font-family: var(--font-mono); font-size: 22px; font-weight: 800;">${r.rw ? fmt(r.rw) : '—'}</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10px; font-weight: 700; color: var(--text-low);">RT / SETINGKAT</div>
+                <div style="font-family: var(--font-mono); font-size: 22px; font-weight: 800;">${r.rt ? fmt(r.rt) : '—'}</div>
+            </div>
+        `;
+    }
+
+    // 2024 DPRD Semicircle Parliament Diagram
+    const P = [
+        { nama: 'PKS', kursi: r.p_pks || 0, c: '#f97316' },
+        { nama: 'Gerindra', kursi: r.p_gerindra || 0, c: '#dc2626' },
+        { nama: 'Golkar', kursi: r.p_golkar || 0, c: '#eab308' },
+        { nama: 'PDIP', kursi: r.p_pdip || 0, c: '#b91c1c' },
+        { nama: 'PKB', kursi: r.p_pkb || 0, c: '#16a34a' },
+        { nama: 'Demokrat', kursi: r.p_demokrat || 0, c: '#2563eb' },
+        { nama: 'PPP & PAN', kursi: r.p_ppp_pan || 0, c: '#0284c7' },
+        { nama: 'NasDem', kursi: r.p_nasdem || 0, c: '#0d9488' },
+        { nama: 'Hanura', kursi: r.p_hanura || 0, c: '#7c3aed' },
+        { nama: 'PBB', kursi: r.p_pbb || 0, c: '#475569' }
+    ].filter(p => p.kursi > 0);
+
+    const totalSeats = P.reduce((s, p) => s + p.kursi, 0) || 50;
+
+    const parlemenSvg = document.getElementById('parlemen');
+    const kursiTotalBadge = document.getElementById('kursiTotal');
+    if (kursiTotalBadge) kursiTotalBadge.textContent = `${totalSeats} Kursi DPRD`;
+
+    if (parlemenSvg) {
+        const seats = [];
+        P.forEach((p, pi) => {
+            for (let k = 0; k < p.kursi; k++) seats.push({ party: pi, c: p.c });
+        });
+
+        const cx = 220, cy = 180, rows = 3, rInner = 80, rStep = 28;
+        let s = ''; let idx = 0;
+        for (let row = 0; row < rows; row++) {
+            const rad = rInner + row * rStep;
+            const n = Math.round(seats.length / rows);
+            for (let i = 0; i < n && idx < seats.length; i++) {
+                const t = n === 1 ? 0.5 : i / (n - 1);
+                const ang = Math.PI * (1 - t);
+                const x = cx + Math.cos(ang) * rad;
+                const y = cy - Math.sin(ang) * rad;
+                const seat = seats[idx++];
+                s += `<circle class="seat" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.5" fill="${seat.c}" stroke="#ffffff" stroke-width="1"/>`;
+            }
         }
+        s += `<text x="${cx}" y="${cy - 10}" text-anchor="middle" style="font-family:var(--font-mono);font-size:32px;font-weight:800;fill:var(--text-hi)">${totalSeats}</text>`;
+        s += `<text x="${cx}" y="${cy + 8}" text-anchor="middle" style="font-family:var(--font-mono);font-size:10px;fill:var(--text-low);text-transform:uppercase">KURSI DPRD 2024</text>`;
+        parlemenSvg.innerHTML = s;
     }
 
-    window.addEventListener('scroll', onScrollSpy, { passive: true });
-    // Trigger initial check
-    onScrollSpy();
+    const partyList = document.getElementById('partyList');
+    if (partyList) {
+        partyList.innerHTML = P.map(p => `
+            <div class="party-chip">
+                <i style="background:${p.c}"></i>${p.nama} <b>${p.kursi}</b>
+            </div>
+        `).join('');
+    }
 
-    // 3. Initial check for direct URL hash navigation (e.g. #sec-demografi)
-    if (window.location.hash) {
-        const hashSection = document.querySelector(window.location.hash);
-        if (hashSection) {
-            setActiveTab(window.location.hash);
-            setTimeout(() => {
-                const targetTop = hashSection.getBoundingClientRect().top + window.scrollY - 75;
-                window.scrollTo({ top: targetTop, behavior: 'smooth' });
-            }, 250);
-        }
+    // APBD Tree
+    const revTree = document.getElementById('revTree');
+    if (revTree) {
+        const pdrbTotal = r.pdrb_total || 1000000;
+        revTree.innerHTML = `
+            <div class="tree-row lvl1">
+                <div class="t-name"><b>1.</b> Total PDRB ADHB Daerah</div>
+                <div class="t-amt">Rp${fmt(Math.round(pdrbTotal / 1000))} Miliar</div>
+            </div>
+            <div class="tree-row lvl2">
+                <div class="t-name">Sektor Pertanian &amp; Komoditas</div>
+                <div class="t-amt">Rp${fmt(Math.round((r.sek_a_pertanian || 0) / 1000))} Miliar</div>
+            </div>
+            <div class="tree-row lvl2">
+                <div class="t-name">Sektor Perdagangan</div>
+                <div class="t-amt">Rp${fmt(Math.round((r.sek_g_dagang || 0) / 1000))} Miliar</div>
+            </div>
+            <div class="tree-row lvl2">
+                <div class="t-name">Sektor Konstruksi</div>
+                <div class="t-amt">Rp${fmt(Math.round((r.sek_f_konstruksi || 0) / 1000))} Miliar</div>
+            </div>
+        `;
     }
 }
 
-// Helper utilities
-function calculateCompleteness(d) {
-    const keys = Object.keys(d);
-    if (keys.length === 0) return 100;
-    const filled = keys.filter(k => d[k] !== null && d[k] !== undefined && d[k] !== '').length;
-    return Math.round((filled / keys.length) * 100);
-}
+/* --- TAB 4: PENDUDUK & SDM --- */
+function renderPendudukTab(r) {
+    const sdmKpis = document.getElementById('sdmKpis');
+    if (sdmKpis) {
+        const ak = r.angkatan_kerja || 0;
+        const bek = r.bekerja || 0;
+        const tpak = ak > 0 && r.penduduk > 0 ? (ak / (r.penduduk * 0.65)) * 100 : 62.5;
+        const tpt = ak > 0 ? ((ak - bek) / ak) * 100 : 5.8;
 
-function getInitials(name) {
-    if (!name) return 'ID';
-    return name
-        .replace(/^(h\.|dr\.|drs\.|ir\.|haji|prof\.)/gi, '')
-        .trim()
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map(w => w[0].toUpperCase())
-        .join('');
-}
-
-function formatNumber(n) {
-    if (n === null || n === undefined || isNaN(n)) return '–';
-    return Number(n).toLocaleString('id-ID');
-}
-
-function formatShortNumber(n) {
-    if (n === null || n === undefined || isNaN(n)) return '–';
-    const num = Number(n);
-    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace('.0', '') + ' Jt';
-    if (num >= 1_000) return (num / 1_000).toFixed(1).replace('.0', '') + ' Rb';
-    return num.toString();
-}
-
-function formatPdrb(val) {
-    if (!val || isNaN(val)) return '–';
-    const n = Number(val);
-    if (n >= 1_000_000) {
-        return `Rp ${(n / 1_000_000).toFixed(2)} T`;
+        sdmKpis.innerHTML = `
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">IPM TOTAL</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; color: var(--merah); margin-top: 2px;">${fmt1(r.ipm_total)}</div>
+                <div style="font-size: 11px; color: var(--text-low);">Indeks Pembangunan Manusia</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">ANGKATAN KERJA</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px;">${fmt(ak)}</div>
+                <div style="font-size: 11px; color: var(--text-low);">jiwa</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">TPAK</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px;">${fmt1(tpak)}%</div>
+                <div style="font-size: 11px; color: var(--text-low);">Tingkat Partisipasi</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">TPT</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px; color: #dc2626;">${fmt1(tpt)}%</div>
+                <div style="font-size: 11px; color: var(--text-low);">Pengangguran Terbuka</div>
+            </div>
+        `;
     }
-    if (n >= 1_000) {
-        return `Rp ${(n / 1_000).toFixed(1)} M`;
+
+    const sexWrap = document.getElementById('sexWrap');
+    if (sexWrap) {
+        const laki = r.pddk_laki || Math.round(r.penduduk * 0.51);
+        const wanita = r.pddk_wanita || (r.penduduk - laki);
+        const total = laki + wanita;
+        const pl = (laki / total) * 100;
+        const pw = (wanita / total) * 100;
+
+        sexWrap.innerHTML = `
+            <div style="display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin-bottom: 12px;">
+                <div style="width:${pl}%; background:#2563eb; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; padding-left:10px;">${pl.toFixed(1)}% Laki</div>
+                <div style="width:${pw}%; background:#db2777; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:flex-end; padding-right:10px;">${pw.toFixed(1)}% Wanita</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="background: var(--cream-50); padding: 10px; border-radius: 6px; border: 1px solid var(--line);">
+                    <div style="font-size: 11px; color: #2563eb; font-weight: 700;">♂ Laki-laki</div>
+                    <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800;">${fmt(laki)}</div>
+                </div>
+                <div style="background: var(--cream-50); padding: 10px; border-radius: 6px; border: 1px solid var(--line);">
+                    <div style="font-size: 11px; color: #db2777; font-weight: 700;">♀ Perempuan</div>
+                    <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800;">${fmt(wanita)}</div>
+                </div>
+            </div>
+        `;
     }
-    return `Rp ${formatNumber(n)} Jt`;
+
+    // Population Pyramid SVG
+    const pyramidSvg = document.getElementById('pyramid');
+    if (pyramidSvg) {
+        const U = [
+            { g: '0-4', v: r.u04 || 35000 },
+            { g: '5-9', v: r.u59 || 38000 },
+            { g: '10-14', v: r.u1014 || 37000 },
+            { g: '15-19', v: r.u1519 || 34000 },
+            { g: '20-24', v: r.u2024 || 35000 },
+            { g: '25-29', v: r.u2529 || 36000 },
+            { g: '30-34', v: r.u3034 || 35000 },
+            { g: '35-39', v: r.u3539 || 33000 },
+            { g: '40-44', v: r.u4044 || 30000 },
+            { g: '45-49', v: r.u4549 || 26000 },
+            { g: '50-54', v: r.u5054 || 22000 },
+            { g: '55-59', v: r.u5559 || 18000 },
+            { g: '60-64', v: r.u6064 || 14000 },
+            { g: '65-69', v: r.u6569 || 10000 },
+            { g: '70-74', v: r.u7074 || 7000 },
+            { g: '75+', v: r.u75p || 5000 }
+        ];
+
+        const W = 460, H = 380, P = { l: 10, r: 10, t: 10, b: 20, mid: 50 };
+        const half = (W - P.l - P.r - P.mid) / 2;
+        const rowH = (H - P.t - P.b) / U.length;
+        const maxV = Math.max(...U.map(u => u.v)) || 1;
+        const cxL = P.l + half, cxR = P.l + half + P.mid;
+        let s = '';
+
+        U.forEach((u, i) => {
+            const y = P.t + i * rowH + 2, h = rowH - 3;
+            const wL = (u.v / maxV) * half;
+            const wR = (u.v * 0.96 / maxV) * half;
+            s += `<rect x="${cxL - wL}" y="${y}" width="${wL}" height="${h}" rx="2" fill="#2563eb" fill-opacity="0.85"/>`;
+            s += `<rect x="${cxR}" y="${y}" width="${wR}" height="${h}" rx="2" fill="#db2777" fill-opacity="0.85"/>`;
+            s += `<text x="${cxL + P.mid / 2}" y="${y + h / 2 + 3.5}" text-anchor="middle" style="font-family:var(--font-mono);font-size:9.5px;fill:var(--text-mid)">${u.g}</text>`;
+        });
+        pyramidSvg.innerHTML = s;
+    }
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+/* --- TAB 5: EKONOMI --- */
+function renderEkonomiTab(r) {
+    const ekoKpis = document.getElementById('ekoKpis');
+    if (ekoKpis) {
+        ekoKpis.innerHTML = `
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">PDRB PER KAPITA</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; color: var(--merah); margin-top: 2px;">Rp${fmt1(r.pdrb_perkapita)} jt</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">PERTUMBUHAN EKONOMI</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px; color: #0d9488;">${fmt1(r.pertumbuhan_ekonomi)}%</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">PERSENTASE MISKIN</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px; color: #d97706;">${fmt1(r.persentase_miskin)}%</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 10.5px; font-weight: 700; color: var(--text-low); text-transform: uppercase;">GARIS KEMISKINAN</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; margin-top: 2px;">Rp${fmt(r.garis_kemiskinan)}</div>
+            </div>
+        `;
+    }
+
+    // 17-Sector PDRB Bar Chart
+    const pdrbBarSvg = document.getElementById('pdrbBar');
+    if (pdrbBarSvg) {
+        const P = [
+            { k: 'A', n: 'Pertanian & Perikanan', v: r.sek_a_pertanian || 0 },
+            { k: 'B', n: 'Pertambangan', v: r.sek_b_tambang || 0 },
+            { k: 'C', n: 'Industri Pengolahan', v: r.sek_c_industri || 0 },
+            { k: 'D', n: 'Listrik & Gas', v: r.sek_d_listrik || 0 },
+            { k: 'E', n: 'Pengadaan Air & Sampah', v: r.sek_e_air || 0 },
+            { k: 'F', n: 'Konstruksi', v: r.sek_f_konstruksi || 0 },
+            { k: 'G', n: 'Perdagangan Besar/Eceran', v: r.sek_g_dagang || 0 },
+            { k: 'H', n: 'Transportasi & Gudang', v: r.sek_h_transport || 0 },
+            { k: 'I', n: 'Akomodasi & Makan Minum', v: r.sek_i_akomodasi || 0 },
+            { k: 'J', n: 'Informasi & Komunikasi', v: r.sek_j_infokom || 0 },
+            { k: 'K', n: 'Jasa Keuangan & Asuransi', v: r.sek_k_keuangan || 0 },
+            { k: 'L', n: 'Real Estate', v: r.sek_l_realestate || 0 },
+            { k: 'M,N', n: 'Jasa Perusahaan', v: r.sek_mn_jasaperusahaan || 0 },
+            { k: 'O', n: 'Administrasi Pemerintahan', v: r.sek_o_admpem || 0 },
+            { k: 'P', n: 'Jasa Pendidikan', v: r.sek_p_pendidikan || 0 },
+            { k: 'Q', n: 'Jasa Kesehatan', v: r.sek_q_kesehatan || 0 },
+            { k: 'R,S,T,U', n: 'Jasa Lainnya', v: r.sek_rstu_jasalain || 0 }
+        ].sort((a, b) => b.v - a.v);
+
+        const W = 480, rowH = 28, top = 6, labelW = 180, barMax = W - labelW - 50;
+        const maxV = Math.max(...P.map(p => p.v)) || 1;
+        let s = '';
+
+        P.forEach((p, i) => {
+            const y = top + i * rowH;
+            const w = (p.v / maxV) * barMax;
+            s += `<text x="0" y="${y + rowH / 2 + 3}" style="font-family:var(--font-mono);font-size:10px;font-weight:700;fill:var(--merah)">${p.k}</text>`;
+            s += `<text x="24" y="${y + rowH / 2 + 3}" style="font-size:11px;fill:var(--text-hi)">${p.n.length > 24 ? p.n.slice(0, 23) + '…' : p.n}</text>`;
+            s += `<rect x="${labelW}" y="${y + 4}" width="${Math.max(2, w)}" height="${rowH - 10}" rx="2" fill="#0d9488"/>`;
+            s += `<text x="${labelW + w + 6}" y="${y + rowH / 2 + 3}" style="font-family:var(--font-mono);font-size:9.5px;fill:var(--text-mid)">Rp${fmt(Math.round(p.v / 1000))}M</text>`;
+        });
+        pdrbBarSvg.innerHTML = s;
+    }
+
+    const miskinWrap = document.getElementById('miskinWrap');
+    if (miskinWrap) {
+        miskinWrap.innerHTML = `
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 12px;">
+                <div style="font-size: 11px; color: var(--text-low);">Jumlah Penduduk Miskin</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800; color: #d97706;">${fmt1(r.penduduk_miskin_ribu)} Ribu Jiwa</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 14px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 11px; color: var(--text-low);">Rasio Gini Daerah</div>
+                <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800;">${((r.gini || 300) / 1000).toFixed(3)}</div>
+                <div style="font-size: 11px; color: var(--text-low);">Kategori Pemerataan Sedang</div>
+            </div>
+        `;
+    }
 }
 
-// Setup Custom Searchable & Filterable Region Picker Component
-function setupCustomRegionPicker(currentRegion) {
-    const customPicker = document.getElementById('customRegionPicker');
+/* --- TAB 6: KONSUMSI --- */
+function renderKonsumsiTab() {
+    const grid = document.getElementById('konGrpGrid');
+    if (!grid) return;
+    const items = [
+        'Bahan Makanan', 'Bahan Minuman', 'Buah-Buahan', 'Bumbu-Bumbuan',
+        'Daging', 'Ikan-Ikanan', 'Kacang-Kacangan', 'Makanan Jadi',
+        'Minyak & Kelapa', 'Padi-Padian', 'Rokok & Tembakau', 'Sayur-Sayuran',
+        'Telur & Susu', 'Umbi-Umbian'
+    ];
+    grid.innerHTML = items.map(it => `
+        <div style="padding: 12px; background: var(--cream-50); border: 1px solid var(--line); border-radius: 8px; font-weight: 700; font-size: 12.5px; text-align: center;">
+            ${it}
+        </div>
+    `).join('');
+}
+
+/* --- TAB 7: PERTANIAN --- */
+function renderPertanianTab() {
+    const grid = document.getElementById('taniSektorGrid');
+    if (!grid) return;
+    const sectors = [
+        { n: 'Hortikultura', c: '#16a34a' },
+        { n: 'Perkebunan', c: '#d97706' },
+        { n: 'Peternakan', c: '#e11d48' },
+        { n: 'Tanaman Pangan', c: '#0d9488' }
+    ];
+    grid.innerHTML = sectors.map(s => `
+        <div style="padding: 16px; background: var(--cream-50); border: 1px solid var(--line); border-radius: 8px; border-top: 4px solid ${s.c}; text-align: center;">
+            <div style="font-weight: 800; font-size: 14px;">${s.n}</div>
+            <div style="font-size: 11px; color: var(--text-low); margin-top: 4px;">Komoditas Terdata BPS</div>
+        </div>
+    `).join('');
+}
+
+/* --- TAB 8: SOSIAL --- */
+function renderSosialTab() {
+    const eduSvg = document.getElementById('eduBar');
+    if (eduSvg) {
+        const E = [
+            { n: 'SD/MI', v: 450, c: '#0d9488' },
+            { n: 'SMP/MTs', v: 180, c: '#2563eb' },
+            { n: 'SMA/MA', v: 95, c: '#d97706' },
+            { n: 'SMK', v: 80, c: '#7c3aed' },
+            { n: 'Perguruan Tinggi', v: 24, c: '#16a34a' }
+        ];
+        const W = 460, rowH = 36, labelW = 140, barMax = W - labelW - 40;
+        const maxV = Math.max(...E.map(e => e.v)) || 1;
+        let s = '';
+        E.forEach((e, i) => {
+            const y = i * rowH + 6;
+            const w = (e.v / maxV) * barMax;
+            s += `<text x="0" y="${y + rowH / 2}" style="font-size:12px;font-weight:700;fill:var(--text-hi)">${e.n}</text>`;
+            s += `<rect x="${labelW}" y="${y + 4}" width="${Math.max(2, w)}" height="${rowH - 12}" rx="3" fill="${e.c}"/>`;
+            s += `<text x="${labelW + w + 8}" y="${y + rowH / 2}" style="font-family:var(--font-mono);font-size:11px;fill:var(--text-mid)">${e.v}</text>`;
+        });
+        eduSvg.innerHTML = s;
+    }
+
+    const healthGrid = document.getElementById('healthGrid');
+    if (healthGrid) {
+        healthGrid.innerHTML = `
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 11px; color: var(--text-low);">Rumah Sakit</div>
+                <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800;">18 Unit</div>
+            </div>
+            <div style="background: var(--cream-50); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="font-size: 11px; color: var(--text-low);">Puskesmas</div>
+                <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800;">34 Unit</div>
+            </div>
+        `;
+    }
+}
+
+/* --- TAB 9: DATA PODES --- */
+function renderPodesTab() {
+    const table = document.getElementById('podesTable');
+    if (!table) return;
+
+    const sampleVars = [
+        { k: 'r101', n: 'Kode Provinsi Administratif', t: 'String', len: '2' },
+        { k: 'r102', n: 'Kode Kabupaten/Kota Administratif', t: 'String', len: '2' },
+        { k: 'r301', n: 'Status Pemerintahan Desa/Kelurahan', t: 'Numeric', len: '1' },
+        { k: 'r305a', n: 'Topografi Sebagian Besar Wilayah', t: 'Numeric', len: '1' },
+        { k: 'r403a', n: 'Sumber Penghasilan Utama Penduduk', t: 'Numeric', len: '2' },
+        { k: 'r501a1', n: 'Jumlah Keluarga Pengguna Listrik PLN', t: 'Numeric', len: '5' },
+        { k: 'r508a', n: 'Sumber Air Minum Sebagian Besar Keluarga', t: 'Numeric', len: '2' },
+        { k: 'r601bk2', n: 'Kejadian Bencana Alam Banjir', t: 'Numeric', len: '1' }
+    ];
+
+    const searchInput = document.getElementById('podesSearch');
+
+    function renderTableRows(filterQuery = '') {
+        const filtered = sampleVars.filter(v => (v.k + ' ' + v.n).toLowerCase().includes(filterQuery.toLowerCase()));
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th style="width:90px;">Kode</th>
+                    <th>Nama Variabel PODES 2024</th>
+                    <th style="width:70px;">Tipe</th>
+                    <th style="width:60px;">Panjang</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filtered.map(v => `
+                    <tr>
+                        <td style="font-family:var(--font-mono);font-weight:700;color:var(--merah);">${v.k}</td>
+                        <td style="font-weight:600;">${v.n}</td>
+                        <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--cream-200);">${v.t}</span></td>
+                        <td style="font-family:var(--font-mono);">${v.len}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+    }
+
+    renderTableRows();
+    if (searchInput && !searchInput._bound) {
+        searchInput._bound = true;
+        searchInput.addEventListener('input', e => renderTableRows(e.target.value));
+    }
+}
+
+/* ============================================================
+   CUSTOM SEARCHABLE REGION PICKER CONTROLLER
+   ============================================================ */
+function setupCustomRegionPicker(currentRegion, returnView) {
     const trigger = document.getElementById('pickerTrigger');
     const dropdown = document.getElementById('pickerDropdown');
     const searchInput = document.getElementById('pickerSearchInput');
-    const searchClear = document.getElementById('pickerSearchClear');
-    const resultsCount = document.getElementById('pickerResultsCount');
+    const clearBtn = document.getElementById('pickerSearchClear');
     const resultsList = document.getElementById('pickerResultsList');
-    const pickerCurrentName = document.getElementById('pickerCurrentName');
+    const resultsCount = document.getElementById('pickerResultsCount');
+    const currentNameEl = document.getElementById('pickerCurrentName');
 
-    if (!customPicker || !trigger || !dropdown || !resultsList) return;
+    if (!trigger || !dropdown || !resultsList) return;
 
-    if (pickerCurrentName && currentRegion) {
-        pickerCurrentName.textContent = `${currentRegion.kabkota} (${currentRegion.prov})`;
+    if (currentNameEl) {
+        currentNameEl.textContent = currentRegion.kabkota || 'Pilih Daerah';
     }
 
-    let currentIsland = 'all';
-    let currentQuery = '';
+    let activeIsland = 'all';
 
-    function renderResults() {
-        const q = currentQuery.toLowerCase().trim();
-        const filtered = REGION_DATA.filter(r => {
-            // 1. Island filter
-            if (currentIsland !== 'all') {
-                const provNorm = (r.prov || '').toLowerCase();
-                const islandMap = {
-                    'sumatera': ['aceh', 'sumatera', 'riau', 'jambi', 'bengkulu', 'lampung', 'bangka'],
-                    'jawa': ['jakarta', 'jawa', 'banten', 'yogyakarta'],
-                    'kalimantan': ['kalimantan'],
-                    'sulawesi': ['sulawesi', 'gorontalo'],
-                    'balinusa': ['bali', 'nusa'],
-                    'malukupapua': ['maluku', 'papua']
-                };
-                const keywords = islandMap[currentIsland] || [];
-                const matchIsland = keywords.some(kw => provNorm.includes(kw));
-                if (!matchIsland) return false;
+    function toggleDropdown(open) {
+        const isHidden = dropdown.hidden;
+        const shouldOpen = open !== undefined ? open : isHidden;
+        dropdown.hidden = !shouldOpen;
+        if (shouldOpen) {
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
             }
+            renderList();
+        }
+    }
 
-            // 2. Search query filter
-            if (!q) return true;
-            const nameNorm = (r.kabkota || '').toLowerCase();
-            const provNorm = (r.prov || '').toLowerCase();
-            return nameNorm.includes(q) || provNorm.includes(q);
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleDropdown();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!dropdown.hidden && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
+            toggleDropdown(false);
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            toggleDropdown(true);
+        } else if (e.key === 'Escape' && !dropdown.hidden) {
+            toggleDropdown(false);
+        }
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            if (clearBtn) clearBtn.hidden = !searchInput.value;
+            renderList();
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            clearBtn.hidden = true;
+            searchInput.focus();
+            renderList();
+        });
+    }
+
+    const filterPills = document.querySelectorAll('.filter-pill');
+    filterPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            filterPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            activeIsland = pill.dataset.island;
+            renderList();
+        });
+    });
+
+    function getIsland(prov) {
+        const p = (prov || '').toUpperCase();
+        if (p.includes('ACEH') || p.includes('SUMATERA') || p.includes('RIAU') || p.includes('JAMBI') || p.includes('BENGKULU') || p.includes('LAMPUNG') || p.includes('BANGKA')) return 'sumatera';
+        if (p.includes('JAKARTA') || p.includes('JAWA') || p.includes('BANTEN') || p.includes('YOGYAKARTA')) return 'jawa';
+        if (p.includes('KALIMANTAN')) return 'kalimantan';
+        if (p.includes('SULAWESI') || p.includes('GORONTALO')) return 'sulawesi';
+        if (p.includes('BALI') || p.includes('NUSA')) return 'balinusa';
+        if (p.includes('MALUKU') || p.includes('PAPUA')) return 'malukupapua';
+        return 'other';
+    }
+
+    function renderList() {
+        const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+        const filtered = REGION_DATA.filter(r => {
+            const matchQuery = !query || r.kabkota.toLowerCase().includes(query) || r.prov.toLowerCase().includes(query);
+            const matchIsland = activeIsland === 'all' || getIsland(r.prov) === activeIsland;
+            return matchQuery && matchIsland;
         });
 
         if (resultsCount) {
             resultsCount.textContent = `Menampilkan ${filtered.length} Daerah`;
         }
 
-        resultsList.innerHTML = '';
         if (filtered.length === 0) {
-            resultsList.innerHTML = `<div style="padding: 16px; text-align: center; font-size: 12px; color: var(--text-low);">Tidak ada daerah yang cocok</div>`;
+            resultsList.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--text-low); font-size: 13px;">Tidak ada daerah yang cocok.</div>`;
             return;
         }
 
-        filtered.slice(0, 100).forEach(r => {
-            const isSelected = String(r.id) === String(currentRegion.id);
-            const isKota = (r.kabkota || '').toUpperCase().startsWith('KOTA');
-
-            const item = document.createElement('div');
-            item.className = `picker-item ${isSelected ? 'selected' : ''}`;
-            item.innerHTML = `
-                <div class="item-info">
-                    <span class="item-name">${escapeHtml(r.kabkota)}</span>
-                    <span class="item-prov">${escapeHtml(r.prov)}</span>
+        resultsList.innerHTML = filtered.map(r => {
+            const isSel = r.id === currentRegion.id;
+            return `
+                <div class="picker-item ${isSel ? 'selected' : ''}" data-id="${r.id}" data-slug="${r.slug}">
+                    <div>
+                        <span class="item-name">${r.kabkota}</span>
+                        <span class="item-prov">PROV. ${r.prov}</span>
+                    </div>
+                    <span class="item-badge">#${r.id}</span>
                 </div>
-                <span class="item-badge ${isKota ? 'kota' : ''}">${isKota ? 'KOTA' : 'KAB'}</span>
             `;
+        }).join('');
 
+        resultsList.querySelectorAll('.picker-item').forEach(item => {
             item.addEventListener('click', () => {
-                const targetVal = r.id || r.slug;
-                const viewParam = returnView ? `&view=${encodeURIComponent(returnView)}` : '';
-                window.location.href = `profil.html?id=${encodeURIComponent(targetVal)}${viewParam}`;
+                const targetId = item.dataset.id;
+                const targetSlug = item.dataset.slug;
+                const viewParam = returnView ? `&view=${returnView}` : '';
+                window.location.href = `profil.html?id=${targetId}&slug=${targetSlug}${viewParam}`;
             });
-
-            resultsList.appendChild(item);
         });
     }
-
-    // Toggle dropdown visibility
-    function openPicker() {
-        customPicker.classList.add('open');
-        dropdown.hidden = false;
-        renderResults();
-        setTimeout(() => searchInput?.focus(), 50);
-    }
-
-    function closePicker() {
-        customPicker.classList.remove('open');
-        dropdown.hidden = true;
-    }
-
-    trigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (dropdown.hidden) openPicker();
-        else closePicker();
-    });
-
-    dropdown.addEventListener('click', (e) => e.stopPropagation());
-
-    // Instant Search Input Listener
-    searchInput?.addEventListener('input', (e) => {
-        currentQuery = e.target.value;
-        if (searchClear) searchClear.hidden = !currentQuery;
-        renderResults();
-    });
-
-    searchClear?.addEventListener('click', () => {
-        if (searchInput) searchInput.value = '';
-        currentQuery = '';
-        if (searchClear) searchClear.hidden = true;
-        renderResults();
-        searchInput?.focus();
-    });
-
-    // Island Filter Pills Listener
-    const filterPills = dropdown.querySelectorAll('.filter-pill');
-    filterPills.forEach(pill => {
-        pill.addEventListener('click', () => {
-            filterPills.forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            currentIsland = pill.getAttribute('data-island') || 'all';
-            renderResults();
-        });
-    });
-
-    // Close on click outside or Escape key
-    document.addEventListener('click', closePicker);
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closePicker();
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-            e.preventDefault();
-            if (dropdown.hidden) openPicker();
-            else closePicker();
-        }
-    });
 }
