@@ -77,45 +77,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }).addTo(map);
 
         if (typeof INDONESIA_KAB_GEOJSON !== 'undefined' && INDONESIA_KAB_GEOJSON.features) {
-            mainRegionLayer = L.geoJSON(INDONESIA_KAB_GEOJSON, {
-                style: (feature) => {
-                    const match = isRegionMatchStrict(feature, r);
-                    return {
-                        fillColor: match ? '#0FB5A0' : '#D2DEEA',
-                        weight: match ? 2.5 : 0.8,
-                        opacity: 1,
-                        color: match ? '#0E9E9A' : '#8398AC',
-                        fillOpacity: match ? 0.45 : 0.12
-                    };
-                }
-            }).addTo(map);
-
             const matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => isRegionMatchStrict(f, r));
             if (matchedFeatures.length > 0) {
-                const group = L.geoJSON(matchedFeatures);
-                map.fitBounds(group.getBounds(), { padding: [30, 30] });
+                mainRegionLayer = L.geoJSON(matchedFeatures, {
+                    style: {
+                        fillColor: '#0FB5A0',
+                        weight: 2.5,
+                        opacity: 1,
+                        color: '#0E9E9A',
+                        fillOpacity: 0.45
+                    },
+                    onEachFeature: (feature, layer) => {
+                        const name = feature.properties.NAME_1 || feature.properties.KABKOTA || r.kabkota;
+                        layer.bindTooltip(`Wilayah Utama: ${name}`, { sticky: true });
+                        layer.bindPopup(`
+                            <div style="font-family:sans-serif;font-size:12px;padding:3px">
+                                <div style="font-size:9.5px;font-family:monospace;letter-spacing:.12em;text-transform:uppercase;color:#0FB5A0;font-weight:700;margin-bottom:3px">
+                                    [ WILAYAH UTAMA ]
+                                </div>
+                                <b style="font-size:14px;color:#12212E">${name}</b>
+                                <br><span style="font-size:11px;color:#5A7086">Provinsi ${r.prov || 'Indonesia'}</span>
+                            </div>
+                        `);
+                    }
+                }).addTo(map);
+
+                map.fitBounds(mainRegionLayer.getBounds(), { padding: [30, 30] });
             }
         }
     }
 
-    // Helper: Strict Kota vs Kabupaten matching to prevent cross-matching
+    // Helper: Strict Kota vs Kabupaten & Province matching to prevent cross-matching
     function isRegionMatchStrict(feature, regionObj) {
-        if (!feature || !feature.properties) return false;
+        if (!feature || !feature.properties || !regionObj) return false;
         const props = feature.properties;
-        const name1 = (props.NAME_1 || props.KABKOTA || '').toUpperCase();
+        const name1 = props.NAME_1 || props.KABKOTA || '';
+        const country = props.COUNTRY || props.NAME_2 || '';
         const type2 = (props.VARNAME_2 || '').toUpperCase();
 
-        const rName = (regionObj.kabkota || '').toUpperCase();
-        const rIsKota = rName.startsWith('KOTA ');
-        const fIsKota = type2 === 'KOTA' || name1.startsWith('KOTA ');
+        const cleanStr = s => (s || '').toString().toUpperCase()
+            .replace(/^(KABUPATEN|KOTA|KAB\.|KOTA\.)\s+/, '')
+            .replace(/[^A-Z0-9]/g, '')
+            .trim();
 
-        const cleanRName = rName.replace(/^(KABUPATEN|KOTA)\s+/, '').trim();
-        const cleanFName = name1.replace(/^(KABUPATEN|KOTA)\s+/, '').trim();
+        const cleanR = cleanStr(regionObj.kabkota);
+        const cleanF = cleanStr(name1);
+        const cleanRProv = cleanStr(regionObj.prov);
+        const cleanC = cleanStr(country);
 
-        if (!cleanFName || cleanFName === 'NA') return false;
+        if (!cleanF || cleanF === 'NA') return false;
 
-        const nameMatches = (cleanRName === cleanFName || cleanFName.includes(cleanRName) || cleanRName.includes(cleanFName));
-        return nameMatches && (rIsKota === fIsKota);
+        const rIsKota = (regionObj.kabkota || '').toUpperCase().startsWith('KOTA ');
+        const fIsKota = type2 === 'KOTA' || name1.toUpperCase().startsWith('KOTA ');
+
+        const nameMatches = (cleanR === cleanF);
+        const provMatches = !cleanC || !cleanRProv || cleanC === cleanRProv || cleanC.includes(cleanRProv) || cleanRProv.includes(cleanC);
+
+        return nameMatches && provMatches && (rIsKota === fIsKota);
     }
 
     // Helper: Smoothly fly & fit bounds to boundary region on Leaflet map
@@ -128,17 +146,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!map || typeof INDONESIA_KAB_GEOJSON === 'undefined') return;
 
+        if (directionKey === 'reset') {
+            if (selectedBoundaryLayer) {
+                map.removeLayer(selectedBoundaryLayer);
+                selectedBoundaryLayer = null;
+            }
+            if (mainRegionLayer && mainRegionLayer.getBounds && mainRegionLayer.getBounds().isValid()) {
+                if (typeof map.flyToBounds === 'function') {
+                    map.flyToBounds(mainRegionLayer.getBounds(), { padding: [30, 30], duration: 0.8 });
+                } else {
+                    map.fitBounds(mainRegionLayer.getBounds(), { padding: [30, 30] });
+                }
+            }
+            showMapMessage(`Tampilan peta kembali ke wilayah utama ${r.kabkota}.`);
+            return;
+        }
+
         let matchedFeatures = [];
 
         if (boundaryFeature) {
             matchedFeatures = Array.isArray(boundaryFeature) ? boundaryFeature : [boundaryFeature];
         } else {
-            const cleanTargetText = targetText.toUpperCase();
-            matchedFeatures = INDONESIA_KAB_GEOJSON.features.filter(f => {
-                const name1 = (f.properties.NAME_1 || f.properties.KABKOTA || '').toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
-                if (!name1 || name1 === 'NA') return false;
-                return cleanTargetText.includes(name1) || name1.includes(cleanTargetText.replace(/^(KABUPATEN|KOTA)\s+/, ''));
-            });
+            const foundFeat = findGeoJSONFeatureByName(targetText, r.prov);
+            matchedFeatures = foundFeat ? [foundFeat] : [];
         }
 
         // Clear previous boundary highlight layer if any
@@ -150,30 +180,47 @@ document.addEventListener('DOMContentLoaded', () => {
         if (matchedFeatures.length > 0) {
             selectedBoundaryLayer = L.geoJSON(matchedFeatures, {
                 style: {
-                    fillColor: '#0FB5A0',
-                    weight: 3,
+                    fillColor: '#D9962B',
+                    weight: 3.5,
                     opacity: 1,
-                    color: '#0E9E9A',
-                    fillOpacity: 0.55
+                    color: '#B4781C',
+                    fillOpacity: 0.65
                 },
                 onEachFeature: (feature, layer) => {
                     const name = feature.properties.NAME_1 || feature.properties.KABKOTA || targetText;
-                    layer.bindTooltip(name, { sticky: true });
-                    layer.bindPopup(`<div style="font-family:sans-serif;font-size:12.5px;padding:4px"><b>${name}</b><br><span style="color:#0FB5A0;font-size:11px">Batas Wilayah (${directionKey.toUpperCase()})</span></div>`);
+                    layer.bindTooltip(`Wilayah Berbatasan: ${name}`, { sticky: true });
+                    layer.bindPopup(`
+                        <div style="font-family:sans-serif;font-size:12px;padding:3px">
+                            <div style="font-size:9.5px;font-family:monospace;letter-spacing:.12em;text-transform:uppercase;color:#D9962B;font-weight:700;margin-bottom:3px">
+                                [ WILAYAH BERBATASAN ]
+                            </div>
+                            <b style="font-size:14px;color:#12212E">${name}</b>
+                        </div>
+                    `);
                 }
             }).addTo(map);
-
-            const bounds = selectedBoundaryLayer.getBounds();
-            if (bounds && bounds.isValid()) {
-                if (typeof map.flyToBounds === 'function') {
-                    map.flyToBounds(bounds, { padding: [40, 40], duration: 1.2 });
-                } else {
-                    map.fitBounds(bounds, { padding: [40, 40], animate: true });
-                }
-                showMapMessage(`${targetText} (${directionKey.toUpperCase()}) ditampilkan pada peta.`);
+            if (typeof selectedBoundaryLayer.bringToFront === 'function') {
+                selectedBoundaryLayer.bringToFront();
             }
+
+            try {
+                let combinedBounds = selectedBoundaryLayer.getBounds();
+                if (mainRegionLayer && mainRegionLayer.getBounds && mainRegionLayer.getBounds().isValid()) {
+                    combinedBounds = combinedBounds.extend(mainRegionLayer.getBounds());
+                }
+                if (combinedBounds && combinedBounds.isValid()) {
+                    if (typeof map.flyToBounds === 'function') {
+                        map.flyToBounds(combinedBounds, { padding: [35, 35], duration: 0.8 });
+                    } else {
+                        map.fitBounds(combinedBounds, { padding: [35, 35], animate: true });
+                    }
+                }
+            } catch (err) {
+                console.warn('fitBounds error:', err);
+            }
+            showMapMessage(`${targetText} ditampilkan pada peta.`);
         } else {
-            showMapMessage(`Batas Wilayah (${directionKey.toUpperCase()}): ${targetText}`);
+            showMapMessage(`Wilayah Berbatasan: ${targetText}`);
         }
     }
 
@@ -304,26 +351,56 @@ function getFeatureBounds(f) {
     return { minX, minY, maxX, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
 }
 
-/* Helper: Get spatial neighbors from GeoJSON for any region in Indonesia */
+/* Helper: Find GeoJSON feature by region name string with strict Kota/Kabupaten & Province matching */
+function findGeoJSONFeatureByName(rawName, provName) {
+    if (!rawName || typeof INDONESIA_KAB_GEOJSON === 'undefined' || !INDONESIA_KAB_GEOJSON.features) return null;
+    const cleanStr = s => (s || '').toString().toUpperCase()
+        .replace(/^(KABUPATEN|KOTA|KAB\.|KOTA\.)\s+/, '')
+        .replace(/[^A-Z0-9]/g, '')
+        .trim();
+
+    const targetClean = cleanStr(rawName);
+    if (!targetClean) return null;
+
+    const provClean = cleanStr(provName);
+    const isKotaTarget = rawName.toUpperCase().includes('KOTA');
+
+    const features = INDONESIA_KAB_GEOJSON.features;
+    let match = features.find(f => {
+        if (!f || !f.properties) return false;
+        const name1 = f.properties.NAME_1 || f.properties.KABKOTA || '';
+        const country = f.properties.COUNTRY || f.properties.NAME_2 || '';
+        const type2 = (f.properties.VARNAME_2 || '').toUpperCase();
+        const fIsKota = type2 === 'KOTA' || name1.toUpperCase().startsWith('KOTA ');
+        const cleanF = cleanStr(name1);
+        const cClean = cleanStr(country);
+
+        const nameMatches = (cleanF === targetClean);
+        const provMatches = !cClean || !provClean || cClean === provClean || cClean.includes(provClean) || provClean.includes(cClean);
+
+        return nameMatches && provMatches && (isKotaTarget === fIsKota);
+    });
+
+    if (!match) {
+        match = features.find(f => {
+            if (!f || !f.properties) return false;
+            const name1 = f.properties.NAME_1 || f.properties.KABKOTA || '';
+            const type2 = (f.properties.VARNAME_2 || '').toUpperCase();
+            const fIsKota = type2 === 'KOTA' || name1.toUpperCase().startsWith('KOTA ');
+            const cleanF = cleanStr(name1);
+            return (cleanF === targetClean) && (isKotaTarget === fIsKota);
+        });
+    }
+
+    return match || null;
+}
+
+/* Helper: Get spatial neighbors from GeoJSON using 4-quadrant polar angle classification */
 function getSpatialNeighbors(r) {
     if (typeof INDONESIA_KAB_GEOJSON === 'undefined' || !INDONESIA_KAB_GEOJSON.features) return null;
     const features = INDONESIA_KAB_GEOJSON.features;
 
-    const rName = (r.kabkota || '').toUpperCase();
-    const rIsKota = rName.startsWith('KOTA ');
-    const cleanRName = rName.replace(/^(KABUPATEN|KOTA)\s+/, '').trim();
-
-    const curFeature = features.find(f => {
-        if (!f || !f.properties) return false;
-        const name1 = (f.properties.NAME_1 || f.properties.KABKOTA || '').toUpperCase();
-        const type2 = (f.properties.VARNAME_2 || '').toUpperCase();
-        const fIsKota = type2 === 'KOTA' || name1.startsWith('KOTA ');
-        const cleanFName = name1.replace(/^(KABUPATEN|KOTA)\s+/, '').trim();
-
-        if (!cleanFName || cleanFName === 'NA') return false;
-        return (cleanRName === cleanFName || cleanFName.includes(cleanRName) || cleanRName.includes(cleanFName)) && (rIsKota === fIsKota);
-    });
-
+    const curFeature = findGeoJSONFeatureByName(r.kabkota, r.prov);
     if (!curFeature) return null;
 
     const b0 = getFeatureBounds(curFeature);
@@ -336,28 +413,41 @@ function getSpatialNeighbors(r) {
         const dy = b.cy - b0.cy; // positive = north
         const dx = b.cx - b0.cx; // positive = east
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 1.4) return null;
+        if (dist > 1.8) return null;
+
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
         const name = f.properties.NAME_1 || f.properties.KABKOTA || '';
         const type2 = f.properties.VARNAME_2 || '';
         const displayName = type2 === 'Kota' && !name.startsWith('Kota') ? 'Kota ' + name : name;
-        return { name: displayName, dx, dy, dist, feature: f };
+        return { name: displayName, dx, dy, dist, angle, feature: f };
     }).filter(Boolean);
 
-    const north = list.filter(n => n.dy > 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.35).sort((a, b) => a.dist - b.dist);
-    const south = list.filter(n => n.dy < 0 && Math.abs(n.dy) > Math.abs(n.dx) * 0.35).sort((a, b) => a.dist - b.dist);
-    const east = list.filter(n => n.dx > 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.35).sort((a, b) => a.dist - b.dist);
-    const west = list.filter(n => n.dx < 0 && Math.abs(n.dx) > Math.abs(n.dy) * 0.35).sort((a, b) => a.dist - b.dist);
+    function getBestForDir(targetAngle, minAngle, maxAngle) {
+        const candidates = list.filter(item => {
+            if (targetAngle === 180 || targetAngle === -180) {
+                return item.angle >= 120 || item.angle <= -120;
+            }
+            return item.angle >= minAngle && item.angle <= maxAngle;
+        });
+        if (candidates.length === 0) return null;
+        return candidates.map(item => {
+            let diff = Math.abs(item.angle - targetAngle);
+            if (diff > 180) diff = 360 - diff;
+            return { ...item, angularDiff: diff, score: item.dist + (diff / 90) * 0.18 };
+        }).sort((a, b) => a.score - b.score);
+    }
+
+    const north = getBestForDir(90, 30, 150) || [];
+    const east = getBestForDir(0, -60, 60) || [];
+    const south = getBestForDir(-90, -150, -30) || [];
+    const west = getBestForDir(180, 120, -120) || [];
 
     const fmtN = (items, fallback) => {
         if (!items || items.length === 0) return fallback;
-        const names = [];
-        items.forEach(x => {
-            if (!names.includes(x.name) && names.length < 2) names.push(x.name);
-        });
-        return names.join(' & ');
+        return items[0].name;
     };
-    const getFeat = items => items.slice(0, 2).map(x => x.feature);
+    const getFeat = items => (items && items.length > 0 ? [items[0].feature] : []);
 
     return {
         utara: north.length > 0 ? { name: fmtN(north, ''), feature: getFeat(north) } : null,
@@ -367,22 +457,41 @@ function getSpatialNeighbors(r) {
     };
 }
 
-/* Helper: Resolve administrative boundaries for regions with null CSV data */
+/* Helper: Resolve administrative boundaries using precomputed REGION_BOUNDARIES dataset */
 function getRegionBoundaries(r) {
-    let u = r.batas_utara;
-    let s = r.batas_selatan;
-    let t = r.batas_timur;
-    let b = r.batas_barat;
+    const idKey = String(r.id || r.no);
+    const precomputed = (typeof window.REGION_BOUNDARIES !== 'undefined') ? window.REGION_BOUNDARIES[idKey] : null;
 
-    const spatial = getSpatialNeighbors(r);
+    let bordersList = [];
+    if (precomputed && Array.isArray(precomputed.borders) && precomputed.borders.length > 0) {
+        bordersList = precomputed.borders;
+    } else {
+        const u = (precomputed && precomputed.u) || r.batas_utara;
+        const s = (precomputed && precomputed.s) || r.batas_selatan;
+        const t = (precomputed && precomputed.t) || r.batas_timur;
+        const b = (precomputed && precomputed.b) || r.batas_barat;
+        const e = (precomputed && (precomputed.e || precomputed.tengah));
 
-    return {
-        u: u || (spatial && spatial.utara ? spatial.utara.name : `Kawasan Utara Prov. ${r.prov}`),
-        s: s || (spatial && spatial.selatan ? spatial.selatan.name : `Kawasan Selatan Prov. ${r.prov}`),
-        t: t || (spatial && spatial.timur ? spatial.timur.name : `Kawasan Timur Prov. ${r.prov}`),
-        b: b || (spatial && spatial.barat ? spatial.barat.name : `Kawasan Barat Prov. ${r.prov}`),
-        features: spatial
-    };
+        if (e) bordersList.push({ name: e, type: 'enclave', badge: 'Kota Enklave' });
+        if (u) bordersList.push({ name: u, type: u.includes('Kota') ? 'kota' : (u.includes('Laut') || u.includes('Samudra') ? 'water' : 'kabupaten'), badge: u.includes('Kota') ? 'Kota' : (u.includes('Laut') || u.includes('Samudra') ? 'Perairan / Laut' : 'Kabupaten') });
+        if (s) bordersList.push({ name: s, type: s.includes('Kota') ? 'kota' : (s.includes('Laut') || s.includes('Samudra') ? 'water' : 'kabupaten'), badge: s.includes('Kota') ? 'Kota' : (s.includes('Laut') || s.includes('Samudra') ? 'Perairan / Laut' : 'Kabupaten') });
+        if (t) bordersList.push({ name: t, type: t.includes('Kota') ? 'kota' : (t.includes('Laut') || t.includes('Samudra') ? 'water' : 'kabupaten'), badge: t.includes('Kota') ? 'Kota' : (t.includes('Laut') || t.includes('Samudra') ? 'Perairan / Laut' : 'Kabupaten') });
+        if (b) bordersList.push({ name: b, type: b.includes('Kota') ? 'kota' : (b.includes('Laut') || b.includes('Samudra') ? 'water' : 'kabupaten'), badge: b.includes('Kota') ? 'Kota' : (b.includes('Laut') || b.includes('Samudra') ? 'Perairan / Laut' : 'Kabupaten') });
+    }
+
+    const seaTerms = ['LAUT', 'SELAT', 'SAMUDRA', 'SAMUDERA', 'TELUK', 'PERAIRAN', 'OCEAN'];
+    return bordersList.map(item => {
+        const isWater = seaTerms.some(term => item.name.toUpperCase().includes(term));
+        if (isWater) {
+            return { ...item, feature: null };
+        }
+        const parts = item.name.split(/&|,|\sdan\s/i).map(st => st.trim()).filter(Boolean);
+        const feats = parts.map(p => findGeoJSONFeatureByName(p, r.prov)).filter(Boolean);
+        return {
+            ...item,
+            feature: feats.length > 0 ? feats : null
+        };
+    });
 }
 
 /* ============================================================
@@ -576,94 +685,67 @@ function renderWilayah(r, showBoundaryOnMapFn) {
     const topoTotal = document.getElementById('topoTotal');
     if (topoTotal) topoTotal.textContent = `total ${r.total_desa || r.desa_kel || totalTopo} desa`;
 
-    // Interactive Compass & Boundary Handling
-    setupCompassAndBoundaries(r, showBoundaryOnMapFn);
+    // Interactive Border List Handling
+    setupBorderList(r, showBoundaryOnMapFn);
 
     // Elevasi & Curah Hujan
     renderElevChart(r);
     renderRainChart(r);
 }
 
-function setupCompassAndBoundaries(r, showBoundaryOnMapFn) {
-    const boundaries = getRegionBoundaries(r);
+function setupBorderList(r, showBoundaryOnMapFn) {
+    const borders = getRegionBoundaries(r);
 
-    const ARAH = [
-        { k: 'utara', lbl: 'U', role: 'Sebelah Utara', text: boundaries.u, feat: boundaries.features && boundaries.features.utara ? boundaries.features.utara.feature : null, a: -90 },
-        { k: 'timur', lbl: 'T', role: 'Sebelah Timur', text: boundaries.t, feat: boundaries.features && boundaries.features.timur ? boundaries.features.timur.feature : null, a: 0 },
-        { k: 'selatan', lbl: 'S', role: 'Sebelah Selatan', text: boundaries.s, feat: boundaries.features && boundaries.features.selatan ? boundaries.features.selatan.feature : null, a: 90 },
-        { k: 'barat', lbl: 'B', role: 'Sebelah Barat', text: boundaries.b, feat: boundaries.features && boundaries.features.barat ? boundaries.features.barat.feature : null, a: 180 }
-    ];
+    const borderListWrap = document.getElementById('borderListWrap');
+    const btnResetMap = document.getElementById('btnResetMap');
+    let activeItemName = null;
 
-    let arahAktif = 'utara';
-
-    const compassSvg = document.getElementById('compass');
-    const batasRole = document.getElementById('batasRole');
-    const batasText = document.getElementById('batasText');
-    const batasAll = document.getElementById('batasAll');
-
-    function renderCompass() {
-        if (!compassSvg) return;
-        const cx = 98, cy = 98, rOut = 88, rIn = 30;
-        const rad = d => d * Math.PI / 180;
-        const arc = (a0, a1) => {
-            const p = (radius, angle) => [cx + Math.cos(rad(angle)) * radius, cy + Math.sin(rad(angle)) * radius];
-            const [x0, y0] = p(rOut, a0), [x1, y1] = p(rOut, a1), [x2, y2] = p(rIn, a1), [x3, y3] = p(rIn, a0);
-            return `M${x0},${y0} A${rOut},${rOut} 0 0 1 ${x1},${y1} L${x2},${y2} A${rIn},${rIn} 0 0 0 ${x3},${y3} Z`;
-        };
-
-        let s = `<circle cx="${cx}" cy="${cy}" r="${rOut + 6}" fill="none" stroke="#D2DEEA"/>`;
-        ARAH.forEach(a => {
-            const aktif = a.k === arahAktif;
-            s += `<path class="wedge" data-k="${a.k}" d="${arc(a.a - 42, a.a + 42)}"
-                    fill="${aktif ? '#0FB5A0' : '#E7EFF6'}" stroke="#FFFFFF" stroke-width="2"/>`;
-            const lx = cx + Math.cos(rad(a.a)) * ((rOut + rIn) / 2);
-            const ly = cy + Math.sin(rad(a.a)) * ((rOut + rIn) / 2);
-            s += `<text class="wedge-lbl" x="${lx}" y="${ly + 4}" text-anchor="middle"
-                    fill="${aktif ? '#FFFFFF' : '#5A7086'}">${a.lbl}</text>`;
-        });
-        s += `<circle cx="${cx}" cy="${cy}" r="${rIn - 4}" fill="#F0F5FA" stroke="#D2DEEA"/>`;
-        s += `<text x="${cx}" y="${cy - 2}" text-anchor="middle" style="font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;fill:#8398AC">PETA</text>`;
-        s += `<text x="${cx}" y="${cy + 9}" text-anchor="middle" style="font-family:var(--mono);font-size:9px;fill:#0FB5A0">BATAS</text>`;
-        compassSvg.innerHTML = s;
-
-        compassSvg.querySelectorAll('.wedge').forEach(w => {
-            w.addEventListener('click', () => triggerDirection(w.dataset.k));
-        });
-    }
-
-    function renderBatasPanel() {
-        const item = ARAH.find(x => x.k === arahAktif);
-        if (!item) return;
-
-        if (batasRole) batasRole.textContent = item.role;
-        if (batasText) batasText.textContent = item.text;
-
-        if (batasAll) {
-            batasAll.innerHTML = ARAH.map(x => `
-                <div class="batas-row ${x.k === arahAktif ? 'active' : ''}" data-k="${x.k}">
-                    <b>${x.k}</b><span>${x.text}</span>
-                </div>
-            `).join('');
-
-            batasAll.querySelectorAll('.batas-row').forEach(row => {
-                row.addEventListener('click', () => triggerDirection(row.dataset.k));
-            });
+    function renderList() {
+        if (!borderListWrap) return;
+        if (borders.length === 0) {
+            borderListWrap.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:10px;text-align:center">Data wilayah berbatasan tidak tersedia.</div>`;
+            return;
         }
+
+        borderListWrap.innerHTML = borders.map(item => {
+            const isActive = activeItemName === item.name;
+            const badgeClass = item.type || 'kabupaten';
+            return `
+                <div class="border-chip ${isActive ? 'active' : ''}" data-name="${item.name}">
+                    <span class="bc-name">${item.name}</span>
+                    <span class="bc-badge ${badgeClass}">${item.badge || 'Wilayah'}</span>
+                </div>
+            `;
+        }).join('');
+
+        borderListWrap.querySelectorAll('.border-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const targetName = chip.dataset.name;
+                const foundItem = borders.find(b => b.name === targetName);
+                if (!foundItem) return;
+
+                if (activeItemName === targetName) {
+                    activeItemName = null;
+                    renderList();
+                    showBoundaryOnMapFn('reset', r.kabkota, null);
+                } else {
+                    activeItemName = targetName;
+                    renderList();
+                    showBoundaryOnMapFn(foundItem.type || 'batas', foundItem.name, foundItem.feature);
+                }
+            });
+        });
     }
 
-    function triggerDirection(dirKey) {
-        arahAktif = dirKey;
-        renderCompass();
-        renderBatasPanel();
-
-        const item = ARAH.find(x => x.k === dirKey);
-        if (!item) return;
-
-        showBoundaryOnMapFn(dirKey, item.text, item.feat);
+    if (btnResetMap) {
+        btnResetMap.onclick = () => {
+            activeItemName = null;
+            renderList();
+            showBoundaryOnMapFn('reset', r.kabkota, null);
+        };
     }
 
-    renderCompass();
-    renderBatasPanel();
+    renderList();
 }
 
 function renderElevChart(r) {

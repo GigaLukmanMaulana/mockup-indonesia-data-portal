@@ -32,6 +32,8 @@
     --sans: "DM Sans", ui-sans-serif, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
   }
   *{box-sizing:border-box}
+  html{scrollbar-width:none;-ms-overflow-style:none}
+  html::-webkit-scrollbar{display:none;width:0;height:0}
   html,body{margin:0;padding:0}
   body{
     background:
@@ -108,14 +110,15 @@
   /* kompas & batas */
   .compass-wrap{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
   svg{display:block;overflow:visible}
-  .wedge{cursor:pointer;transition:fill .18s}
+  .wedge{cursor:pointer;transition:fill .18s ease, filter .18s ease, transform .18s ease;transform-origin:98px 98px}
+  .wedge:hover{filter:brightness(1.12);transform:scale(1.03)}
   .wedge-lbl{font-family:var(--mono);font-size:12px;font-weight:600;fill:#F0F5FA;pointer-events:none;letter-spacing:.04em}
   .batas-panel{flex:1;min-width:190px}
   .batas-role{font-family:var(--mono);font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--teal)}
   .batas-text{font-size:14px;margin-top:5px;line-height:1.45;font-weight:600}
   .batas-all{margin-top:14px;border-top:1px solid var(--line);padding-top:11px;display:flex;flex-direction:column;gap:7px}
-  .batas-row{display:flex;gap:10px;font-size:11.5px;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:4px;transition:.15s;border-left:3px solid transparent}
-  .batas-row:hover, .batas-row.active{background:#DCE6F0;color:var(--text);border-left-color:var(--teal)}
+  .batas-row{display:flex;gap:10px;font-size:11.5px;color:var(--muted);cursor:pointer;padding:6px 10px;border-radius:6px;transition:all .18s ease;border-left:3px solid transparent}
+  .batas-row:hover, .batas-row.active{background:#DCE6F0;color:var(--text);border-left-color:var(--teal);font-weight:600;transform:translateX(2px)}
   .batas-row b{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted-2);min-width:56px;text-transform:uppercase}
 
   /* map container */
@@ -235,6 +238,18 @@
   .podes-table{width:100%;border-collapse:collapse;font-size:12px}
   .podes-table thead th{position:sticky;top:0;background:var(--panel-2);text-align:left;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);font-weight:600;padding:9px 12px;border-bottom:1px solid var(--line);z-index:1}
   .podes-table td{padding:8px 12px;border-bottom:1px solid var(--line-soft)}
+
+  /* border list */
+  .border-list-wrap{display:flex;flex-direction:column;gap:8px;margin-top:12px;max-height:260px;overflow-y:auto;padding-right:4px}
+  .border-chip{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);cursor:pointer;transition:all .15s ease}
+  .border-chip:hover{border-color:var(--teal);background:var(--hover);transform:translateX(2px)}
+  .border-chip.active{border-color:var(--sand);background:#FFFBF3;box-shadow:0 0 0 1px var(--sand)}
+  .border-chip .bc-name{font-size:13px;font-weight:600;color:var(--text)}
+  .border-chip .bc-badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;padding:3px 8px;border-radius:4px;font-weight:600}
+  .border-chip .bc-badge.enclave{background:#FDF3E5;color:#D9962B;border:1px solid #F5DCA8}
+  .border-chip .bc-badge.kota{background:#EBF5FF;color:#2E9BD6;border:1px solid #BEE0F7}
+  .border-chip .bc-badge.kabupaten{background:#EAF6F4;color:#0FB5A0;border:1px solid #B2E5DF}
+  .border-chip .bc-badge.water{background:#F0EFFC;color:#5B6EE0;border:1px solid #CFCAF5}
 
   .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(14px);opacity:0;background:#FFFFFF;border:1px solid var(--teal);color:var(--teal);font-family:var(--mono);font-size:11.5px;padding:9px 16px;border-radius:5px;transition:.22s;pointer-events:none;z-index:9999}
   .toast[data-on="1"]{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -367,16 +382,15 @@
       </div>
 
       <div class="card">
-        <h2 class="card-title">Batas wilayah &amp; Kompas Spasial</h2>
-        <p class="card-desc">Klik arah kompas atau baris batas untuk menyorot &amp; zoom peta Leaflet ke wilayah tetangga.</p>
-        <div class="compass-wrap">
-          <svg id="compass" width="196" height="196" viewBox="0 0 196 196" role="img" aria-label="Kompas batas wilayah"></svg>
-          <div class="batas-panel">
-            <div class="batas-role" id="batasRole">Sebelah Utara</div>
-            <div class="batas-text" id="batasText"></div>
-            <div class="batas-all" id="batasAll"></div>
-          </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <h2 class="card-title">Wilayah &amp; Perairan Berbatasan</h2>
+          <button class="btn" id="btnResetMap" style="padding:4px 10px;font-size:10.5px;display:inline-flex;align-items:center;gap:5px;cursor:pointer">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Reset View Peta
+          </button>
         </div>
+        <p class="card-desc" style="margin-bottom:8px">Klik nama wilayah untuk menyorot poligon &amp; zoom peta Leaflet.</p>
+        <div class="border-list-wrap" id="borderListWrap"></div>
       </div>
     </section>
 
@@ -549,6 +563,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="indonesia-kab.js"></script>
 <script src="Data.js"></script>
-<script src="Profil.js"></script>
+<script src="region-boundaries.js?v=5.0"></script>
+<script src="Profil.js?v=5.0"></script>
 </body>
 </html>
