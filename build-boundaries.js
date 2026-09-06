@@ -118,10 +118,19 @@ const TRUE_ENCLAVES = {
     'SIMALUNGUN': 'Kota Pematangsiantar'
 };
 
+const normProv = s => {
+    let clean = cleanStr(s);
+    if (clean.includes('JAKARTA')) return 'JAKARTA';
+    if (clean.includes('YOGYAKARTA')) return 'YOGYAKARTA';
+    if (clean.includes('BANGKABELITUNG')) return 'BANGKABELITUNG';
+    if (clean.includes('PAPUABARAT') || clean.includes('IRIANJAYABARAT')) return 'PAPUABARAT';
+    return clean;
+};
+
 function findStrictGeoFeature(rObj) {
     if (!rObj) return null;
     const targetClean = cleanStr(rObj.kabkota);
-    const provClean = cleanStr(rObj.prov);
+    const provClean = normProv(rObj.prov);
     const rIsKota = (rObj.kabkota || '').toUpperCase().startsWith('KOTA ');
 
     let match = geoData.features.find(f => {
@@ -132,7 +141,7 @@ function findStrictGeoFeature(rObj) {
         const fIsKota = type2 === 'KOTA' || name1.toUpperCase().startsWith('KOTA ');
 
         const fClean = cleanStr(name1);
-        const cClean = cleanStr(country);
+        const cClean = normProv(country);
 
         const nameMatches = (fClean === targetClean);
         const provMatches = !cClean || !provClean || cClean === provClean || cClean.includes(provClean) || provClean.includes(cClean);

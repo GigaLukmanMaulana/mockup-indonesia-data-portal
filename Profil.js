@@ -120,10 +120,19 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/[^A-Z0-9]/g, '')
             .trim();
 
+        const normProv = s => {
+            let clean = cleanStr(s);
+            if (clean.includes('JAKARTA')) return 'JAKARTA';
+            if (clean.includes('YOGYAKARTA')) return 'YOGYAKARTA';
+            if (clean.includes('BANGKABELITUNG')) return 'BANGKABELITUNG';
+            if (clean.includes('PAPUABARAT') || clean.includes('IRIANJAYABARAT')) return 'PAPUABARAT';
+            return clean;
+        };
+
         const cleanR = cleanStr(regionObj.kabkota);
         const cleanF = cleanStr(name1);
-        const cleanRProv = cleanStr(regionObj.prov);
-        const cleanC = cleanStr(country);
+        const cleanRProv = normProv(regionObj.prov);
+        const cleanC = normProv(country);
 
         if (!cleanF || cleanF === 'NA') return false;
 
@@ -133,7 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameMatches = (cleanR === cleanF);
         const provMatches = !cleanC || !cleanRProv || cleanC === cleanRProv || cleanC.includes(cleanRProv) || cleanRProv.includes(cleanC);
 
-        return nameMatches && provMatches && (rIsKota === fIsKota);
+        if (nameMatches && provMatches && (rIsKota === fIsKota)) return true;
+        // Fallback: If province name differs in GeoJSON (e.g. DKI JAKARTA vs Jakarta Raya), match by name + Kota/Kab type
+        return nameMatches && (rIsKota === fIsKota);
     }
 
     // Helper: Smoothly fly & fit bounds to boundary region on Leaflet map
@@ -359,10 +370,19 @@ function findGeoJSONFeatureByName(rawName, provName) {
         .replace(/[^A-Z0-9]/g, '')
         .trim();
 
+    const normProv = s => {
+        let clean = cleanStr(s);
+        if (clean.includes('JAKARTA')) return 'JAKARTA';
+        if (clean.includes('YOGYAKARTA')) return 'YOGYAKARTA';
+        if (clean.includes('BANGKABELITUNG')) return 'BANGKABELITUNG';
+        if (clean.includes('PAPUABARAT') || clean.includes('IRIANJAYABARAT')) return 'PAPUABARAT';
+        return clean;
+    };
+
     const targetClean = cleanStr(rawName);
     if (!targetClean) return null;
 
-    const provClean = cleanStr(provName);
+    const provClean = normProv(provName);
     const isKotaTarget = rawName.toUpperCase().includes('KOTA');
 
     const features = INDONESIA_KAB_GEOJSON.features;
@@ -373,7 +393,7 @@ function findGeoJSONFeatureByName(rawName, provName) {
         const type2 = (f.properties.VARNAME_2 || '').toUpperCase();
         const fIsKota = type2 === 'KOTA' || name1.toUpperCase().startsWith('KOTA ');
         const cleanF = cleanStr(name1);
-        const cClean = cleanStr(country);
+        const cClean = normProv(country);
 
         const nameMatches = (cleanF === targetClean);
         const provMatches = !cClean || !provClean || cClean === provClean || cClean.includes(provClean) || provClean.includes(cClean);
