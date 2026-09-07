@@ -139,18 +139,54 @@
   .flag.est{color:var(--sand);border:1px solid #E8A93C55;background:#E8A93C18}
 
   /* tabbar */
-  .tabbar{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:22px;overflow-x:auto;white-space:nowrap}
-  .tabbar::-webkit-scrollbar{display:none}
-  .tab{appearance:none;border:0;background:transparent;color:var(--muted);font-family:var(--sans);font-size:14px;font-weight:600;letter-spacing:-.01em;padding:11px 18px 13px;cursor:pointer;position:relative;transition:color .16s;display:flex;align-items:center;gap:8px}
-  .tab .tab-i{font-size:13px;opacity:.7}
-  .tab::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;background:var(--teal);transform:scaleX(0);transform-origin:center;transition:transform .2s cubic-bezier(.22,1,.36,1)}
-  .tab:hover{color:var(--text)}
-  .tab[aria-selected="true"]{color:var(--text)}
+  .tabbar{
+    display:flex;
+    gap:2px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:22px;
+    overflow-x:auto;
+    white-space:nowrap;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x mandatory;
+  }
+  .tabbar::-webkit-scrollbar{display:none;width:0;height:0}
+  .tab{
+    appearance:none;
+    border:0;
+    background:transparent;
+    color:var(--muted);
+    font-family:var(--sans);
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:-.01em;
+    padding:10px 13px 12px;
+    cursor:pointer;
+    position:relative;
+    transition:color .16s, background .16s;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-shrink:0;
+    scroll-snap-align:start;
+    white-space:nowrap;
+    border-radius:6px 6px 0 0;
+  }
+  .tab .tab-i{font-size:12.5px;opacity:.7;flex:none}
+  .tab::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;background:var(--teal);transform:scaleX(0);transform-origin:center;transition:transform .2s cubic-bezier(.22,1,.36,1)}
+  .tab:hover{color:var(--text);background:rgba(15,181,160,0.04)}
+  .tab[aria-selected="true"]{color:var(--text);font-weight:700}
   .tab[aria-selected="true"] .tab-i{opacity:1;color:var(--teal)}
   .tab[aria-selected="true"]::after{transform:scaleX(1)}
   .tabpane[hidden]{display:none}
   .tabpane{animation:fade .28s ease}
   @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  @media (max-width:1024px){
+    .tab{padding:9px 10px 11px;font-size:12.5px;gap:5px}
+    .tab::after{left:6px;right:6px}
+  }
 
   /* admin strip */
   .admin-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px}

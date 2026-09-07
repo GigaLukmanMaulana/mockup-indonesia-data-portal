@@ -253,7 +253,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const on = i === idx;
             const btnEl = document.getElementById(t.btn);
             const paneEl = document.getElementById(t.pane);
-            if (btnEl) btnEl.setAttribute('aria-selected', on ? 'true' : 'false');
+            if (btnEl) {
+                btnEl.setAttribute('aria-selected', on ? 'true' : 'false');
+                if (on && typeof btnEl.scrollIntoView === 'function') {
+                    btnEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                }
+            }
             if (paneEl) paneEl.hidden = !on;
             if (on) {
                 const eb = document.getElementById('eyebrow');
