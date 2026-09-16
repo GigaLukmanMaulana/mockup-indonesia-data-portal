@@ -376,15 +376,18 @@ html,
 body,
 .sidebar,
 .table-view-wrap,
-.data-table-container,
 .region-panel,
 .prov-select-menu,
 .picker-dropdown,
 .prov-menu-options,
 .picker-results-list {
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+}
+
+.data-table-container {
+    overscroll-behavior: auto;
 }
 
 /* Lightweight Shimmer Loader Utility */

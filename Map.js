@@ -165,6 +165,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const markersLayer = L.layerGroup().addTo(map);
     const geojsonLayerGroup = L.layerGroup().addTo(map);
 
+    // Disable scroll and click propagation to Leaflet map for sidebar and drawer overlay elements (excluding tableViewWrap so native browser scroll works 100% on table rows and headers)
+    const sidebarEl = document.querySelector('.sidebar');
+    const regionPanelEl = document.getElementById('regionPanel');
+    const searchResultsEl = document.getElementById('searchResults');
+    const provCustomSelectEl = document.getElementById('provCustomSelect');
+    const provSelectMenuEl = document.getElementById('provSelectMenu');
+    const provOptionsListEl = document.getElementById('provOptionsList');
+
+    const overlayElements = [sidebarEl, regionPanelEl, searchResultsEl, provCustomSelectEl, provSelectMenuEl, provOptionsListEl];
+
+    overlayElements.forEach(el => {
+        if (el) {
+            L.DomEvent.disableScrollPropagation(el);
+            L.DomEvent.disableClickPropagation(el);
+        }
+    });
+
+    // Helper to handle wheel scroll explicitly for overlay containers so hovering over any child element in the middle scrolls the container smoothly
+    function attachExplicitWheelScroll(container, nestedSelector = null) {
+        if (!container) return;
+        container.addEventListener('wheel', (e) => {
+            if (nestedSelector && e.target.closest(nestedSelector)) {
+                return;
+            }
+            e.stopPropagation();
+            let delta = e.deltaY;
+            if (e.deltaMode === 1) delta *= 18;
+            else if (e.deltaMode === 2) delta *= container.clientHeight;
+
+            container.scrollBy({ top: delta, behavior: 'instant' });
+            e.preventDefault();
+        }, { passive: false });
+    }
+
+    attachExplicitWheelScroll(sidebarEl, '#provOptionsList, .prov-menu-options');
+    attachExplicitWheelScroll(regionPanelEl);
+    attachExplicitWheelScroll(searchResultsEl);
+
     let allGeoJsonFeatures = [];
 
     // Helper String Normalization & Matching
@@ -419,6 +457,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 provSearchInput.focus();
             }
             renderProvOptions('');
+        }
+
+        if (provOptionsList) {
+            provOptionsList.addEventListener('wheel', (e) => {
+                const scrollTop = provOptionsList.scrollTop;
+                const scrollHeight = provOptionsList.scrollHeight;
+                const height = provOptionsList.clientHeight;
+                const delta = e.deltaY;
+
+                e.stopPropagation();
+
+                if ((delta > 0 && scrollTop + height >= scrollHeight) || (delta < 0 && scrollTop <= 0)) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
         }
 
         function closeProvSelect() {
@@ -873,15 +926,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const activeDisplay = activeVal !== null ? m.formatShort(activeVal) : '–';
 
             return `
-                <tr class="table-row-clickable" onclick="window.location.href='${targetUrl}'" title="Klik untuk melihat detail profil ${escapeHtml(r.kabkota || '')}">
+                <tr>
                     <td style="color: var(--text-low); font-weight:600; text-align: center;">#${idx + 1}</td>
                     <td><strong class="row-title">${escapeHtml(r.kabkota || '')}</strong></td>
                     <td style="color: var(--text-mid);">${escapeHtml(r.prov || '')}</td>
-                    <td class="highlight-col">${activeDisplay}</td>
-                    <td>${r.penduduk ? formatNumber(r.penduduk) : '–'}</td>
-                    <td><b>${r.ipm_total ? r.ipm_total.toFixed(2) : '–'}</b></td>
-                    <td>${r.pdrb_perkapita ? 'Rp ' + Number(r.pdrb_perkapita).toFixed(1) + ' Jt' : '–'}</td>
-                    <td>${r.persentase_miskin ? r.persentase_miskin.toFixed(2) + '%' : '–'}</td>
+                    <td class="highlight-col" style="text-align: right;">${activeDisplay}</td>
+                    <td style="text-align: right;">${r.penduduk ? formatNumber(r.penduduk) : '–'}</td>
+                    <td style="text-align: right;"><b>${r.ipm_total ? r.ipm_total.toFixed(2) : '–'}</b></td>
+                    <td style="text-align: right;">${r.pdrb_perkapita ? 'Rp ' + Number(r.pdrb_perkapita).toFixed(1) + ' Jt' : '–'}</td>
+                    <td style="text-align: right;">${r.persentase_miskin ? r.persentase_miskin.toFixed(2) + '%' : '–'}</td>
+                    <td style="text-align: center;">
+                        <a href="${targetUrl}" class="action-btn">Lihat Profil &rarr;</a>
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -912,11 +968,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setViewMode(mode) {
         currentView = mode;
+        const mapEl = document.getElementById('map');
         const leafletControls = document.querySelector('.leaflet-control-container');
         if (mode === 'map') {
             btnViewMap?.classList.add('active');
             btnViewTable?.classList.remove('active');
             tableViewWrap?.classList.remove('active');
+            if (mapEl) mapEl.style.display = 'block';
             if (mapLegend) mapLegend.style.display = 'block';
             if (mapContextStrip) mapContextStrip.style.display = 'flex';
             if (leafletControls) leafletControls.style.display = 'block';
@@ -925,6 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnViewTable?.classList.add('active');
             btnViewMap?.classList.remove('active');
             tableViewWrap?.classList.add('active');
+            if (mapEl) mapEl.style.display = 'none';
             if (mapLegend) mapLegend.style.display = 'none';
             if (mapContextStrip) mapContextStrip.style.display = 'none';
             if (leafletControls) leafletControls.style.display = 'none';
