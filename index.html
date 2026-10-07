@@ -1483,6 +1483,26 @@
 
             <!-- View Switcher & Actions -->
             <div class="header-actions">
+                <!-- Mode Switcher: Profil Daerah vs Peta Potensi (Auto-hide on Table View) -->
+                <div class="mode-switcher" id="modeSwitcherWrap">
+                    <button type="button" class="mode-btn active" id="btnModeProfil" title="Mode Profil Statistik Daerah">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        Profil Daerah
+                    </button>
+                    <button type="button" class="mode-btn" id="btnModePotensi" title="Mode Peta Potensi Pajak PAD360">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        Peta Potensi
+                    </button>
+                </div>
+
                 <div class="view-switcher">
                     <button type="button" class="view-btn active" id="btnViewMap">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1509,6 +1529,8 @@
         <div class="app-body">
             <!-- Sidebar: Filter & Interactive Indicator Hub -->
             <aside class="sidebar">
+                <!-- Profile Mode Sidebar Content (Default) -->
+                <div id="sidebarProfileView" style="display: flex; flex-direction: column; width: 100%;">
                 <!-- 1. Indikator Tematik Selector -->
                 <div class="sidebar-section">
                     <div class="section-header">
@@ -1616,6 +1638,12 @@
                         Lihat Seluruh 514 Daerah di Tabel &rarr;
                     </button>
                 </div>
+                </div><!-- End sidebarProfileView -->
+
+                <!-- Potensi Mode Sidebar Content (Toggled in Potensi Mode) -->
+                <div id="sidebarPotensiView" style="display: none; flex-direction: column; width: 100%;">
+                    <!-- Rendered dynamically by potensi.js -->
+                </div>
             </aside>
 
             <!-- Workspace: Map & Table -->
@@ -1694,6 +1722,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="Data.js"></script>
     <script src="indonesia-kab.js"></script>
+    <script src="potensi-data.js"></script>
+    <script src="potensi.js"></script>
     <script src="Map.js"></script>
 </body>
 

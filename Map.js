@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         center: [-1.2, 117.5],
         zoom: 5,
         minZoom: 4,
-        maxZoom: 13,
+        maxZoom: 19,
         zoomControl: false,
         attributionControl: true
     });
@@ -164,6 +164,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const markersLayer = L.layerGroup().addTo(map);
     const geojsonLayerGroup = L.layerGroup().addTo(map);
+
+    // Expose for mode toggles
+    window.leafletMap = map;
+    window.profileGeojsonLayer = geojsonLayerGroup;
+    window.profileMarkersLayer = markersLayer;
+
+    // Initialize Potensi Mode Controller
+    if (typeof PotensiController !== 'undefined') {
+        window.PotensiCtrl = new PotensiController();
+        window.PotensiCtrl.init(map);
+    }
 
     // Disable scroll and click propagation to Leaflet map for sidebar and drawer overlay elements (excluding tableViewWrap so native browser scroll works 100% on table rows and headers)
     const sidebarEl = document.querySelector('.sidebar');
@@ -634,6 +645,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (scaleMax) scaleMax.textContent = m.formatShort(bounds.max);
         if (scaleBar) scaleBar.style.background = getMetricGradientCSS(currentMetric);
     }
+    window.updateProfileContext = () => updateNationalSummary(getFilteredData());
+    window.updateProfileLegend = () => updateNationalSummary(getFilteredData());
 
     // Helper to fly to a region with right drawer offset (440px right padding)
     function focusRegionMap(target) {

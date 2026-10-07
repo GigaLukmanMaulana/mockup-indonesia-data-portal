@@ -1,0 +1,695 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>PAD360 Peta Potensi Pajak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: navy top bar (PAD360 / breadcrumb + DATA SIMULASI) over a 4-step tab rail; one content view re-rendered per step */
+:root{
+  --bg:#F2F5F7;--surface:#FFFFFF;--surface2:#F3F7F8;--tint:#E3EEF0;--line:#D8E2E6;--line2:#EAF0F2;
+  --ink:#12293A;--muted:#4E6475;--muted2:#8A9CA8;
+  --navy:#0F2A3D;--navy2:#1C3D55;--navy-ink:#DCE8EF;--navy-muted:#9DB4C3;--lime:#D4EC7A;
+  --teal:#0E7C7B;--teal-ink:#0A5F5E;--teal-soft:#DDEFEE;--teal-mid:#7FC1BF;
+  --amber:#D48A1C;--amber-ink:#8A5408;--amber-soft:#FBEFD9;
+  --red-ink:#9B2C2C;--red-soft:#FBE3E3;
+  --blue-ink:#1F4F8F;--blue-soft:#E1ECFA;
+  --land:#A9CFCF;--land2:#8CBDBD;--land-none:#D6DEE2;--sea:#EEF4F6;--block:#DDE4E8;--road:#FFFFFF;
+  --d1:#D6EBEA;--d2:#A9CFCF;--d3:#6FAFAE;--d4:#2F8988;
+  --shadow:0 1px 3px rgba(15,42,61,.14);--shadow2:0 6px 18px rgba(15,42,61,.10);
+  --font:'Plus Jakarta Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0C1720;--surface:#14222D;--surface2:#192A36;--tint:#1C3340;--line:#29404F;--line2:#1E303C;
+  --ink:#E4EDF2;--muted:#9EB2C0;--muted2:#6C8494;
+  --navy:#07131C;--navy2:#163246;--navy-ink:#D2E0EA;--navy-muted:#8FA6B6;--lime:#D4EC7A;
+  --teal:#3FB3B1;--teal-ink:#8ADBD9;--teal-soft:#12393A;--teal-mid:#2A7473;
+  --amber:#E9A23A;--amber-ink:#F3C77E;--amber-soft:#3A2A12;
+  --red-ink:#F2A3A3;--red-soft:#3F1E1E;
+  --blue-ink:#A9C8F2;--blue-soft:#16283F;
+  --land:#2C5B5C;--land2:#3A7071;--land-none:#26343E;--sea:#111F29;--block:#22323C;--road:#33495A;
+  --d1:#173534;--d2:#245251;--d3:#2F6F6E;--d4:#3FA09E;
+  --shadow:0 1px 3px rgba(0,0,0,.5);--shadow2:0 6px 18px rgba(0,0,0,.4);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C1720;--surface:#14222D;--surface2:#192A36;--tint:#1C3340;--line:#29404F;--line2:#1E303C;
+  --ink:#E4EDF2;--muted:#9EB2C0;--muted2:#6C8494;
+  --navy:#07131C;--navy2:#163246;--navy-ink:#D2E0EA;--navy-muted:#8FA6B6;--lime:#D4EC7A;
+  --teal:#3FB3B1;--teal-ink:#8ADBD9;--teal-soft:#12393A;--teal-mid:#2A7473;
+  --amber:#E9A23A;--amber-ink:#F3C77E;--amber-soft:#3A2A12;
+  --red-ink:#F2A3A3;--red-soft:#3F1E1E;
+  --blue-ink:#A9C8F2;--blue-soft:#16283F;
+  --land:#2C5B5C;--land2:#3A7071;--land-none:#26343E;--sea:#111F29;--block:#22323C;--road:#33495A;
+  --d1:#173534;--d2:#245251;--d3:#2F6F6E;--d4:#3FA09E;
+  --shadow:0 1px 3px rgba(0,0,0,.5);--shadow2:0 6px 18px rgba(0,0,0,.4);color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+h1,h2,h3{margin:0;text-wrap:balance}
+a{color:var(--teal-ink)}
+
+.top{background:var(--navy);color:var(--navy-ink);position:sticky;top:env(safe-area-inset-top,0px);z-index:10}
+.top-in{max-width:1440px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.crumbs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:600;min-width:0;flex:1}
+.crumbs .logo{font-weight:800;color:#fff;letter-spacing:.02em;font-size:16px}
+.crumbs .sep{color:var(--navy-muted)}
+.crumbs button{background:none;border:0;color:var(--navy-ink);font-weight:600;cursor:pointer;padding:6px 2px;text-decoration:underline;text-underline-offset:3px}
+.crumbs .cur{color:#fff}
+.sim{color:var(--lime);font-size:11px;font-weight:800;letter-spacing:.08em;border:1px solid #3B5A2E;padding:4px 8px;border-radius:6px}
+.rolebox{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--navy-muted)}
+.rolebox select{background:var(--navy2);color:#fff;border:1px solid #2E5470;border-radius:8px;min-height:38px;padding:4px 10px}
+.tabs{background:var(--surface);border-bottom:1px solid var(--line)}
+.tabs-in{max-width:1440px;margin:0 auto;padding:0 24px;display:flex;gap:4px;overflow-x:auto}
+.tabs a{display:flex;align-items:center;gap:10px;padding:14px 14px 12px;color:var(--muted);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs a .n{width:24px;height:24px;border-radius:50%;background:var(--tint);color:var(--teal-ink);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--teal)}
+.tabs a[aria-current="page"] .n{background:var(--teal);color:#fff}
+.tabs .badge{background:var(--amber);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px}
+main{max-width:1440px;margin:0 auto;padding:24px 24px 48px;display:flex;flex-direction:column;gap:18px}
+
+.pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.pagehead h1{font-size:26px;font-weight:800;letter-spacing:-.01em}
+.pagehead p{margin:4px 0 0;color:var(--muted)}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--teal-ink);margin-bottom:4px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card h2{font-size:17px;font-weight:700}
+.cardhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.grow{flex:3 1 560px;min-width:0}.side{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.note{font-size:12px;color:var(--muted)}
+.sub{font-size:12px;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.filters label{display:flex;flex-direction:column;gap:4px;background:var(--tint);border-radius:10px;padding:8px 12px 10px;font-size:12px;font-weight:700;color:var(--teal-ink)}
+.filters select{border:0;background:transparent;font-weight:600;color:var(--ink);padding:2px 0;min-height:30px;font-size:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
+.kpi .v{font-size:30px;font-weight:800;color:var(--teal-ink);font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi .l{color:var(--ink);font-weight:500}
+.kpi .s{font-size:12px;color:var(--muted)}
+.seg{display:flex;gap:4px;background:var(--tint);padding:4px;border-radius:10px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;color:var(--muted);font-weight:600;font-size:13px;min-height:36px;padding:0 12px;border-radius:8px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.btn{min-height:44px;padding:0 18px;border-radius:10px;font-weight:700;cursor:pointer;border:1px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;text-align:center}
+.btn.pri{background:var(--teal);color:#fff}
+.btn.sec{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.soft{background:var(--tint);color:var(--teal-ink)}
+.btn.warn{background:var(--surface);color:var(--red-ink);border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.linkbtn{background:none;border:0;padding:6px 0;color:var(--teal-ink);font-weight:700;cursor:pointer;text-decoration:underline;min-height:34px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.chip.teal{background:var(--teal-soft);color:var(--teal-ink)}
+.chip.amber{background:var(--amber-soft);color:var(--amber-ink)}
+.chip.red{background:var(--red-soft);color:var(--red-ink)}
+.chip.grey{background:var(--tint);color:var(--muted)}
+.chip.blue{background:var(--blue-soft);color:var(--blue-ink)}
+.statusline{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--tint);border-radius:10px;padding:10px 12px;font-weight:600;font-size:13px}
+.disclaim{font-size:12px;color:var(--muted);margin:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-size:12px;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line2);vertical-align:top}
+.tablewrap{overflow-x:auto}
+
+/* maps */
+.map{position:relative;border-radius:14px;overflow:hidden;background:var(--sea);border:1px solid var(--line)}
+.map svg{display:block;width:100%;height:auto}
+.land{fill:var(--land);stroke:var(--surface);stroke-width:2}
+.land.none{fill:var(--land-none)}
+.land.d1{fill:var(--d1)}.land.d2{fill:var(--d2)}.land.d3{fill:var(--d3)}.land.d4{fill:var(--d4)}
+.mtxt{font-family:var(--font);fill:var(--ink)}
+.clu{position:absolute;transform:translate(-50%,-50%);border:0;padding:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.clu .dot{border-radius:50%;background:var(--teal);border:3px solid var(--surface);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow2)}
+.clu.off .dot{background:var(--surface);color:var(--muted);border:2px dashed var(--muted2);box-shadow:none}
+.clu.on .dot{outline:3px solid var(--ink);outline-offset:2px}
+.mapfoot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);align-items:center}
+.legend span{display:flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:50%;display:inline-block;flex:none}
+.maptag{position:absolute;left:14px;top:14px;background:var(--tint);color:var(--teal-ink);font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;box-shadow:var(--shadow)}
+.blk{fill:var(--block)}.rd{stroke:var(--road);fill:none}
+.route{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.cp{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border:0;padding:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cp i{width:26px;height:26px;border-radius:50%;border:3px solid var(--surface);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;font-style:normal;box-shadow:var(--shadow2)}
+.cp.done i{background:var(--teal)}.cp.todo i{background:var(--amber)}
+.cp.on i{outline:3px solid var(--ink);outline-offset:2px}
+
+/* lists */
+.qitem{display:flex;flex-direction:column;gap:2px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;box-shadow:var(--shadow);width:100%}
+.qitem b{color:var(--teal-ink);font-size:15px}
+.qitem[aria-pressed="true"]{border-color:var(--teal);background:var(--teal-soft)}
+.reg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:left;width:100%}
+.reg:hover{background:var(--surface2)}
+.reg.off{cursor:default;background:var(--surface2)}
+.reg .bar{grid-column:1/-1;height:5px;background:var(--line2);border-radius:3px;overflow:hidden}
+.reg .bar i{display:block;height:100%;background:var(--teal)}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.tier{border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+.tier .L{font-size:22px;font-weight:800;color:var(--teal)}
+.tier h3{font-size:16px}
+.tier .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.tier p{margin:0;font-size:13px;color:var(--muted)}
+.formula{background:var(--tint);color:var(--teal-ink);font-weight:700;font-size:13px;border-radius:10px;padding:10px 14px}
+
+.cps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cps button{width:100%;display:flex;gap:12px;align-items:center;text-align:left;background:none;border:1px solid transparent;border-radius:10px;padding:8px 10px;cursor:pointer;min-height:44px}
+.cps button:hover{background:var(--surface2)}
+.cps button[aria-pressed="true"]{border-color:var(--teal);background:var(--teal-soft)}
+.cps .k{font-weight:800;font-variant-numeric:tabular-nums;width:22px}
+.cps .done{color:var(--teal-ink)}.cps .todo{color:var(--amber-ink)}
+.prog{height:8px;background:var(--line2);border-radius:4px;overflow:hidden}.prog i{display:block;height:100%;background:var(--teal)}
+
+.objphoto{border-radius:16px;background:var(--tint);aspect-ratio:4/3;max-width:100%;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.objphoto .board{background:var(--navy);color:#fff;font-weight:800;font-size:22px;padding:22px 26px;border-radius:2px;box-shadow:var(--shadow2)}
+.objphoto .pole{position:absolute;width:8px;background:var(--muted2);bottom:0}
+.objphoto .cap{position:absolute;left:12px;bottom:10px;font-size:11px;color:var(--muted)}
+dl.kv{margin:0;display:grid;grid-template-columns:130px minmax(0,1fr);gap:8px 12px}
+dl.kv dt{color:var(--muted)}dl.kv dd{margin:0;font-weight:600}
+.stepper{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.stepper div{border-radius:12px;padding:12px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:2px}
+.stepper .k{font-size:12px;font-weight:800;color:var(--muted)}
+.stepper .done{background:var(--teal-soft);border-color:transparent}.stepper .done .k{color:var(--teal-ink)}
+.stepper .now{border:2px solid var(--amber)}.stepper .now .k{color:var(--amber-ink)}
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.timeline li{display:grid;grid-template-columns:96px 12px minmax(0,1fr);gap:12px}
+.timeline .b{width:12px;height:12px;border-radius:50%;margin-top:4px;background:var(--teal)}
+.objrel{display:flex;flex-direction:column;gap:8px}
+.objrel div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--surface2)}
+
+/* phone */
+.phone{width:100%;max-width:380px;background:var(--navy);border-radius:36px;padding:12px;box-shadow:var(--shadow2);flex:none}
+.screen{background:var(--bg);border-radius:26px;overflow:hidden;display:flex;flex-direction:column}
+.screen header{background:var(--surface);padding:16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.screen .body{padding:14px;display:flex;flex-direction:column;gap:10px}
+.fld{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)}
+.fld>span{font-size:12px;font-weight:700;color:var(--teal-ink)}
+.fld input,.fld select,.fld textarea{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:8px 10px;min-height:42px;font-size:15px;width:100%}
+.fld .old{font-size:11px;color:var(--muted)}
+.dims{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.checks li{display:flex;gap:10px;align-items:flex-start}
+.checks i{width:20px;height:20px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;font-weight:800;color:#fff;margin-top:1px}
+.checks .ok i{background:var(--teal)}.checks .no i{background:var(--surface);border:2px solid var(--amber)}
+.stepnum{font-size:18px;font-weight:800;color:var(--teal)}
+.qcard{border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.diff{display:grid;grid-template-columns:110px 1fr 1fr;gap:6px 10px;font-size:13px}
+.diff .h{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+.diff .new{font-weight:700;color:var(--teal-ink)}
+.toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600}
+.toggle input{width:20px;height:20px;accent-color:var(--teal)}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:30;max-width:calc(100% - 32px)}
+@media (max-width:760px){
+  .top-in,.tabs-in{padding-left:16px;padding-right:16px}
+  main{padding:18px 16px 40px}
+  .pagehead h1{font-size:22px}
+  .kpi .v{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="crumbs" id="crumbs"></div>
+    <span class="sim">DATA SIMULASI</span>
+    <label class="rolebox" for="role">Peran
+      <select id="role">
+        <option value="bod">BOD / pimpinan</option>
+        <option value="analis" selected>Admin daerah / analis</option>
+        <option value="petugas">Petugas lapangan</option>
+        <option value="verifier">Verifier / supervisor</option>
+      </select>
+    </label>
+  </div>
+</header>
+<nav class="tabs" aria-label="Halaman"><div class="tabs-in" id="tabs"></div></nav>
+<main id="view" tabindex="-1"></main>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+const fmt=n=>n.toLocaleString('id-ID');
+const rp=v=>v>=1?'Rp'+v.toFixed(1).replace('.',',')+' M':'Rp'+Math.round(v*1000)+' jt';
+const svg=(p,s)=>`<svg width="${s||18}" height="${s||18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,3000);}
+
+/* ---------------- data (simulasi) ---------------- */
+const PROV=[
+  {id:'jabar',name:'Jawa Barat',poi:412,ver:58,pot:.82,x:32,y:80,data:'full'},
+  {id:'dki',name:'DKI Jakarta',poi:236,ver:34,pot:.52,x:27,y:77,data:'ringkas'},
+  {id:'jatim',name:'Jawa Timur',poi:188,ver:28,pot:.36,x:41,y:81,data:'ringkas'},
+  {id:'sumut',name:'Sumatera Utara',poi:124,ver:18,pot:.22,x:11,y:25,data:'ringkas'},
+  {id:'bali',name:'Bali',poi:96,ver:14,pot:.18,x:47,y:84,data:'ringkas'},
+  {id:'kaltim',name:'Kalimantan Timur',poi:72,ver:11,pot:.12,x:44,y:33,data:'ringkas'},
+  {id:'sulsel',name:'Sulawesi Selatan',poi:64,ver:10,pot:.11,x:55,y:52,data:'ringkas'},
+  {id:'sumsel',name:'Sumatera Selatan',poi:48,ver:7,pot:.07,x:20,y:52,data:'ringkas'},
+  {id:'papua',name:'Papua',poi:0,ver:0,pot:0,x:86,y:57,data:'none'}
+];
+const ISL=[
+  {id:'sumatra',pts:'40,40 110,55 170,120 230,190 262,240 248,262 196,236 140,178 90,118 30,70',prov:['sumut','sumsel']},
+  {id:'jawa',pts:'250,282 330,286 420,298 452,306 452,320 380,318 300,308 252,300',prov:['dki','jabar','jatim']},
+  {id:'nt',pts:'462,316 480,314 482,326 464,328',prov:['bali']},
+  {id:'nt2',pts:'492,320 600,326 600,338 494,334',prov:[]},
+  {id:'kalimantan',pts:'340,80 410,58 470,100 480,170 450,220 390,236 340,206 318,140',prov:['kaltim']},
+  {id:'sulawesi',pts:'528,96 610,92 612,112 552,118 566,150 616,146 618,166 566,174 556,232 532,236 540,170 520,130',prov:['sulsel']},
+  {id:'maluku',pts:'652,150 676,146 682,196 660,200',prov:[]},
+  {id:'maluku2',pts:'694,206 736,208 736,220 694,218',prov:[]},
+  {id:'papua',pts:'746,160 840,166 930,206 950,276 880,288 812,248 762,214',prov:['papua']}
+];
+const CATS=[['rek','Billboard / reklame',.45],['pkr','Parkir',.25],['mall','Mall / pusat belanja',.10],['pab','Pabrik / perumahan',.12],['tmn','Taman / ruang publik',.08]];
+const TAX=[['all','Semua'],['reklame','Pajak Reklame'],['parkir','PBJT Jasa Parkir'],['pbb','PBB-P2'],['telaah','Telaah layanan / aset']];
+const CAT_TAX={rek:['reklame'],pkr:['parkir'],mall:['pbb','reklame','parkir'],pab:['pbb'],tmn:['telaah']};
+const STATUS=[['all','Semua',1],['ver','Perlu verifikasi',.145],['val','Tervalidasi',.52],['bukan','Bukan objek',.06],['baru','Kandidat baru',.275]];
+const KOTA=[
+  {id:'bdg',name:'Kota Bandung',poi:268,ver:38,pot:.52,x:58,y:62,data:'full'},
+  {id:'bks',name:'Kota Bekasi',poi:84,ver:12,pot:.18,x:30,y:22,data:'ringkas'},
+  {id:'bgr',name:'Kabupaten Bogor',poi:60,ver:8,pot:.12,x:24,y:42,data:'ringkas'},
+  {id:'grt',name:'Kabupaten Garut',poi:0,ver:0,pot:0,x:66,y:82,data:'none'},
+  {id:'crb',name:'Kota Cirebon',poi:0,ver:0,pot:0,x:88,y:38,data:'none'}
+];
+const CORR={
+  A:{name:'Koridor A',lead:'34 kandidat • perlu survei',tag:'Reklame • kandidat belum cocok register',route:[[20,290],[260,290],[260,110],[500,110],[500,200]],km:'3,2',team:'Tim Lapangan 1'},
+  B:{name:'Koridor B',lead:'22 objek • data ukuran berbeda',tag:'Reklame • ukuran berbeda dari register',route:[[140,20],[140,110],[140,200],[380,200],[620,200]],km:'2,4',team:'Tim Lapangan 2'},
+  C:{name:'Koridor C',lead:'18 objek • dokumen perlu diperiksa',tag:'Parkir • dokumen izin perlu diperiksa',route:[[380,20],[500,20],[620,20],[620,110],[620,290]],km:'2,8',team:'Tim Lapangan 3'}
+};
+
+/* ---------------- state ---------------- */
+const S={
+  page:'peta', level:'nasional', prov:null, kota:null,
+  cat:'all', tax:'all', status:'all', layer:'kategori',
+  corr:'A', role:'analis',
+  tasks:{A:{id:'SRV-017',corr:'A',cps:[
+    {n:'01',label:'Mulai / bukti kunjungan',done:true,find:[],note:'Foto awal, waktu mulai, dan posisi GPS tercatat.'},
+    {n:'02',label:'Reklame',done:true,find:[{id:'OBJ-RKL-001',t:'Reklame A · papan 6 × 4 m',s:'Perlu pencocokan register',detail:true}],note:'Satu objek ditemukan.'},
+    {n:'03',label:'Parkir',done:true,find:[{id:'KND-PKR-007',t:'Parkir tepi jalan · kandidat baru',s:'Kandidat belum terdaftar'}],note:'Kandidat ditambahkan, menunggu verifikasi.'},
+    {n:'04',label:'Belum diperiksa',done:false,find:[],note:''},
+    {n:'05',label:'Belum diperiksa',done:false,find:[],note:''}]}},
+  cpSel:1,
+  obj:{id:'OBJ-RKL-001',name:'REKLAME A',owner:'PT Contoh Media',op:'Operator A',w:6,h:4,sisi:1,jenis:'papan',periode:'12 bulan',reg:'Perlu pencocokan',izinUsaha:'Belum diverifikasi',izinRek:'Dokumen tersedia',addr:'Jl. Contoh No. 12, Bandung',coord:'-6.9175, 107.6191',stage:2,requested:false,
+    hist:[['14 Sep 2026','Ditemukan pada checkpoint 02, tugas SRV-017','Tim Lapangan 1 · foto, GPS ±4 m'],['02 Sep 2026','Kandidat dari impor POI, belum cocok register','Sistem · sumber POI dan register Bapenda']]},
+  form:{mode:'update',photo:false,gps:false,w:6,h:4,owner:'PT Contoh Media',izin:'Belum diverifikasi',reason:'',cat:'rek',name:'',cp:null},
+  offline:false, sync:[], queue:[], seq:2
+};
+let curTask=()=>S.tasks[S.corr];
+
+/* ---------------- filter math ---------------- */
+function share(){
+  let cats=CATS.filter(c=>S.cat==='all'||c[0]===S.cat);
+  if(S.tax!=='all')cats=cats.filter(c=>CAT_TAX[c[0]].includes(S.tax));
+  return cats.reduce((a,c)=>a+c[2],0);
+}
+const stShare=()=>STATUS.find(s=>s[0]===S.status)[2];
+
+/* ---------------- page 1: peta ---------------- */
+function filtersBar(){
+  const provOpts=[['',"Semua"]].concat(PROV.filter(p=>p.data!=='none').map(p=>[p.id,p.name]));
+  const p=PROV.find(x=>x.id===S.prov);
+  const kotaOpts=[['','Semua']].concat(S.prov==='jabar'?KOTA.filter(k=>k.data!=='none').map(k=>[k.id,k.name]):[]);
+  return `<div class="filters" role="group" aria-label="Filter peta">
+    <label for="fProv">Provinsi<select id="fProv" data-ch="prov">${provOpts.map(o=>`<option value="${o[0]}" ${(S.prov||'')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></label>
+    <label for="fKota">Kabupaten/Kota<select id="fKota" data-ch="kota" ${S.prov==='jabar'?'':'disabled'}>${kotaOpts.map(o=>`<option value="${o[0]}" ${(S.kota||'')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></label>
+    <label for="fCat">Kategori POI<select id="fCat" data-ch="cat"><option value="all">Semua</option>${CATS.map(c=>`<option value="${c[0]}" ${S.cat===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
+    <label for="fTax">Jenis pajak<select id="fTax" data-ch="tax">${TAX.map(t=>`<option value="${t[0]}" ${S.tax===t[0]?'selected':''}>${t[1]}</option>`).join('')}</select></label>
+    <label for="fSt">Status<select id="fSt" data-ch="status">${STATUS.map(t=>`<option value="${t[0]}" ${S.status===t[0]?'selected':''}>${t[1]}</option>`).join('')}</select></label>
+  </div>`;
+}
+function kpis(base){
+  const sh=share();
+  const poi=Math.round(base.poi*sh),ver=Math.round(base.ver*sh),pot=base.pot*sh;
+  const st=S.status==='all'?'':`<span class="s">${fmt(Math.round(poi*stShare()))} berstatus "${STATUS.find(s=>s[0]===S.status)[1].toLowerCase()}"</span>`;
+  return `<div class="kpi"><span class="v">${fmt(poi)}</span><span class="l">POI terpetakan</span>${st}</div>
+    <div class="kpi"><span class="v" style="color:var(--amber-ink)">${fmt(ver)}</span><span class="l">Perlu verifikasi</span></div>
+    <div class="kpi"><span class="v">${rp(pot)}</span><span class="l">Potensi indikatif / tahun</span><span class="s">Asumsi awal, untuk prioritas pemeriksaan</span></div>`;
+}
+function vPeta(){
+  if(S.level==='kota')return vKota();
+  if(S.level==='provinsi')return vProvinsi();
+  const sh=share(),tot={poi:PROV.reduce((a,p)=>a+p.poi,0),ver:PROV.reduce((a,p)=>a+p.ver,0),pot:PROV.reduce((a,p)=>a+p.pot,0)};
+  const maxp=Math.max(...PROV.map(p=>p.poi));
+  const dens=isl=>{const n=isl.prov.reduce((a,id)=>a+(PROV.find(p=>p.id===id)||{poi:0}).poi,0);if(!n)return 'none';return 'd'+Math.min(4,1+Math.floor(n/180));};
+  const stF=stShare();
+  return `
+  <div class="pagehead"><div><div class="eyebrow">HALAMAN 1 · PETA &amp; POTENSI</div><h1>Peta potensi seluruh Indonesia</h1><p>Peta nasional menjadi pintu masuk. Rincian hanya muncul untuk wilayah yang datanya tersedia.</p></div></div>
+  ${filtersBar()}
+  <div class="row">
+    <div class="card grow" style="padding:14px">
+      <div class="map">
+        <svg viewBox="0 0 1000 380" role="img" aria-label="Peta skematis Indonesia dengan cluster POI per provinsi">
+          ${ISL.map(i=>`<polygon class="land ${S.layer==='kepadatan'?dens(i):(i.prov.some(id=>(PROV.find(p=>p.id===id)||{}).data!=='none'&&id!=='papua')?'':'none')}" points="${i.pts}"/>`).join('')}
+          <text class="mtxt" x="16" y="368" font-size="12" fill="var(--muted)">Peta skematis Indonesia • batas administratif memakai sumber resmi pada produksi</text>
+        </svg>
+        ${PROV.map(p=>{
+          if(p.data==='none')return `<button class="clu off" style="left:${p.x}%;top:${p.y}%" data-act="noData" data-k="${p.name}" aria-label="${p.name}: data belum tersedia"><span class="dot" style="width:34px;height:34px">–</span></button>`;
+          const n=Math.round(p.poi*sh*stF),sz=S.layer==='kepadatan'?30:Math.round(32+22*Math.sqrt(p.poi/maxp));
+          const ring=S.layer==='status'?`background:conic-gradient(var(--amber) 0 ${Math.round(p.ver/p.poi*100)}%, var(--teal) 0)`:'';
+          return `<button class="clu" style="left:${p.x}%;top:${p.y}%" data-act="prov" data-k="${p.id}" aria-label="${p.name}: ${n} POI. Klik untuk zoom"><span class="dot" style="width:${sz}px;height:${sz}px;${ring}">${n}</span></button>`;}).join('')}
+      </div>
+      <div class="mapfoot">
+        <div class="seg" role="group" aria-label="Layer peta">${[['kategori','Kategori'],['status','Status'],['kepadatan','Kepadatan']].map(l=>`<button data-act="layer" data-k="${l[0]}" aria-pressed="${S.layer===l[0]}">${l[1]}</button>`).join('')}</div>
+        <div class="legend">${S.layer==='status'?`<span><i class="sw" style="background:var(--amber)"></i>Perlu verifikasi</span><span><i class="sw" style="background:var(--teal)"></i>Lainnya</span>`:S.layer==='kepadatan'?`<span>Kepadatan POI</span><span style="display:flex;gap:2px"><i style="width:22px;height:10px;background:var(--d1)"></i><i style="width:22px;height:10px;background:var(--d2)"></i><i style="width:22px;height:10px;background:var(--d3)"></i><i style="width:22px;height:10px;background:var(--d4)"></i></span>`:`<span><i class="sw" style="background:var(--teal)"></i>Cluster POI (ukuran = jumlah)</span>`}<span><i class="sw" style="border:2px dashed var(--muted2)"></i>Data belum tersedia</span></div>
+      </div>
+      <span class="note">Klik cluster untuk zoom ke provinsi • Klik POI untuk detail • Jawa Barat memiliki data pilot sampai tingkat koridor</span>
+    </div>
+    <div class="side">
+      ${kpis(tot)}
+      <div class="card" style="padding:16px;gap:8px">
+        <h2 style="font-size:15px">Wilayah dengan data</h2>
+        ${PROV.filter(p=>p.data!=='none').map(p=>`<button class="reg" data-act="prov" data-k="${p.id}"><b style="font-weight:600">${p.name}</b><span class="num sub"><b style="color:var(--ink)">${fmt(Math.round(p.poi*sh))}</b> POI</span><span class="bar"><i style="width:${p.poi/maxp*100}%"></i></span><span class="sub">${p.data==='full'?'Rincian sampai koridor (pilot)':'Ringkasan provinsi'}</span></button>`).join('')}
+      </div>
+    </div>
+  </div>
+  ${tiersBlock(tot.pot*sh)}
+  ${catTaxTable()}
+  <p class="disclaim">Angka simulasi. Kandidat belum terdaftar bukan kesimpulan pelanggaran. Ringkasan nasional bersifat konsolidasi; kewenangan tindakan mengikuti yurisdiksi dan hak akses.</p>`;
+}
+function tiersBlock(pot){
+  return `<section class="card"><div class="cardhead"><h2>Potensi indikatif dipisahkan dari realisasi penerimaan</h2><span class="note">Semua nilai memiliki periode, sumber, parameter daerah, dan status verifikasi</span></div>
+    <div class="tiers">
+      <div class="tier"><span class="L">A</span><h3>Potensi indikatif</h3><span class="v">${rp(pot)}</span><p>Hitungan berbasis asumsi awal. Digunakan untuk menentukan prioritas pemeriksaan.</p></div>
+      <div class="tier"><span class="L">B</span><h3>Potensi tervalidasi</h3><span class="v">${rp(pot*.38)}</span><p>Dasar pengenaan dan bukti sudah diperiksa; belum berarti pendapatan sudah diterima.</p></div>
+      <div class="tier"><span class="L">C</span><h3>Realisasi tercatat</h3><span class="v">${rp(pot*.21)}</span><p>Pembayaran terkonfirmasi melalui rekonsiliasi sistem penerimaan Bapenda.</p></div>
+    </div>
+    <div class="formula">PBJT Parkir: estimasi penerimaan jasa × tarif daerah. Reklame: nilai sewa reklame × tarif daerah.</div>
+    <span class="note">PBB-P2 menggunakan data penilaian resmi; ukuran/foto hanya pemicu pembaruan. BPHTB bergantung peristiwa perolehan hak.</span></section>`;
+}
+function catTaxTable(){
+  const rows=[['Billboard / reklame','Pajak Reklame, sesuai pengecualian','Jenis, dimensi, masa tayang, lokasi, nilai sewa reklame'],['Parkir','PBJT Jasa Parkir atau retribusi sesuai layanan','Penyelenggara, status layanan, penerimaan, dasar hukum'],['Mall / pusat belanja','PBB-P2; reklame dan PBJT sesuai kegiatan','Bidang tanah, bangunan, tenant, operator parkir'],['Pabrik / perumahan','PBB-P2; jenis lain bila memenuhi ketentuan','Identitas bidang, penggunaan, luas, perubahan bangunan'],['Taman / ruang publik','Tidak otomatis objek pajak; telaah layanan/aset','Status aset, pengelola, kegiatan komersial, pengecualian']];
+  return `<section class="card"><div class="cardhead"><h2>Kategori lokasi tidak sama dengan jenis pajak</h2><span class="note">Satu lokasi dapat memiliki beberapa objek pajak</span></div>
+  <div class="tablewrap"><table style="min-width:680px"><thead><tr><th>Kategori POI</th><th>Indikasi pajak / penerimaan</th><th>Data yang menentukan</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="font-weight:700">${r[0]}</td><td>${r[1]}</td><td class="sub" style="font-size:13px">${r[2]}</td></tr>`).join('')}</tbody></table></div>
+  <span class="note">Rujukan: UU 1/2022; PP 35/2023; pedoman DJPK. Tarif dan pengecualian dikonfigurasi per Perda/Perkada.</span></section>`;
+}
+function vProvinsi(){
+  const p=PROV.find(x=>x.id===S.prov);
+  if(p.id!=='jabar'){
+    return `<div class="pagehead"><div><div class="eyebrow">HALAMAN 1 · PETA &amp; POTENSI</div><h1>${p.name}</h1><p>Ringkasan provinsi. Rincian kabupaten/kota belum tersedia untuk wilayah ini.</p></div><button class="btn sec" data-act="toNas">← Kembali ke peta nasional</button></div>
+    ${filtersBar()}
+    <div class="row"><div class="side" style="flex:1 1 100%;flex-direction:row;flex-wrap:wrap">${kpis(p).replace(/class="kpi"/g,'class="kpi" style="flex:1 1 220px"')}</div></div>
+    <div class="card"><h2>Rincian belum tersedia</h2><p style="margin:0;color:var(--muted)">Data ${p.name} saat ini berupa ringkasan dari impor POI. Rincian koridor muncul setelah register Bapenda dan batas wilayah daerah ini diimpor serta disetujui.</p><div><button class="btn soft" data-act="toast" data-msg="Permintaan onboarding data ${p.name} dicatat (simulasi)">Ajukan onboarding data daerah</button></div></div>`;
+  }
+  const sh=share(),maxp=Math.max(...KOTA.map(k=>k.poi));
+  return `<div class="pagehead"><div><div class="eyebrow">HALAMAN 1 · PETA &amp; POTENSI</div><h1>Jawa Barat</h1><p>Pilih kabupaten/kota. Kota Bandung adalah wilayah pilot dengan rincian sampai koridor jalan.</p></div><button class="btn sec" data-act="toNas">← Kembali ke peta nasional</button></div>
+  ${filtersBar()}
+  <div class="row">
+    <div class="card grow" style="padding:14px">
+      <div class="map">
+        <svg viewBox="0 0 800 360" role="img" aria-label="Peta skematis Jawa Barat dengan kabupaten/kota">
+          <polygon class="land" points="40,90 200,60 360,70 520,80 700,110 770,170 740,250 600,300 420,320 240,300 110,250 30,170"/>
+          <path d="M200,60 L240,300 M360,70 L420,320 M520,80 L600,300 M30,170 L770,170" stroke="var(--surface)" stroke-width="2" stroke-dasharray="6 5" fill="none"/>
+          <text class="mtxt" x="16" y="348" font-size="12" fill="var(--muted)">Peta skematis • batas kabupaten/kota ilustratif</text>
+        </svg>
+        ${KOTA.map(k=>k.data==='none'?`<button class="clu off" style="left:${k.x}%;top:${k.y}%" data-act="noData" data-k="${k.name}" aria-label="${k.name}: data belum tersedia"><span class="dot" style="width:32px;height:32px">–</span></button>`:`<button class="clu" style="left:${k.x}%;top:${k.y}%" data-act="kota" data-k="${k.id}" aria-label="${k.name}: ${Math.round(k.poi*sh)} POI"><span class="dot" style="width:${Math.round(34+24*Math.sqrt(k.poi/maxp))}px;height:${Math.round(34+24*Math.sqrt(k.poi/maxp))}px">${Math.round(k.poi*sh*stShare())}</span></button>`).join('')}
+      </div>
+      <span class="note">Klik Kota Bandung untuk melihat antrean prioritas koridor.</span>
+    </div>
+    <div class="side">
+      ${kpis(p)}
+      <div class="card" style="padding:16px;gap:8px"><h2 style="font-size:15px">Kabupaten/kota</h2>
+      ${KOTA.map(k=>k.data==='none'?`<div class="reg off"><b style="font-weight:600;color:var(--muted)">${k.name}</b><span class="chip grey">Belum ada data</span></div>`:`<button class="reg" data-act="kota" data-k="${k.id}"><b style="font-weight:600">${k.name}</b><span class="num sub"><b style="color:var(--ink)">${fmt(Math.round(k.poi*sh))}</b> POI</span><span class="bar"><i style="width:${k.poi/maxp*100}%"></i></span><span class="sub">${k.data==='full'?'Pilot · rincian koridor tersedia':'Ringkasan saja'}</span></button>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function streetMap(route,opts){
+  opts=opts||{};
+  const blocks=[];const xs=[20,140,260,380,500,620],ys=[20,110,200,290];
+  for(let i=0;i<xs.length-1;i++)for(let j=0;j<ys.length-1;j++)blocks.push(`<rect class="blk" x="${xs[i]+10}" y="${ys[j]+10}" width="100" height="70" rx="6"/>`);
+  const d='M'+route.map(p=>p.join(',')).join(' L');
+  return `<svg viewBox="0 0 640 310" role="img" aria-label="${opts.aria||'Ilustrasi jaringan jalan'}">
+    <rect width="640" height="310" fill="var(--sea)"/>${blocks.join('')}
+    ${xs.map(x=>`<path class="rd" d="M${x},0 L${x},310" stroke-width="12"/>`).join('')}${ys.map(y=>`<path class="rd" d="M0,${y} L640,${y}" stroke-width="12"/>`).join('')}
+    ${(opts.extra||[]).map(r=>`<path class="route" d="M${r.map(p=>p.join(',')).join(' L')}" stroke="var(--teal-mid)" stroke-width="5" stroke-dasharray="8 7" opacity=".8"/>`).join('')}
+    <path class="route" d="${d}" stroke="var(--teal)" stroke-width="7"/>
+    ${opts.dots?route.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="10" fill="${opts.done&&!opts.done[i]?'var(--amber)':'var(--teal)'}" stroke="var(--surface)" stroke-width="3"/>`).join(''):''}
+  </svg>`;
+}
+function vKota(){
+  const k=KOTA.find(x=>x.id===S.kota);
+  if(k.data!=='full'){return `<div class="pagehead"><div><div class="eyebrow">HALAMAN 1 · PETA &amp; POTENSI</div><h1>${k.name}</h1><p>Ringkasan wilayah. Rincian koridor belum tersedia.</p></div><button class="btn sec" data-act="toProv">← Kembali ke Jawa Barat</button></div>${filtersBar()}<div class="row"><div class="side" style="flex:1 1 100%;flex-direction:row;flex-wrap:wrap">${kpis(k).replace(/class="kpi"/g,'class="kpi" style="flex:1 1 220px"')}</div></div>`;}
+  const c=CORR[S.corr];
+  const others=Object.keys(CORR).filter(x=>x!==S.corr).map(x=>CORR[x].route);
+  const t=S.tasks[S.corr];
+  const done=t?t.cps.filter(c=>c.done):null;
+  return `<div class="pagehead"><div><div class="eyebrow">HALAMAN 1 · TURUN KE PRIORITAS KABUPATEN/KOTA</div><h1>Kota Bandung</h1><p>Ringkasan nasional bersifat konsolidasi; kewenangan tindakan mengikuti yurisdiksi dan hak akses.</p></div><button class="btn sec" data-act="toProv">← Kembali ke Jawa Barat</button></div>
+  ${filtersBar()}
+  <div class="row"><div class="side" style="flex:1 1 100%;flex-direction:row;flex-wrap:wrap">${kpis(k).replace(/class="kpi"/g,'class="kpi" style="flex:1 1 220px"')}</div></div>
+  <div class="row">
+    <div class="card grow" style="padding:14px">
+      <div class="map">${streetMap(c.route,{extra:others,dots:true,aria:'Ilustrasi jaringan jalan Kota Bandung dengan '+c.name+' disorot'})}<span class="maptag">${c.tag}</span></div>
+      <span class="note">Angka simulasi • Kandidat belum terdaftar bukan kesimpulan pelanggaran • Ilustrasi jaringan jalan, bukan peta navigasi</span>
+    </div>
+    <div class="side">
+      <h2 style="font-size:22px">Antrean prioritas wilayah</h2>
+      ${Object.keys(CORR).map(x=>{const tk=S.tasks[x];return `<button class="qitem" data-act="corr" data-k="${x}" aria-pressed="${S.corr===x}"><b>${CORR[x].name}</b><span>${CORR[x].lead}</span>${tk?`<span class="sub">Tugas ${tk.id} · ${tk.cps.filter(c=>c.done).length}/${tk.cps.length} checkpoint diperiksa</span>`:`<span class="sub">Belum ada tugas penyisiran</span>`}</button>`}).join('')}
+      <button class="btn pri" data-act="makeTask">${t?`Buka tugas ${t.id}`:'Buat tugas penyisiran'}</button>
+      ${t?`<span class="note">${done.length} dari ${t.cps.length} checkpoint sudah diperiksa.</span>`:`<span class="note">Rute ${c.km} km dengan 5 checkpoint akan ditugaskan ke ${c.team}.</span>`}
+      <button class="linkbtn" data-act="goDetail" style="text-align:left">Contoh POI di koridor A: buka detail OBJ-RKL-001 →</button>
+    </div>
+  </div>
+  ${tiersBlock(k.pot*share())}`;
+}
+
+/* ---------------- page 2: detail ---------------- */
+const FLOW=['Impor & petakan','Tentukan prioritas','Survei & revisi','Validasi objek','Tindak lanjut Bapenda','Rekonsiliasi penerimaan'];
+function vDetail(){
+  const o=S.obj,hide=S.role==='bod';
+  return `<div class="pagehead"><div><div class="eyebrow">HALAMAN 2 · DETAIL OBJEK</div><h1>Detail objek berbasis bukti</h1><p>Contoh reklame fiktif: status izin dan status pajak ditampilkan terpisah.</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-act="backMap">← Lihat di peta</button><button class="btn soft" data-act="toUpdate">Update data objek</button></div></div>
+  <div class="row">
+    <div class="card" style="flex:1 1 300px">
+      <div class="objphoto"><div class="board">${o.name}</div><span class="pole" style="left:calc(50% - 4px);height:calc(50% - 38px)"></span><span class="cap" style="top:10px;bottom:auto">Ilustrasi; foto lapangan akan tampil di sini</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><b>${o.addr}</b><span class="sub">Koordinat ilustratif: ${o.coord}</span><span class="sub">Foto • 14 Sep 2026 09.42 • Tim Lapangan 1 • akurasi GPS ±4 m</span></div>
+    </div>
+    <div class="card" style="flex:1 1 300px">
+      <div class="cardhead"><h2>Identitas &amp; fisik</h2><span class="chip grey">${o.id}</span></div>
+      <dl class="kv">
+        <dt>Pemilik</dt><dd>${hide?'<span class="sub">Disembunyikan untuk peran ini</span>':o.owner}</dd>
+        <dt>Pengelola</dt><dd>${hide?'<span class="sub">Disembunyikan untuk peran ini</span>':o.op}</dd>
+        <dt>Dimensi</dt><dd class="num">${o.w} × ${o.h} m; ${o.w*o.h} m²</dd>
+        <dt>Sisi / jenis</dt><dd>${o.sisi}; ${o.jenis}</dd>
+        <dt>Periode</dt><dd>${o.periode}</dd>
+        <dt>Register pajak</dt><dd><span class="chip ${o.reg==='Cocok'?'teal':'amber'}">${o.reg}</span></dd>
+      </dl>
+    </div>
+    <div class="card" style="flex:1 1 300px">
+      <h2>Verifikasi &amp; potensi</h2>
+      <div class="statusline"><span>Izin usaha</span><span class="chip ${o.izinUsaha==='Terverifikasi'?'teal':'amber'}">${o.izinUsaha}</span></div>
+      <div class="statusline"><span>Izin reklame</span><span class="chip teal">${o.izinRek}</span></div>
+      <dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Pajak terkait</dt><dd>Pajak Reklame</dd>
+        <dt>Estimasi</dt><dd>Menunggu parameter daerah</dd>
+        <dt>Dasar hitung</dt><dd style="font-weight:500">Nilai sewa reklame × tarif daerah</dd>
+        <dt>Bukti</dt><dd>Foto dan salinan dokumen</dd>
+      </dl>
+      <button class="btn pri" data-act="request" ${o.requested?'disabled':''}>${o.requested?'Pemeriksaan sudah diajukan':'Ajukan pemeriksaan objek'}</button>
+    </div>
+  </div>
+  <section class="card"><div class="cardhead"><h2>Alur kasus objek ini</h2><span class="note">Jika ditolak verifier: kembali ke petugas. Jika bukan objek: alasan disimpan dan objek dikeluarkan dari estimasi potensi.</span></div>
+    <div class="stepper">${FLOW.map((f,i)=>`<div class="${i<o.stage?'done':i===o.stage?'now':''}"><span class="k">${String(i+1).padStart(2,'0')}${i<o.stage?' ✓':i===o.stage?' · sekarang':''}</span><b>${f}</b></div>`).join('')}</div>
+  </section>
+  <div class="row">
+    <section class="card" style="flex:1 1 380px"><h2>Satu lokasi, beberapa objek</h2><span class="note">LOC-0192 · ruko Jl. Contoh No. 12. Lokasi, objek pajak, dan pemilik disimpan terpisah agar tidak terhitung ganda.</span>
+      <div class="objrel"><div><span><b>${o.id}</b> · Reklame papan</span><span class="chip blue">Pajak Reklame</span></div><div><span><b>OBJ-PBB-118</b> · Bidang &amp; bangunan ruko</span><span class="chip blue">PBB-P2</span></div><div><span><b>KND-PKR-007</b> · Parkir tepi jalan</span><span class="chip amber">Kandidat</span></div></div>
+    </section>
+    <section class="card" style="flex:1 1 380px"><h2>Riwayat observasi</h2>
+      <ol class="timeline">${o.hist.map(h=>`<li><span class="sub num">${h[0]}</span><span class="b"></span><div><b style="font-weight:600">${h[1]}</b><div class="sub">${h[2]}</div></div></li>`).join('')}</ol>
+    </section>
+  </div>
+  <p class="disclaim">Data simulasi. Dashboard tidak menerbitkan ketetapan pajak secara otomatis; keputusan mengikuti sistem dan prosedur resmi Bapenda.</p>`;
+}
+
+/* ---------------- page 3: sisir jalan ---------------- */
+function vSisir(){
+  const t=curTask();
+  if(!t){return `<div class="pagehead"><div><div class="eyebrow">HALAMAN 3 · SISIR JALAN</div><h1>Belum ada tugas untuk ${CORR[S.corr].name}</h1><p>Buat tugas dari antrean prioritas Kota Bandung.</p></div></div><div><button class="btn pri" data-act="makeTask">Buat tugas penyisiran ${CORR[S.corr].name}</button></div>`;}
+  const c=CORR[t.corr],done=t.cps.filter(x=>x.done).length,sel=t.cps[S.cpSel]||t.cps[0];
+  return `<div class="pagehead"><div><div class="eyebrow">HALAMAN 3 · SISIR JALAN / TUGAS ${t.id}</div><h1>Sisir jalan dengan titik pemeriksaan</h1><p>Setiap titik merekam pemeriksaan; satu titik dapat menemukan beberapa objek atau tidak menemukan objek.</p></div>
+    <div class="seg" role="group" aria-label="Pilih tugas">${Object.keys(S.tasks).map(x=>`<button data-act="taskSel" data-k="${x}" aria-pressed="${S.corr===x}">${S.tasks[x].id} · ${CORR[x].name}</button>`).join('')}</div></div>
+  <div class="row">
+    <div class="card grow" style="padding:14px">
+      <div class="map">${streetMap(c.route,{aria:'Rute '+c.name+' dengan checkpoint'})}
+        ${c.route.map((p,i)=>`<button class="cp ${t.cps[i].done?'done':'todo'}${S.cpSel===i?' on':''}" style="left:${p[0]/640*100}%;top:${p[1]/310*100}%" data-act="cp" data-k="${i}" aria-label="Checkpoint ${t.cps[i].n}: ${t.cps[i].done?'diperiksa':'belum diperiksa'}"><i>${i+1}</i></button>`).join('')}
+      </div>
+      <div class="mapfoot"><div class="legend"><span><i class="sw" style="background:var(--teal)"></i>Diperiksa</span><span><i class="sw" style="background:var(--amber)"></i>Belum diperiksa</span></div><span class="note">Ilustrasi jaringan jalan, bukan peta navigasi • Jarak dan progres simulasi • Checkpoint berasal dari ruas jalan, bukan objek pajak</span></div>
+    </div>
+    <div class="side">
+      <div class="card" style="gap:10px">
+        <h2 style="font-size:20px">${c.name} • ${c.team}</h2>
+        <div><div class="num" style="font-weight:600">Rute ${c.km} km • ${t.cps.length} checkpoint</div><div class="num" style="font-weight:600">${done} diperiksa • ${t.cps.length-done} tersisa</div></div>
+        <div class="prog"><i style="width:${done/t.cps.length*100}%"></i></div>
+        <ul class="cps">${t.cps.map((x,i)=>`<li><button data-act="cp" data-k="${i}" aria-pressed="${S.cpSel===i}"><span class="k ${x.done?'done':'todo'}">${x.n}</span><span class="${x.done?'done':'todo'}" style="font-weight:600">${x.done?x.label:'Belum diperiksa'}</span>${x.find.length?`<span class="chip teal" style="margin-left:auto">${x.find.length} objek</span>`:''}</button></li>`).join('')}</ul>
+      </div>
+      <div class="card" style="gap:10px" aria-live="polite">
+        <div class="cardhead"><h2 style="font-size:16px">Checkpoint ${sel.n}</h2><span class="chip ${sel.done?'teal':'amber'}">${sel.done?'Diperiksa':'Belum diperiksa'}</span></div>
+        ${sel.note?`<span class="sub" style="font-size:13px">${sel.note}</span>`:''}
+        ${sel.find.map(f=>`<div class="qcard" style="padding:10px 12px;gap:4px"><b>${f.id}</b><span class="sub">${f.t}</span><span class="chip amber" style="align-self:flex-start">${f.s}</span>${f.detail?`<button class="linkbtn" data-act="goDetail" style="text-align:left">Buka detail ${f.id} →</button>`:''}</div>`).join('')}
+        ${sel.done?`<button class="btn soft" data-act="addObj">Tambah objek di titik ini</button>`:`<button class="btn pri" data-act="cpPhoto">Ambil foto &amp; tandai: tidak ada objek</button><button class="btn soft" data-act="addObj">Tambah objek di titik ini</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- page 4: update data ---------------- */
+function checks(){
+  const f=S.form,o=S.obj;
+  const dimOk=f.w>0&&f.h>0;
+  const changed=f.mode==='new'||(f.w!==o.w||f.h!==o.h||f.owner!==o.owner||f.izin!==o.izinUsaha);
+  return [
+    ['Foto baru + waktu pengambilan',f.photo],
+    ['GPS terkunci, akurasi ≤ 10 m',f.gps],
+    ['Dimensi terisi dan masuk akal',dimOk&&f.w<=30&&f.h<=30],
+    [f.mode==='new'?'Nama / keterangan objek diisi':'Ada perubahan dibanding data lama',f.mode==='new'?f.name.trim().length>2:changed],
+    ['Alasan revisi diisi',f.reason.trim().length>=5],
+    ['Cek duplikasi: tidak ada objek sejenis dalam 15 m',true]
+  ];
+}
+function vUpdate(){
+  const f=S.form,o=S.obj,ck=checks(),ok=ck.every(c=>c[1]);
+  const canDecide=S.role==='verifier';
+  return `<div class="pagehead"><div><div class="eyebrow">HALAMAN 4 · UPDATE DATA</div><h1>Update data dari lapangan</h1><p>Form ringkas dengan foto, GPS, validasi isian, dan antrean sinkronisasi ketika jaringan terbatas.</p></div>
+    <label class="toggle" for="offline"><input type="checkbox" id="offline" data-ch="offline" ${S.offline?'checked':''}>Simulasikan jaringan terputus</label></div>
+  <div class="row">
+    <form class="phone" id="upForm" novalidate aria-label="Aplikasi lapangan">
+      <div class="screen">
+        <header><span class="sub">PAD360 · Aplikasi Lapangan ${S.offline?'· <b style="color:var(--amber-ink)">offline</b>':''}</span><b style="font-size:19px">${f.mode==='new'?'Objek baru · checkpoint '+f.cp:'Update '+o.id}</b>${f.mode==='update'?`<span class="sub">Data lama dipertahankan; isi alasan revisi.</span>`:''}</header>
+        <div class="body">
+          ${f.mode==='new'?`<label class="fld" for="fCatN"><span>Kategori POI</span><select id="fCatN" data-ch="f.cat">${CATS.map(c=>`<option value="${c[0]}" ${f.cat===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
+          <label class="fld" for="fName"><span>Nama / keterangan objek</span><input id="fName" data-in="f.name" value="${f.name}" placeholder="Contoh: Papan toko sisi utara"></label>`:''}
+          <div class="fld"><span>Foto baru + waktu pengambilan</span>${f.photo?`<b style="font-size:13px">✓ Foto diambil 14 Sep 2026, 10.05</b>`:`<button type="button" class="btn sec" data-act="fPhoto">Ambil foto</button>`}</div>
+          <div class="fld"><span>GPS + akurasi lokasi</span>${f.gps?`<b style="font-size:13px">✓ Terkunci · akurasi ±4 m</b>`:`<button type="button" class="btn sec" data-act="fGps">Kunci lokasi</button>`}</div>
+          <div class="fld"><span>Ukuran (meter)</span><div class="dims"><input type="number" min="0" step="0.5" id="fW" data-in="f.w" value="${f.w}" aria-label="Lebar"><span>×</span><input type="number" min="0" step="0.5" id="fH" data-in="f.h" value="${f.h}" aria-label="Tinggi"></div>${f.mode==='update'?`<span class="old">Data lama: ${o.w} × ${o.h} m</span>`:''}</div>
+          <label class="fld" for="fOwner"><span>Pemilik / pengelola</span><input id="fOwner" data-in="f.owner" value="${f.owner}"></label>
+          <label class="fld" for="fIzin"><span>Izin usaha / izin objek</span><select id="fIzin" data-ch="f.izin">${['Belum diverifikasi','Dokumen diunggah','Terverifikasi','Tidak ada izin'].map(x=>`<option ${f.izin===x?'selected':''}>${x}</option>`).join('')}</select></label>
+          <label class="fld" for="fReason"><span>Alasan revisi</span><textarea id="fReason" rows="2" data-in="f.reason" placeholder="Contoh: ukuran papan berubah setelah renovasi">${f.reason}</textarea></label>
+          <button type="submit" class="btn pri" ${ok?'':'disabled'}>${S.offline?'Simpan ke antrean offline':'Simpan &amp; ajukan verifikasi'}</button>
+          ${ok?'':`<span class="sub" style="text-align:center">Lengkapi pemeriksaan di samping untuk mengirim.</span>`}
+        </div>
+      </div>
+    </form>
+    <div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:14px">
+      <div class="card"><div><span class="stepnum">1. Rekam perubahan</span><p style="margin:4px 0 0">Data lama dipertahankan; petugas mengisi alasan revisi dan menambahkan bukti.</p></div></div>
+      <div class="card"><span class="stepnum">2. Cek sebelum kirim</span>
+        <ul class="checks">${ck.map(c=>`<li class="${c[1]?'ok':'no'}"><i>${c[1]?'✓':''}</i><span>${c[0]}</span></li>`).join('')}</ul>
+      </div>
+      ${S.sync.length?`<div class="card" style="border-color:var(--amber)"><div class="cardhead"><h2>Antrean sinkronisasi</h2><span class="chip amber">${S.sync.length} draf</span></div>${S.sync.map(q=>`<div class="sub">${q.id} · ${q.title}</div>`).join('')}<button class="btn soft" data-act="sync" ${S.offline?'disabled':''}>${S.offline?'Menunggu jaringan…':'Sinkronkan sekarang'}</button></div>`:''}
+      <div class="card"><div class="cardhead"><span class="stepnum">3. Persetujuan berjenjang</span><span class="chip ${S.queue.filter(q=>q.st==='wait').length?'amber':'grey'}">${S.queue.filter(q=>q.st==='wait').length} menunggu</span></div>
+        <p style="margin:0">Verifier menerima atau mengembalikan; perubahan yang disetujui masuk basis data aktif.</p>
+        ${!canDecide&&S.queue.some(q=>q.st==='wait')?`<div class="statusline"><span>Keputusan hanya oleh verifier/supervisor.</span><button class="linkbtn" data-act="beVerifier">Ganti peran ke Verifier</button></div>`:''}
+        ${S.queue.length?S.queue.map(q=>`<div class="qcard"><div class="cardhead"><b>${q.id} · ${q.title}</b><span class="chip ${q.st==='wait'?'amber':q.st==='ok'?'teal':'red'}">${q.st==='wait'?'Menunggu verifier':q.st==='ok'?'Disetujui':'Dikembalikan ke petugas'}</span></div>
+          <div class="diff"><span class="h">ISIAN</span><span class="h">DATA LAMA</span><span class="h">DIAJUKAN</span>${q.diff.map(d=>`<span class="sub">${d[0]}</span><span>${d[1]}</span><span class="${d[1]!==d[2]?'new':''}">${d[2]}</span>`).join('')}</div>
+          <span class="sub">Alasan: ${q.reason} · Bukti: foto, GPS ±4 m</span>
+          ${q.st==='wait'?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" data-act="approve" data-k="${q.id}" ${canDecide?'':'disabled'}>Terima</button><button class="btn warn" data-act="reject" data-k="${q.id}" ${canDecide?'':'disabled'}>Kembalikan</button></div>`:q.st==='ok'?`<button class="linkbtn" data-corr="${q.corr||''}" data-act="${q.kind==='new'?'backTask':'goDetail'}" style="text-align:left">${q.kind==='new'?'Lihat checkpoint di tugas →':'Lihat detail objek yang diperbarui →'}</button>`:''}
+        </div>`).join(''):`<span class="sub">Belum ada pengajuan. Isi formulir lalu tekan Simpan &amp; ajukan verifikasi.</span>`}
+      </div>
+    </div>
+  </div>
+  <p class="disclaim">Navigasi: Peta → Detail → Sisir jalan → Update → Persetujuan → Peta diperbarui. Petugas tidak dapat menyetujui pengajuannya sendiri.</p>`;
+}
+
+/* ---------------- router & chrome ---------------- */
+const PAGES=[['peta','Peta & Potensi'],['detail','Detail Objek'],['sisir','Sisir Jalan'],['update','Update Data']];
+const VIEWS={peta:vPeta,detail:vDetail,sisir:vSisir,update:vUpdate};
+function crumbs(){
+  const parts=[`<span class="logo">PAD360</span>`];
+  const add=(h,act)=>parts.push(`<span class="sep">/</span>`+(act?`<button data-act="${act}">${h}</button>`:`<span class="cur">${h}</span>`));
+  if(S.page==='peta'){
+    if(S.level==='nasional')add('Peta &amp; Potensi');
+    else{add('Peta &amp; Potensi','toNas');const p=PROV.find(x=>x.id===S.prov);
+      if(S.level==='provinsi')add(p.name);else{add(p.name,'toProv');add(KOTA.find(k=>k.id===S.kota).name);}}
+  }else if(S.page==='detail'){add('Detail');add(S.obj.id);}
+  else if(S.page==='sisir'){add('Sisir Jalan');add('Tugas '+(curTask()?curTask().id:'baru'));}
+  else add('Aplikasi Lapangan');
+  document.getElementById('crumbs').innerHTML=parts.join('');
+}
+function tabs(){
+  const wait=S.queue.filter(q=>q.st==='wait').length;
+  document.getElementById('tabs').innerHTML=PAGES.map((p,i)=>`<a href="#${p[0]}" ${S.page===p[0]?'aria-current="page"':''}><span class="n">${i+1}</span>${p[1]}${p[0]==='update'&&wait?`<span class="badge">${wait}</span>`:''}</a>`).join('');
+}
+const view=document.getElementById('view');
+function render(keep){
+  let fid=null,pos=null;if(keep){const a=document.activeElement;if(a&&a.id){fid=a.id;try{pos=a.selectionStart}catch(e){}}}
+  view.innerHTML=VIEWS[S.page]();crumbs();tabs();
+  if(fid){const el=document.getElementById(fid);if(el){el.focus();try{if(pos!=null)el.setSelectionRange(pos,pos)}catch(e){}}}
+}
+function go(p){S.page=VIEWS[p]?p:'peta';render();window.scrollTo(0,0);}
+function nav(p){if(location.hash==='#'+p)go(p);else location.hash=p;}
+window.addEventListener('hashchange',()=>go((location.hash||'').slice(1)));
+
+function newTask(k){
+  const id='SRV-0'+(17+Object.keys(S.tasks).length);
+  S.tasks[k]={id,corr:k,cps:[0,1,2,3,4].map(i=>({n:String(i+1).padStart(2,'0'),label:i===0?'Mulai / bukti kunjungan':'Belum diperiksa',done:false,find:[],note:''}))};
+  return id;
+}
+function startForm(mode){
+  const o=S.obj;
+  S.form=mode==='new'?{mode:'new',photo:false,gps:false,w:0,h:0,owner:'',izin:'Belum diverifikasi',reason:'',cat:'rek',name:'',cp:curTask().cps[S.cpSel].n,corr:S.corr,cpi:S.cpSel}
+    :{mode:'update',photo:false,gps:false,w:o.w,h:o.h,owner:o.owner,izin:o.izinUsaha,reason:'',cat:'rek',name:'',cp:null};
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');if(!t)return;const a=t.dataset.act,k=t.dataset.k;
+  switch(a){
+    case 'prov':S.prov=k;S.level='provinsi';S.kota=null;render();window.scrollTo(0,0);break;
+    case 'kota':S.kota=k;S.level='kota';render();window.scrollTo(0,0);break;
+    case 'toNas':S.level='nasional';S.prov=null;S.kota=null;if(S.page!=='peta')nav('peta');else render();break;
+    case 'toProv':S.level='provinsi';S.kota=null;render();break;
+    case 'noData':toast(k+': data belum tersedia. Rincian muncul setelah data daerah diimpor.');break;
+    case 'layer':S.layer=k;render();break;
+    case 'corr':S.corr=k;render();break;
+    case 'makeTask':{if(!S.tasks[S.corr]){const id=newTask(S.corr);toast('Tugas '+id+' dibuat untuk '+CORR[S.corr].name);}S.cpSel=0;nav('sisir');break;}
+    case 'taskSel':S.corr=k;S.cpSel=0;render();break;
+    case 'cp':S.cpSel=+k;render();break;
+    case 'cpPhoto':{const c=curTask().cps[S.cpSel];c.done=true;c.label=c.n==='01'?'Mulai / bukti kunjungan':'Tidak ada objek';c.note='Foto ruas diambil; tidak ditemukan objek.';toast('Checkpoint '+c.n+' ditandai diperiksa');const nx=curTask().cps.findIndex(x=>!x.done);if(nx>=0)S.cpSel=nx;render();break;}
+    case 'addObj':startForm('new');nav('update');break;
+    case 'goDetail':nav('detail');break;
+    case 'backMap':S.level='kota';S.prov='jabar';S.kota='bdg';S.corr='A';nav('peta');break;
+    case 'backTask':S.corr=t.dataset.corr||S.form.corr||S.corr;nav('sisir');break;
+    case 'toUpdate':startForm('update');nav('update');break;
+    case 'request':S.obj.requested=true;S.obj.stage=Math.max(S.obj.stage,3);S.obj.hist.unshift(['06 Okt 2026','Pemeriksaan objek diajukan ke verifier','Admin daerah / analis']);toast('Pemeriksaan '+S.obj.id+' diajukan');render();break;
+    case 'fPhoto':S.form.photo=true;render();break;
+    case 'fGps':S.form.gps=true;render();break;
+    case 'beVerifier':S.role='verifier';document.getElementById('role').value='verifier';toast('Peran diganti ke Verifier / supervisor');render();break;
+    case 'sync':S.sync.forEach(q=>S.queue.unshift(q));toast(S.sync.length+' draf tersinkron dan masuk antrean verifier');S.sync=[];render();break;
+    case 'approve':{const q=S.queue.find(x=>x.id===k);q.st='ok';
+      if(q.kind==='update'){Object.assign(S.obj,q.apply);S.obj.stage=Math.max(S.obj.stage,4);S.obj.hist.unshift(['06 Okt 2026','Perubahan '+q.id+' disetujui: '+q.summary,'Verifier · masuk basis data aktif']);startForm('update');}
+      else{const task=S.tasks[q.corr];const c=task.cps[q.cpi];c.done=true;c.label=q.catLabel;c.find.push({id:q.objId,t:q.title,s:'Kandidat tervalidasi'});c.note='Objek baru disetujui verifier.';PROV[0].poi++;KOTA[0].poi++;}
+      toast(q.id+' disetujui · peta diperbarui');render();break;}
+    case 'reject':{const q=S.queue.find(x=>x.id===k);q.st='no';toast(q.id+' dikembalikan ke petugas untuk dilengkapi');render();break;}
+    case 'toast':toast(t.dataset.msg);break;
+  }
+});
+function setPath(path,val){const [o,key]=path.split('.');if(o==='f')S.form[key]=val;}
+document.addEventListener('change',e=>{
+  const c=e.target.dataset.ch;if(!c)return;const v=e.target.value;
+  if(c==='prov'){if(v){S.prov=v;S.level='provinsi';}else{S.prov=null;S.level='nasional';}S.kota=null;render();}
+  else if(c==='kota'){if(v){S.kota=v;S.level='kota';}else{S.kota=null;S.level='provinsi';}render();}
+  else if(c==='offline'){S.offline=e.target.checked;toast(S.offline?'Jaringan terputus: pengajuan disimpan sebagai draf lokal':'Jaringan tersambung kembali');render();}
+  else if(c.startsWith('f.')){setPath(c,v);render(true);}
+  else{S[c]=v;render(true);}
+});
+document.addEventListener('input',e=>{
+  const p=e.target.dataset.in;if(!p)return;let v=e.target.value;if(p==='f.w'||p==='f.h')v=parseFloat(v)||0;setPath(p,v);render(true);
+});
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='upForm')return;e.preventDefault();
+  if(!checks().every(c=>c[1]))return;
+  const f=S.form,o=S.obj,id='UPD-'+String(S.seq++).padStart(3,'0');
+  let q;
+  if(f.mode==='update'){
+    q={id,kind:'update',title:'Update '+o.id,st:'wait',reason:f.reason,
+      diff:[['Ukuran',o.w+' × '+o.h+' m',f.w+' × '+f.h+' m'],['Pemilik',o.owner,f.owner],['Izin usaha',o.izinUsaha,f.izin]],
+      apply:{w:f.w,h:f.h,owner:f.owner,izinUsaha:f.izin},summary:'ukuran '+f.w+' × '+f.h+' m'};
+  }else{
+    const cat=CATS.find(c=>c[0]===f.cat);
+    q={id,kind:'new',title:'Objek baru · '+f.name,st:'wait',reason:f.reason,corr:f.corr,cpi:f.cpi,objId:'KND-'+f.cat.toUpperCase()+'-0'+(10+S.seq),catLabel:cat[1].split(' /')[0],
+      diff:[['Kategori','—',cat[1]],['Ukuran','—',f.w+' × '+f.h+' m'],['Izin','—',f.izin]]};
+  }
+  if(S.offline){S.sync.push(q);toast(id+' disimpan ke antrean offline');}
+  else{S.queue.unshift(q);toast(id+' diajukan ke verifier');}
+  startForm(f.mode==='new'?'update':'update');
+  render();
+});
+document.getElementById('role').addEventListener('change',e=>{S.role=e.target.value;toast('Peran: '+e.target.selectedOptions[0].textContent);render();});
+
+go((location.hash||'').slice(1)||'peta');
+})();
+</script>
+
+</body></html>

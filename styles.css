@@ -405,3 +405,1084 @@ body,
     pointer-events: none !important;
     user-select: none !important;
 }
+
+/* ============================================================
+   Mode Switcher (Profil vs Potensi) in Top Header
+   ============================================================ */
+.mode-switcher {
+    display: flex;
+    background: rgba(0, 0, 0, 0.20);
+    border-radius: 99px;
+    padding: 3px;
+    gap: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s var(--ease);
+}
+
+.mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.90);
+    padding: 5px 12px;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all .15s var(--ease);
+}
+
+.mode-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.mode-btn.active {
+    background: #ffffff;
+    color: #0f766e;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+   Province & City Cluster Stick Pin (Model B)
+   ============================================================ */
+.potensi-cluster-wrapper {
+    background: transparent !important;
+    border: none !important;
+}
+
+.potensi-cluster-stick-pin {
+    position: relative;
+    width: 54px;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.cluster-stick-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0d9488 0%, #0369a1 100%);
+    border: 2px solid #ffffff;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.4), 0 2px 4px rgba(15, 23, 42, 0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    z-index: 3;
+    transition: all 0.2s var(--ease);
+}
+
+.cluster-stick-badge .poi-count {
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-family: var(--font-mono);
+}
+
+.cluster-stick-badge .poi-unit {
+    font-size: 6.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-top: 1px;
+}
+
+.cluster-stick-label {
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    color: #ffffff;
+    padding: 1.5px 6px;
+    border-radius: 99px;
+    box-shadow: 0 2px 5px rgba(15, 23, 42, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+    max-width: 58px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    z-index: 2;
+    margin-top: -3px;
+    transition: all 0.2s var(--ease);
+}
+
+.cluster-stick-stem {
+    width: 2.5px;
+    height: 12px;
+    background: linear-gradient(180deg, #0d9488 0%, #1e293b 100%);
+    border-radius: 2px;
+    z-index: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    margin-top: -1px;
+    transition: height 0.25s ease;
+}
+
+/* Staggered stem height variants for dense regions */
+.potensi-cluster-stick-pin.stem-mid {
+    height: 72px;
+}
+.potensi-cluster-stick-pin.stem-mid .cluster-stick-stem {
+    height: 20px;
+}
+
+.potensi-cluster-stick-pin.stem-tall {
+    height: 80px;
+}
+.potensi-cluster-stick-pin.stem-tall .cluster-stick-stem {
+    height: 28px;
+}
+
+.potensi-cluster-stick-pin.stem-extra-tall {
+    height: 88px;
+}
+.potensi-cluster-stick-pin.stem-extra-tall .cluster-stick-stem {
+    height: 36px;
+}
+
+.cluster-stick-ground {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Hover effects */
+.potensi-cluster-stick-pin:hover {
+    transform: scale(1.15) translateY(-3px);
+    z-index: 9999 !important;
+}
+
+.potensi-cluster-stick-pin:hover .cluster-stick-badge {
+    box-shadow: 0 6px 18px rgba(13, 148, 136, 0.7);
+    border-color: #ffffff;
+}
+
+.potensi-cluster-stick-pin:hover .cluster-stick-label {
+    background: #0f172a;
+    border-color: #0d9488;
+    max-width: 90px;
+}
+
+.potensi-cluster-stick-pin:hover .ground-ring.ring-outer {
+    animation: groundPulse 1.2s infinite ease-out;
+}
+
+/* Variants for Island, City and Neighbor */
+.potensi-cluster-stick-pin.island-variant {
+    width: 70px;
+    height: 72px;
+}
+
+.potensi-cluster-stick-pin.island-variant .cluster-stick-badge {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #0d9488 0%, #0369a1 100%);
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 6px 16px rgba(13, 148, 136, 0.45), 0 2px 4px rgba(15, 23, 42, 0.2);
+}
+
+.potensi-cluster-stick-pin.island-variant .poi-count {
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.potensi-cluster-stick-pin.island-variant .cluster-stick-label {
+    font-size: 9.5px;
+    font-weight: 800;
+    max-width: 90px;
+    padding: 2px 8px;
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.potensi-cluster-stick-pin.island-variant:hover .cluster-stick-badge {
+    box-shadow: 0 8px 24px rgba(13, 148, 136, 0.75);
+}
+
+.potensi-cluster-stick-pin.city-variant .cluster-stick-badge {
+    background: linear-gradient(135deg, #0f766e 0%, #0284c7 100%);
+    width: 30px;
+    height: 30px;
+}
+
+.potensi-cluster-stick-pin.neighbor-variant .cluster-stick-badge {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    width: 28px;
+    height: 28px;
+    opacity: 0.9;
+}
+
+/* POI Stick Pin Marker (Model B: Lollipop Stick with Ground Ring) */
+.potensi-pin-wrapper {
+    background: transparent !important;
+    border: none !important;
+}
+
+.potensi-stick-pin {
+    position: relative;
+    width: 40px;
+    height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.stick-pin-head {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid var(--pin-color, #0d9488);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22), 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.stick-pin-badge {
+    font-size: 9px;
+    font-weight: 800;
+    color: #ffffff;
+    background: var(--pin-color, #0d9488);
+    padding: 2px 5px;
+    border-radius: 99px;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    font-family: var(--font-sans);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.stick-pin-stem {
+    width: 3px;
+    height: 14px;
+    background: linear-gradient(180deg, var(--pin-color, #0d9488) 0%, #1e293b 100%);
+    border-radius: 2px;
+    z-index: 1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    margin-top: -1px;
+    transition: height 0.25s ease, transform 0.25s ease, background 0.25s ease;
+}
+
+.stick-pin-ground {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.ground-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1.5px solid var(--pin-color, #0d9488);
+    opacity: 0.85;
+    transform: rotateX(65deg);
+    box-sizing: border-box;
+}
+
+.ground-ring.ring-outer {
+    width: 28px;
+    height: 28px;
+    border-color: rgba(30, 41, 59, 0.45);
+    background: rgba(15, 23, 42, 0.04);
+}
+
+.ground-ring.ring-inner {
+    width: 15px;
+    height: 15px;
+    border-color: var(--pin-color, #0d9488);
+    background: rgba(13, 148, 136, 0.18);
+}
+
+.ground-center-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #0f172a;
+    position: absolute;
+    bottom: 5px;
+    box-shadow: 0 0 3px rgba(0,0,0,0.6);
+}
+
+/* Hover & Selected States */
+.potensi-stick-pin:hover .stick-pin-head {
+    transform: translateY(-4px) scale(1.12);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
+}
+
+.potensi-stick-pin:hover .stick-pin-stem {
+    height: 18px;
+    transform: translateY(-4px);
+}
+
+.potensi-stick-pin:hover .ground-ring.ring-outer {
+    animation: groundPulse 1.2s infinite ease-out;
+}
+
+.potensi-stick-pin.selected .stick-pin-head {
+    transform: translateY(-6px) scale(1.18);
+    box-shadow: 0 0 0 3px #ffffff, 0 8px 22px rgba(207, 30, 46, 0.5);
+    border-color: #cf1e2e;
+}
+
+.potensi-stick-pin.selected .stick-pin-stem {
+    height: 20px;
+    transform: translateY(-6px);
+    background: linear-gradient(180deg, #cf1e2e 0%, #0f172a 100%);
+}
+
+.potensi-stick-pin.selected .ground-ring.ring-outer {
+    border-color: #cf1e2e;
+    animation: groundPulse 1s infinite ease-out;
+}
+
+@keyframes groundPulse {
+    0% {
+        transform: rotateX(65deg) scale(0.85);
+        opacity: 0.9;
+    }
+    50% {
+        transform: rotateX(65deg) scale(1.25);
+        opacity: 0.4;
+    }
+    100% {
+        transform: rotateX(65deg) scale(1.4);
+        opacity: 0;
+    }
+}
+
+.cat-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-right: 2px;
+}
+
+/* Checkpoint Marker */
+.potensi-cp-wrapper {
+    background: transparent !important;
+    border: none !important;
+}
+
+.potensi-cp-marker {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: transform 0.18s;
+}
+
+.potensi-cp-marker:hover {
+    transform: scale(1.2);
+}
+
+.potensi-cp-marker.done {
+    background: #0d9488;
+}
+
+.potensi-cp-marker.pending {
+    background: #d97706;
+}
+
+/* ============================================================
+   Potensi Sidebar Components
+   ============================================================ */
+.potensi-scope-section {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0 !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.potensi-scope-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--cream-50);
+    padding: 6px 10px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.scope-crumb {
+    background: none;
+    border: none;
+    color: var(--merah);
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.scope-crumb.active {
+    color: var(--text-hi);
+    text-decoration: none;
+    cursor: default;
+}
+
+.crumb-sep {
+    color: var(--text-low);
+}
+
+.potensi-select-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.potensi-select-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-mid);
+}
+
+.potensi-select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line-strong);
+    background: var(--cream-50);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-hi);
+    cursor: pointer;
+}
+
+.potensi-kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.pot-kpi-card {
+    background: var(--cream-50);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-s);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pot-kpi-card.wide {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, var(--sky-bg), var(--merah-bg));
+    border-color: rgba(13, 148, 136, 0.25);
+}
+
+.pot-kpi-val {
+    font-size: 20px;
+    font-weight: 800;
+    font-family: var(--font-mono) !important;
+    line-height: 1.1;
+}
+
+.pot-kpi-lbl {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-hi);
+}
+
+.pot-kpi-sub {
+    font-size: 10px;
+    color: var(--text-mid);
+    margin-top: 2px;
+}
+
+.potensi-cat-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.pot-cat-pill {
+    padding: 5px 9px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    background: var(--cream-50);
+    color: var(--text-mid);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+}
+
+.pot-cat-pill:hover,
+.pot-cat-pill.active {
+    background: var(--merah);
+    border-color: var(--merah);
+    color: #ffffff;
+}
+
+.pot-cat-pill.active .cat-dot {
+    background: #ffffff !important;
+}
+
+.potensi-corridor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pot-corr-card {
+    background: var(--cream-50);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-s);
+    padding: 9px 11px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.pot-corr-card:hover,
+.pot-corr-card.active {
+    border-color: var(--merah);
+    background: var(--merah-bg);
+}
+
+.corr-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.corr-header b {
+    font-size: 12.5px;
+    color: var(--text-hi);
+}
+
+.corr-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--merah-light);
+    color: var(--merah-dark);
+}
+
+.corr-lead {
+    font-size: 11px;
+    color: var(--text-mid);
+}
+
+.corr-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    color: var(--text-low);
+    margin-top: 2px;
+}
+
+.corr-progress {
+    font-weight: 700;
+    color: var(--merah);
+}
+
+/* ============================================================
+   Detail Objek Mockup & Inspeksi PAD360
+   ============================================================ */
+.potensi-obj-photo {
+    border-radius: var(--radius-s);
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    aspect-ratio: 16 / 9;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--line);
+}
+
+.board-mockup {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    padding: 14px 20px;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+    text-align: center;
+}
+
+.board-mockup span {
+    font-size: 14px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: .03em;
+}
+
+.photo-caption {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    right: 10px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.75);
+    text-align: center;
+}
+
+.potensi-spec-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-s);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.spec-row span {
+    color: var(--text-mid);
+}
+
+.spec-row b {
+    color: var(--text-hi);
+    text-align: right;
+}
+
+.potensi-stepper {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.step-item {
+    background: var(--cream-50);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.step-item.done {
+    background: #f0fdfa;
+    border-color: #99f6e4;
+}
+
+.step-item.done .step-num {
+    color: #0d9488;
+}
+
+.step-item.now {
+    border-color: #d97706;
+    background: #fffbeb;
+}
+
+.step-item.now .step-num {
+    color: #d97706;
+}
+
+.step-num {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-low);
+}
+
+.step-lbl {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--text-hi);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.potensi-related-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.rel-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--cream-50);
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font-size: 11.5px;
+}
+
+.rel-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.rel-badge.teal { background: #ccfbf1; color: #0f766e; }
+.rel-badge.blue { background: #dbeafe; color: #1e40af; }
+.rel-badge.amber { background: #fef3c7; color: #b45309; }
+
+.potensi-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.tl-row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 8px;
+    font-size: 11.5px;
+}
+
+.tl-date {
+    font-size: 10px;
+    color: var(--text-low);
+    font-weight: 600;
+}
+
+.tl-body b {
+    display: block;
+    color: var(--text-hi);
+    line-height: 1.25;
+}
+
+.tl-body small {
+    font-size: 10px;
+    color: var(--text-mid);
+}
+
+/* ============================================================
+   Potensi Search Box & Auto-Complete
+   ============================================================ */
+.potensi-search-box {
+    position: relative;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.potensi-search-input-wrap {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    padding: 7px 10px;
+    gap: 8px;
+    transition: all 0.2s var(--ease);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.potensi-search-input-wrap:focus-within {
+    border-color: #0d9488;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
+.potensi-search-input-wrap svg.search-icon {
+    width: 15px;
+    height: 15px;
+    color: var(--text-low);
+    flex-shrink: 0;
+}
+
+.potensi-search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-hi);
+}
+
+.potensi-search-input::placeholder {
+    color: var(--text-low);
+    font-size: 11.5px;
+}
+
+.potensi-search-clear {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--text-low);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.15s var(--ease);
+}
+
+.potensi-search-clear:hover {
+    background: var(--cream-200);
+    color: var(--text-hi);
+}
+
+.potensi-search-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 960;
+    background: #ffffff;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-panel);
+    max-height: 250px;
+    overflow-y: auto;
+    display: none;
+    flex-direction: column;
+    padding: 4px;
+}
+
+.potensi-search-results.open {
+    display: flex;
+}
+
+.potensi-search-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s var(--ease);
+    text-align: left;
+    background: transparent;
+    border: none;
+    width: 100%;
+    font-family: inherit;
+}
+
+.potensi-search-item:hover,
+.potensi-search-item:focus {
+    background: #f0fdfa;
+    outline: none;
+}
+
+.pot-search-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.pot-search-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-hi);
+}
+
+.pot-search-prov {
+    font-size: 10.5px;
+    color: var(--text-mid);
+}
+
+.pot-search-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 99px;
+    background: #ccfbf1;
+    color: #0f766e;
+    white-space: nowrap;
+}
+
+.pot-search-empty {
+    padding: 14px 10px;
+    font-size: 11.5px;
+    color: var(--text-mid);
+    text-align: center;
+}
+
+/* ============================================================
+   Potensi Object Update Modal Styles
+   ============================================================ */
+.potensi-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s var(--ease);
+}
+
+.potensi-modal-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.potensi-modal-dialog {
+    background: #ffffff;
+    border-radius: var(--radius-m);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(12px) scale(0.98);
+    transition: transform 0.22s var(--ease);
+}
+
+.potensi-modal-backdrop.open .potensi-modal-dialog {
+    transform: translateY(0) scale(1);
+}
+
+.potensi-modal-header {
+    padding: 16px 20px;
+    background: var(--cream-50);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.potensi-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-hi);
+}
+
+.potensi-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--text-mid);
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.potensi-modal-close:hover {
+    color: var(--merah);
+}
+
+.potensi-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.potensi-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.potensi-form-group label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-hi);
+}
+
+.potensi-form-control {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-s);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-hi);
+    background: #ffffff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.potensi-form-control:focus {
+    outline: none;
+    border-color: #0d9488;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
+.potensi-modal-footer {
+    padding: 14px 20px;
+    background: var(--cream-50);
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
