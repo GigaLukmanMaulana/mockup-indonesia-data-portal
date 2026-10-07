@@ -786,10 +786,10 @@
                             !curIsland && !curProv && !curCity
                                 ? `<span class="scope-crumb active">Nasional</span>`
                                 : curIsland && !curProv && !curCity
-                                ? `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">/</span><span class="scope-crumb active">${curIsland.name}</span>`
+                                ? `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">›</span><span class="scope-crumb active">${curIsland.shortName || curIsland.name}</span>`
                                 : curProv && !curCity
-                                ? `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">/</span>${curIsland ? `<button type="button" class="scope-crumb" id="btnScopeIsland">${curIsland.shortName || curIsland.name}</button><span class="crumb-sep">/</span>` : ''}<span class="scope-crumb active">${curProv.name}</span>`
-                                : `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">/</span>${curIsland ? `<button type="button" class="scope-crumb" id="btnScopeIsland">${curIsland.shortName || curIsland.name}</button><span class="crumb-sep">/</span>` : ''}<button type="button" class="scope-crumb" id="btnScopeProv">${curProv ? curProv.name : 'Provinsi'}</button><span class="crumb-sep">/</span><span class="scope-crumb active">${curCity.name}</span>`
+                                ? `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">›</span><span class="scope-crumb active" title="${curProv.name}">${formatDisplayName(curProv.name)}</span>`
+                                : `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">›</span><button type="button" class="scope-crumb" id="btnScopeProv" title="${curProv ? curProv.name : 'Provinsi'}">${curProv ? formatDisplayName(curProv.name) : 'Provinsi'}</button><span class="crumb-sep">›</span><span class="scope-crumb active" title="${curCity.name}">${formatDisplayName(curCity.name)}</span>`
                         }
                     </div>
                 </div>
