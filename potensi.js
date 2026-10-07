@@ -1327,13 +1327,9 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons: Update Data & Request Inspection -->
-                <button type="button" class="btn btn-primary" id="btnOpenUpdateModal" style="width: 100%; margin-top: 14px; justify-content: center; background: #0f766e; border-color: #0f766e; font-weight: 700;">
+                <!-- Action Button: Update Data -->
+                <button type="button" class="btn btn-primary" id="btnOpenUpdateModal" style="width: 100%; margin-top: 16px; justify-content: center; background: #0f766e; border-color: #0f766e; font-weight: 700;">
                     Update Data Objek (Pajak & Izin)
-                </button>
-
-                <button type="button" class="btn" id="btnRequestInspection" style="width: 100%; margin-top: 8px; justify-content: center; font-size: 12px; background: var(--surface); border: 1px solid var(--line); color: var(--text-mid);">
-                    ${obj.requested ? 'Pemeriksaan Lapangan Sedang Diproses' : 'Ajukan Verifikasi Lapangan'}
                 </button>
             `;
 
@@ -1341,13 +1337,6 @@
 
             document.getElementById('btnOpenUpdateModal')?.addEventListener('click', () => {
                 this.openUpdateModal(obj);
-            });
-
-            document.getElementById('btnRequestInspection')?.addEventListener('click', (e) => {
-                obj.requested = true;
-                e.target.textContent = 'Pemeriksaan Lapangan Berhasil Diajukan';
-                e.target.style.color = '#059669';
-                e.target.style.borderColor = '#059669';
             });
         }
 
