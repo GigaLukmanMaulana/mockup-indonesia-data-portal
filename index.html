@@ -50,8 +50,8 @@
         .brand-block {
             display: flex;
             align-items: center;
-            gap: 12px;
-            min-width: 260px;
+            gap: 10px;
+            min-width: auto;
         }
 
         .brand-logo {
@@ -228,15 +228,20 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-shrink: 0;
         }
 
         .view-switcher {
             display: flex;
+            align-items: center;
             background: rgba(0, 0, 0, 0.15);
             border-radius: 99px;
             padding: 3px;
             gap: 2px;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+            height: 34px;
+            box-sizing: border-box;
         }
 
         .view-btn {
@@ -249,9 +254,12 @@
             font-size: 12px;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.90);
-            padding: 5px 13px;
+            padding: 5px 12px;
             border-radius: 99px;
             cursor: pointer;
+            white-space: nowrap !important;
+            line-height: 1 !important;
+            flex-shrink: 0;
             transition: all .15s var(--ease);
         }
 
@@ -1455,13 +1463,6 @@
                         <line x1="9" y1="3" x2="9" y2="21"></line>
                     </svg>
                 </button>
-                <div class="brand-logo">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-                        <line x1="8" y1="2" x2="8" y2="18"></line>
-                        <line x1="16" y1="6" x2="16" y2="22"></line>
-                    </svg>
-                </div>
                 <div class="brand-text">
                     <h1>Portal Data Indonesia</h1>
                     <p id="headerSubtitle">Basis Data 514 Kabupaten &amp; Kota di 38 Provinsi</p>
@@ -1489,7 +1490,7 @@
                             <circle cx="11" cy="11" r="7" />
                             <line x1="21" y1="21" x2="16.2" y2="16.2" />
                         </svg>
-                        <input id="potensiSearchInput" type="text" placeholder="Cari kota / kabupaten / provinsi…" autocomplete="off" aria-label="Cari wilayah potensi">
+                        <input id="potensiSearchInput" type="text" placeholder="Cari kota / provinsi…" autocomplete="off" aria-label="Cari wilayah potensi">
                         <button type="button" class="clear-btn" id="potensiSearchClear" style="display: none;" aria-label="Bersihkan pencarian">✕</button>
                     </div>
                     <div class="potensi-search-dropdown" id="potensiSearchResults"></div>
@@ -1498,13 +1499,13 @@
                     <div class="header-filter-group">
                         <label for="potensiProvSelect" class="header-filter-label">Provinsi</label>
                         <select id="potensiProvSelect" class="header-filter-select" aria-label="Pilih Provinsi">
-                            <option value="">-- Pilih Provinsi (38 Provinsi) --</option>
+                            <option value="">Semua Provinsi (38)</option>
                         </select>
                     </div>
                     <div class="header-filter-group">
                         <label for="potensiCitySelect" class="header-filter-label">Kab/Kota</label>
                         <select id="potensiCitySelect" class="header-filter-select" disabled aria-label="Pilih Kabupaten / Kota">
-                            <option value="">-- Pilih Provinsi Terlebih Dahulu --</option>
+                            <option value="">Pilih Provinsi Dulu</option>
                         </select>
                     </div>
                 </div>

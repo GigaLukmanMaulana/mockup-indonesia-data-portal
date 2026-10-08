@@ -209,25 +209,25 @@
             const curCity = this.state.selectedCity;
             const citiesInProv = curProv ? (data.cities || []).filter((c) => c.provId === curProv.id) : [];
 
-            // Update Province options (exact match with previous sidebar options)
+            // Update Province options
             provSelect.innerHTML = `
-                <option value="" ${!curProv ? 'selected' : ''}>-- Pilih Provinsi (${provs.length} Provinsi) --</option>
+                <option value="" ${!curProv ? 'selected' : ''}>Semua Provinsi (${provs.length})</option>
                 ${provs.map((p) => `<option value="${p.id}" ${curProv && p.id === curProv.id ? 'selected' : ''}>${p.name}</option>`).join('')}
             `;
 
-            // Update City options (exact match with previous sidebar options)
+            // Update City options
             if (!curProv) {
                 citySelect.disabled = true;
                 citySelect.style.opacity = '0.65';
                 citySelect.style.cursor = 'not-allowed';
-                citySelect.innerHTML = `<option value="" selected>-- Pilih Provinsi Terlebih Dahulu --</option>`;
+                citySelect.innerHTML = `<option value="" selected>Pilih Provinsi Dulu</option>`;
             } else {
                 citySelect.disabled = false;
                 citySelect.style.opacity = '1';
                 citySelect.style.cursor = 'pointer';
                 citySelect.innerHTML = `
-                    <option value="" ${!curCity ? 'selected' : ''}>-- Pilih Kabupaten / Kota (${citiesInProv.length} Daerah) --</option>
-                    ${citiesInProv.map((c) => `<option value="${c.id}" ${curCity && c.id === curCity.id ? 'selected' : ''}>${c.name} (${c.poi} POI)</option>`).join('')}
+                    <option value="" ${!curCity ? 'selected' : ''}>Semua Kab/Kota (${citiesInProv.length})</option>
+                    ${citiesInProv.map((c) => `<option value="${c.id}" ${curCity && c.id === curCity.id ? 'selected' : ''}>${c.name}</option>`).join('')}
                 `;
             }
         }

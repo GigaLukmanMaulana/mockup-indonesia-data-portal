@@ -411,12 +411,16 @@ body,
    ============================================================ */
 .mode-switcher {
     display: flex;
+    align-items: center;
     background: rgba(0, 0, 0, 0.20);
     border-radius: 99px;
     padding: 3px;
     gap: 2px;
     border: 1px solid rgba(255, 255, 255, 0.25);
     backdrop-filter: blur(8px);
+    flex-shrink: 0;
+    height: 34px;
+    box-sizing: border-box;
     transition: all 0.2s var(--ease);
 }
 
@@ -433,6 +437,9 @@ body,
     padding: 5px 12px;
     border-radius: 99px;
     cursor: pointer;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+    flex-shrink: 0;
     transition: all .15s var(--ease);
 }
 
@@ -456,13 +463,28 @@ body,
     align-items: center;
     gap: 10px;
     flex: 1;
-    max-width: 720px;
+    min-width: 0;
 }
 
 .potensi-header-search {
-    flex: 1;
-    min-width: 200px;
+    flex: 1 1 200px;
+    min-width: 150px;
+    max-width: 300px;
     position: relative;
+}
+
+.potensi-header-search .search-box {
+    padding: 4px 10px;
+    height: 34px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.potensi-header-search .search-box input {
+    font-size: 12.5px;
+    min-width: 0;
+    width: 100%;
+    text-overflow: ellipsis;
 }
 
 .potensi-search-dropdown {
@@ -546,15 +568,19 @@ body,
     background: rgba(0, 0, 0, 0.18);
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 99px;
-    padding: 3px 10px;
+    padding: 2px 8px;
+    height: 34px;
+    box-sizing: border-box;
     backdrop-filter: blur(10px);
+    flex-shrink: 0;
     transition: all 0.2s var(--ease);
 }
 
 .header-filter-group {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
+    flex-shrink: 0;
 }
 
 .header-filter-label {
@@ -571,12 +597,14 @@ body,
     border-radius: 99px;
     color: #ffffff;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
-    padding: 4px 10px;
+    padding: 2px 8px;
+    height: 28px;
+    box-sizing: border-box;
     outline: none;
     cursor: pointer;
-    max-width: 175px;
+    max-width: 170px;
     text-overflow: ellipsis;
     transition: all 0.18s var(--ease);
 }
