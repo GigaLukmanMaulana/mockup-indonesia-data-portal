@@ -1468,8 +1468,8 @@
                 </div>
             </div>
 
-            <!-- Useful Quick Search Bar -->
-            <div class="header-search">
+            <!-- Useful Quick Search Bar (Profil Mode) -->
+            <div class="header-search" id="profilHeaderSearch">
                 <div class="search-box">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                         <circle cx="11" cy="11" r="7" />
@@ -1481,8 +1481,38 @@
                 <div class="search-dropdown" id="searchResults" hidden></div>
             </div>
 
+            <!-- Top Potensi Controls: Search + Provinsi + Kab/Kota (Peta Potensi Mode) -->
+            <div class="header-potensi-wrap" id="potensiHeaderWrap" style="display: none;">
+                <div class="potensi-header-search">
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="11" cy="11" r="7" />
+                            <line x1="21" y1="21" x2="16.2" y2="16.2" />
+                        </svg>
+                        <input id="potensiSearchInput" type="text" placeholder="Cari kota / kabupaten / provinsi…" autocomplete="off" aria-label="Cari wilayah potensi">
+                        <button type="button" class="clear-btn" id="potensiSearchClear" style="display: none;" aria-label="Bersihkan pencarian">✕</button>
+                    </div>
+                    <div class="potensi-search-dropdown" id="potensiSearchResults"></div>
+                </div>
+                <div class="header-filters" id="headerFilters">
+                    <div class="header-filter-group">
+                        <label for="potensiProvSelect" class="header-filter-label">Provinsi</label>
+                        <select id="potensiProvSelect" class="header-filter-select" aria-label="Pilih Provinsi">
+                            <option value="">-- Pilih Provinsi (38 Provinsi) --</option>
+                        </select>
+                    </div>
+                    <div class="header-filter-group">
+                        <label for="potensiCitySelect" class="header-filter-label">Kab/Kota</label>
+                        <select id="potensiCitySelect" class="header-filter-select" disabled aria-label="Pilih Kabupaten / Kota">
+                            <option value="">-- Pilih Provinsi Terlebih Dahulu --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- View Switcher & Actions -->
             <div class="header-actions">
+
                 <!-- Mode Switcher: Profil Daerah vs Peta Potensi (Auto-hide on Table View) -->
                 <div class="mode-switcher" id="modeSwitcherWrap">
                     <button type="button" class="mode-btn active" id="btnModeProfil" title="Mode Profil Statistik Daerah">

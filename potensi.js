@@ -147,9 +147,12 @@
         init(map) {
             this.map = map;
             window.PotensiCtrl = this;
-            this.loadData();
+            this.loadData().then(() => {
+                this.renderHeaderFilters();
+            });
             this.setupUI();
             this.bindEvents();
+            this.renderHeaderFilters();
         }
 
         getData() {
@@ -165,6 +168,7 @@
                 if (res.ok) {
                     this.data = await res.json();
                     window.PotensiData = this.data;
+                    this.renderHeaderFilters();
                     if (this.active) {
                         this.renderSidebar();
                         this.renderMapLayers();
@@ -179,7 +183,13 @@
             this.btnModeProfil = document.getElementById('btnModeProfil');
             this.btnModePotensi = document.getElementById('btnModePotensi');
             this.modeSwitcherWrap = document.getElementById('modeSwitcherWrap');
-            this.headerSearch = document.querySelector('.header-search');
+            this.profilHeaderSearch = document.getElementById('profilHeaderSearch');
+            this.potensiHeaderWrap = document.getElementById('potensiHeaderWrap');
+            this.headerProvSelect = document.getElementById('potensiProvSelect');
+            this.headerCitySelect = document.getElementById('potensiCitySelect');
+            this.potensiSearchInput = document.getElementById('potensiSearchInput');
+            this.potensiSearchClear = document.getElementById('potensiSearchClear');
+            this.potensiSearchResults = document.getElementById('potensiSearchResults');
             this.sidebarProfileView = document.getElementById('sidebarProfileView');
             this.sidebarPotensiView = document.getElementById('sidebarPotensiView');
             this.mapContextStrip = document.getElementById('mapContextStrip');
@@ -188,9 +198,135 @@
             this.mapLegend = document.getElementById('mapLegend');
         }
 
+        renderHeaderFilters() {
+            const provSelect = this.headerProvSelect || document.getElementById('potensiProvSelect');
+            const citySelect = this.headerCitySelect || document.getElementById('potensiCitySelect');
+            if (!provSelect || !citySelect) return;
+
+            const data = this.getData();
+            const provs = data.provinces || [];
+            const curProv = this.state.selectedProv;
+            const curCity = this.state.selectedCity;
+            const citiesInProv = curProv ? (data.cities || []).filter((c) => c.provId === curProv.id) : [];
+
+            // Update Province options (exact match with previous sidebar options)
+            provSelect.innerHTML = `
+                <option value="" ${!curProv ? 'selected' : ''}>-- Pilih Provinsi (${provs.length} Provinsi) --</option>
+                ${provs.map((p) => `<option value="${p.id}" ${curProv && p.id === curProv.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+            `;
+
+            // Update City options (exact match with previous sidebar options)
+            if (!curProv) {
+                citySelect.disabled = true;
+                citySelect.style.opacity = '0.65';
+                citySelect.style.cursor = 'not-allowed';
+                citySelect.innerHTML = `<option value="" selected>-- Pilih Provinsi Terlebih Dahulu --</option>`;
+            } else {
+                citySelect.disabled = false;
+                citySelect.style.opacity = '1';
+                citySelect.style.cursor = 'pointer';
+                citySelect.innerHTML = `
+                    <option value="" ${!curCity ? 'selected' : ''}>-- Pilih Kabupaten / Kota (${citiesInProv.length} Daerah) --</option>
+                    ${citiesInProv.map((c) => `<option value="${c.id}" ${curCity && c.id === curCity.id ? 'selected' : ''}>${c.name} (${c.poi} POI)</option>`).join('')}
+                `;
+            }
+        }
+
+        setupHeaderSearch() {
+            const searchInput = this.potensiSearchInput || document.getElementById('potensiSearchInput');
+            const searchClear = this.potensiSearchClear || document.getElementById('potensiSearchClear');
+            const searchResults = this.potensiSearchResults || document.getElementById('potensiSearchResults');
+            if (!searchInput || !searchResults) return;
+
+            const handleSearch = () => {
+                const data = this.getData();
+                const q = searchInput.value.trim().toLowerCase();
+                if (!q) {
+                    if (searchClear) searchClear.style.display = 'none';
+                    searchResults.innerHTML = '';
+                    searchResults.classList.remove('open');
+                    return;
+                }
+                if (searchClear) searchClear.style.display = 'flex';
+
+                // Search across all 514 cities & 38 provinces
+                const matchedCities = (data.cities || []).filter((c) => {
+                    const provName = ((data.provinces || []).find((p) => p.id === c.provId)?.name || '').toLowerCase();
+                    return c.name.toLowerCase().includes(q) || provName.includes(q) || c.id.toLowerCase().includes(q);
+                }).slice(0, 15);
+
+                if (!matchedCities.length) {
+                    searchResults.innerHTML = `<div class="pot-search-empty">Tidak ada wilayah yang cocok dengan "<b>${q}</b>"</div>`;
+                    searchResults.classList.add('open');
+                    return;
+                }
+
+                searchResults.innerHTML = matchedCities
+                    .map((c) => {
+                        const prov = (data.provinces || []).find((p) => p.id === c.provId);
+                        const provName = prov ? prov.name : '';
+                        return `
+                        <button type="button" class="potensi-search-item" data-city="${c.id}" data-prov="${c.provId}">
+                            <div class="pot-search-info">
+                                <span class="pot-search-name">${c.name}</span>
+                                <span class="pot-search-prov">${provName}</span>
+                            </div>
+                            <span class="pot-search-badge">${c.poi} POI</span>
+                        </button>
+                    `;
+                    })
+                    .join('');
+
+                searchResults.classList.add('open');
+
+                searchResults.querySelectorAll('.potensi-search-item').forEach((item) => {
+                    item.addEventListener('click', () => {
+                        const cId = item.dataset.city;
+                        searchInput.value = '';
+                        if (searchClear) searchClear.style.display = 'none';
+                        searchResults.innerHTML = '';
+                        searchResults.classList.remove('open');
+                        this.selectCity(cId, true);
+                    });
+                });
+            };
+
+            searchInput.addEventListener('input', handleSearch);
+            searchInput.addEventListener('focus', () => {
+                if (searchInput.value.trim()) handleSearch();
+            });
+
+            searchClear?.addEventListener('click', () => {
+                searchInput.value = '';
+                searchClear.style.display = 'none';
+                searchResults.innerHTML = '';
+                searchResults.classList.remove('open');
+                searchInput.focus();
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.potensi-header-search')) {
+                    searchResults.classList.remove('open');
+                }
+            });
+        }
+
         bindEvents() {
             this.btnModeProfil?.addEventListener('click', () => this.setMode('profil'));
             this.btnModePotensi?.addEventListener('click', () => this.setMode('potensi'));
+
+            // Top Header Filter Event Listeners
+            this.headerProvSelect?.addEventListener('change', (e) => {
+                const provId = e.target.value;
+                this.selectProvince(provId);
+            });
+
+            this.headerCitySelect?.addEventListener('change', (e) => {
+                const cityId = e.target.value;
+                this.selectCity(cityId);
+            });
+
+            this.setupHeaderSearch();
 
             // Listen to view switcher changes (table vs map)
             const btnViewTable = document.getElementById('btnViewTable');
@@ -198,11 +334,13 @@
 
             btnViewTable?.addEventListener('click', () => {
                 if (this.modeSwitcherWrap) this.modeSwitcherWrap.style.display = 'none';
+                if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = 'none';
                 if (this.active) this.clearLayersFromMap();
             });
 
             btnViewMap?.addEventListener('click', () => {
                 if (this.modeSwitcherWrap) this.modeSwitcherWrap.style.display = 'flex';
+                if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = this.active ? 'flex' : 'none';
                 if (this.active) this.renderMapLayers();
             });
         }
@@ -214,8 +352,9 @@
                 this.btnModePotensi?.classList.add('active');
                 this.btnModeProfil?.classList.remove('active');
 
-                // Hide top header search bar in Potensi mode (sidebar has dedicated search)
-                if (this.headerSearch) this.headerSearch.style.display = 'none';
+                // Show top header potensi controls (search + dropdowns) and hide generic profil search
+                if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = 'flex';
+                if (this.profilHeaderSearch) this.profilHeaderSearch.style.display = 'none';
 
                 // Switch sidebars
                 if (this.sidebarProfileView) this.sidebarProfileView.style.display = 'none';
@@ -241,8 +380,9 @@
                 this.btnModeProfil?.classList.add('active');
                 this.btnModePotensi?.classList.remove('active');
 
-                // Restore top header search bar in Profil mode
-                if (this.headerSearch) this.headerSearch.style.display = '';
+                // Hide top header potensi controls and restore generic profil search
+                if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = 'none';
+                if (this.profilHeaderSearch) this.profilHeaderSearch.style.display = '';
 
                 // Switch sidebars
                 if (this.sidebarPotensiView) this.sidebarPotensiView.style.display = 'none';
@@ -794,55 +934,7 @@
                     </div>
                 </div>
 
-                <!-- 2. Hierarki Wilayah Dropdown & Quick Search -->
-                <div class="sidebar-section">
-                    <div class="section-header">
-                        <span class="section-tag">Wilayah Eksplorasi Potensi</span>
-                    </div>
-
-                    <!-- Quick Search Box -->
-                    <div class="potensi-search-box">
-                        <div class="potensi-search-input-wrap">
-                            <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                            <input type="text" id="potensiSearchInput" class="potensi-search-input" placeholder="Cari kota / kabupaten / provinsi..." autocomplete="off">
-                            <button type="button" id="potensiSearchClear" class="potensi-search-clear" aria-label="Hapus pencarian">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
-                        </div>
-                        <div id="potensiSearchResults" class="potensi-search-results"></div>
-                    </div>
-
-                    <div class="potensi-select-grid">
-                        <label class="potensi-select-label">
-                            <span>Provinsi</span>
-                            <select id="potensiProvSelect" class="potensi-select">
-                                <option value="" ${!curProv ? 'selected' : ''}>-- Pilih Provinsi (${provs.length} Provinsi) --</option>
-                                ${provs.map((p) => `<option value="${p.id}" ${curProv && p.id === curProv.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </label>
-                        <label class="potensi-select-label">
-                            <span>Kabupaten / Kota</span>
-                            <select id="potensiCitySelect" class="potensi-select" ${!curProv ? 'disabled style="opacity: 0.65; cursor: not-allowed;"' : ''}>
-                                ${
-                                    !curProv
-                                        ? `<option value="" selected>-- Pilih Provinsi Terlebih Dahulu --</option>`
-                                        : `
-                                    <option value="" ${!curCity ? 'selected' : ''}>-- Pilih Kabupaten / Kota (${citiesInProv.length} Daerah) --</option>
-                                    ${citiesInProv.map((c) => `<option value="${c.id}" ${curCity && c.id === curCity.id ? 'selected' : ''}>${c.name} (${c.poi} POI)</option>`).join('')}
-                                `
-                                }
-                            </select>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 3. KPI Potensi Pajak (PAD360) -->
+                <!-- 2. KPI Potensi Pajak (PAD360) -->
                 <div class="sidebar-section">
                     <div class="section-header">
                         <span class="section-tag">${curCity ? `Indikasi Potensi: ${curCity.name}` : curProv ? `Indikasi Potensi: Provinsi ${curProv.name}` : curIsland ? `Indikasi Potensi: ${curIsland.name}` : `Indikasi Potensi: Nasional (38 Provinsi)`}</span>
@@ -1040,83 +1132,7 @@
                 }
             `;
 
-            // Attach listeners to dynamic elements
-            const searchInput = document.getElementById('potensiSearchInput');
-            const searchClear = document.getElementById('potensiSearchClear');
-            const searchResults = document.getElementById('potensiSearchResults');
-
-            if (searchInput && searchResults) {
-                const handleSearch = () => {
-                    const q = searchInput.value.trim().toLowerCase();
-                    if (!q) {
-                        if (searchClear) searchClear.style.display = 'none';
-                        searchResults.innerHTML = '';
-                        searchResults.classList.remove('open');
-                        return;
-                    }
-                    if (searchClear) searchClear.style.display = 'flex';
-
-                    // Search across all 514 cities & 38 provinces
-                    const matchedCities = data.cities.filter((c) => {
-                        const provName = (data.provinces.find((p) => p.id === c.provId)?.name || '').toLowerCase();
-                        return c.name.toLowerCase().includes(q) || provName.includes(q) || c.id.toLowerCase().includes(q);
-                    }).slice(0, 15);
-
-                    if (!matchedCities.length) {
-                        searchResults.innerHTML = `<div class="pot-search-empty">Tidak ada wilayah yang cocok dengan "<b>${q}</b>"</div>`;
-                        searchResults.classList.add('open');
-                        return;
-                    }
-
-                    searchResults.innerHTML = matchedCities
-                        .map((c) => {
-                            const prov = data.provinces.find((p) => p.id === c.provId);
-                            const provName = prov ? prov.name : '';
-                            return `
-                            <button type="button" class="potensi-search-item" data-city="${c.id}" data-prov="${c.provId}">
-                                <div class="pot-search-info">
-                                    <span class="pot-search-name">${c.name}</span>
-                                    <span class="pot-search-prov">${provName}</span>
-                                </div>
-                                <span class="pot-search-badge">${c.poi} POI</span>
-                            </button>
-                        `;
-                        })
-                        .join('');
-
-                    searchResults.classList.add('open');
-
-                    searchResults.querySelectorAll('.potensi-search-item').forEach((item) => {
-                        item.addEventListener('click', () => {
-                            const cId = item.dataset.city;
-                            searchInput.value = '';
-                            if (searchClear) searchClear.style.display = 'none';
-                            searchResults.innerHTML = '';
-                            searchResults.classList.remove('open');
-                            this.selectCity(cId, true);
-                        });
-                    });
-                };
-
-                searchInput.addEventListener('input', handleSearch);
-                searchInput.addEventListener('focus', () => {
-                    if (searchInput.value.trim()) handleSearch();
-                });
-
-                searchClear?.addEventListener('click', () => {
-                    searchInput.value = '';
-                    searchClear.style.display = 'none';
-                    searchResults.innerHTML = '';
-                    searchResults.classList.remove('open');
-                    searchInput.focus();
-                });
-
-                document.addEventListener('click', (e) => {
-                    if (!e.target.closest('.potensi-search-box')) {
-                        searchResults.classList.remove('open');
-                    }
-                });
-            }
+            this.renderHeaderFilters();
 
             document.getElementById('btnScopeNasional')?.addEventListener('click', () => {
                 this.selectIsland(null, true);
@@ -1128,14 +1144,6 @@
 
             document.getElementById('btnScopeProv')?.addEventListener('click', () => {
                 if (curProv) this.selectProvince(curProv.id, true);
-            });
-
-            document.getElementById('potensiProvSelect')?.addEventListener('change', (e) => {
-                this.selectProvince(e.target.value);
-            });
-
-            document.getElementById('potensiCitySelect')?.addEventListener('change', (e) => {
-                this.selectCity(e.target.value);
             });
 
             this.sidebarPotensiView.querySelectorAll('.pot-cat-pill').forEach((btn) => {
