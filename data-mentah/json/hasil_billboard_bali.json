@@ -1,0 +1,40 @@
+[
+  {
+    "id": "billboard_001",
+    "name": "Bali Billboard Advertising",
+    "category": "Biro Iklan",
+    "tag": "billboard",
+    "tagCode": "BLB",
+    "taxType": "Pajak Reklame Papan/Billboard",
+    "color": "#7c3aed",
+    "address": "Perum. Puri Kesambi No.11, Kerobokan, Kec. Kuta Utara, Kabupaten Badung, Bali 80361",
+    "street": "",
+    "phone": "0823-6959-6595",
+    "email": "",
+    "latitude": -8.6557848,
+    "longitude": 115.1734928,
+    "regency": "Kabupaten Badung",
+    "isBali": true,
+    "rawLat": "-8.6557848",
+    "rawLng": "115.1734928"
+  },
+  {
+    "id": "billboard_002",
+    "name": "Billboard Nusaka Dewi Sri",
+    "category": "Biro Iklan",
+    "tag": "billboard",
+    "tagCode": "BLB",
+    "taxType": "Pajak Reklame Papan/Billboard",
+    "color": "#7c3aed",
+    "address": "Jl. Dewi Sri No.101, Legian, Kec. Kuta, Kabupaten Badung, Bali 80361",
+    "street": "Jl. Dewi Sri",
+    "phone": "",
+    "email": "",
+    "latitude": -8.7002534,
+    "longitude": 115.1776315,
+    "regency": "Kabupaten Badung",
+    "isBali": true,
+    "rawLat": "-8.7002534",
+    "rawLng": "115.1776315"
+  }
+]

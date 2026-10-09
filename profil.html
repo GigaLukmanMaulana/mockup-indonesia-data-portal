@@ -254,10 +254,21 @@
   .miskin-card .mc-lbl{font-size:10.5px;color:var(--muted);margin-top:2px}
 
   /* konsumsi & pertanian grid */
-  .grp-grid, .sektor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin:14px 0 4px}
-  .grp-card, .sektor-card{border:1px solid var(--line);border-radius:8px;padding:11px 12px;background:var(--panel-2);text-align:left;position:relative;overflow:hidden}
-  .grp-card .gc-name, .sektor-card .sk-name{font-size:12px;font-weight:600;color:var(--text)}
-  .grp-card .gc-count, .sektor-card .sk-count{font-family:var(--mono);font-size:20px;font-weight:600;margin-top:6px}
+  .grp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin:14px 0 4px}
+  .sektor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin:14px 0 4px}
+  .grp-card, .sektor-card{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--panel-2);text-align:left;position:relative;overflow:hidden;transition:all .15s ease}
+  .grp-card:hover{border-color:var(--teal);background:var(--hover);box-shadow:0 3px 12px rgba(15,181,160,0.08)}
+  .grp-card .gc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .grp-card .gc-name, .sektor-card .sk-name{font-size:12.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
+  .grp-card .gc-count, .sektor-card .sk-count{font-family:var(--mono);font-size:20px;font-weight:700;margin:6px 0 8px;letter-spacing:-0.02em}
+  .grp-card .gc-count .unit{font-size:11px;font-weight:500;color:var(--muted);margin-left:4px}
+  .grp-card .gc-sub-list{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--line);padding-top:7px;margin-top:4px}
+  .grp-card .gc-sub-item{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+  .grp-card .gc-sub-item b{font-family:var(--mono);color:var(--text);font-weight:600}
+  .grp-card .gc-sub-block{border-top:1px dashed var(--line);padding-top:7px;margin-top:7px}
+  .grp-card .gc-sub-title{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;color:var(--text);margin-bottom:3px}
+  .grp-card .gc-sub-vol{font-family:var(--mono);font-size:11px;font-weight:700}
+  .grp-card .gc-sub-vol small{font-size:9.5px;font-weight:500;color:var(--muted)}
 
   /* deck investasi */
   .inv-hero{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;background:linear-gradient(135deg,#0FB5A0 0%,#0E9E9A 55%,#2E9BD6 130%);border-radius:12px;padding:24px 26px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;box-shadow:0 8px 30px #0fb5a033}
@@ -600,6 +611,7 @@
 <script src="indonesia-kab.js"></script>
 <script src="Data.js"></script>
 <script src="region-boundaries.js?v=5.0"></script>
+<script src="konsumsi-data.js"></script>
 <script src="Profil.js?v=5.0"></script>
 </body>
 </html>

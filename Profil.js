@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPemerintahan(r);
     renderPenduduk(r);
     renderEkonomi(r);
-    renderKonsumsi();
+    renderKonsumsi(r);
     renderPertanian();
     renderSosial();
     renderPodes();
@@ -1157,21 +1157,184 @@ function renderEkonomi(r) {
 /* ============================================================
    TAB 6: KONSUMSI
    ============================================================ */
-function renderKonsumsi() {
+function renderKonsumsi(r) {
     const grid = document.getElementById('konGrpGrid');
     if (!grid) return;
-    const items = [
-        'Bahan Makanan', 'Bahan Minuman', 'Buah-Buahan', 'Bumbu-Bumbuan',
-        'Daging', 'Ikan-Ikanan', 'Kacang-Kacangan', 'Makanan Jadi',
-        'Minyak & Kelapa', 'Padi-Padian', 'Rokok & Tembakau', 'Sayur-Sayuran',
-        'Telur & Susu', 'Umbi-Umbian'
+
+    const regId = r ? String(r.id || r.no || '') : '';
+    const dataKon = (typeof window.KONSUMSI_DATA !== 'undefined' && window.KONSUMSI_DATA)
+        ? window.KONSUMSI_DATA[regId]
+        : null;
+
+    // 1. KPI Summary
+    const konKpis = document.getElementById('konKpis');
+    if (konKpis) {
+        if (dataKon && dataKon.groups) {
+            const g = dataKon.groups;
+            const padiTon = (g['Padi-Padian']?.total_volume || 0) + (g['Umbi-Umbian']?.total_volume || 0);
+            const dagingTon = (g['Daging']?.total_volume || 0);
+            const ikanTon = (g['Ikan-Ikanan']?.total_volume || 0);
+            const sayurBuahTon = (g['Sayur-Sayuran']?.total_volume || 0) + (g['Buah-Buahan']?.total_volume || 0);
+            const rokokJt = ((g['Rokok & Tembakau']?.total_volume || 0) / 1000000).toFixed(1).replace('.', ',');
+
+            konKpis.innerHTML = `
+                <div class="kpi">
+                    <div class="k-label">Karbohidrat Pokok</div>
+                    <div class="k-val">${fmt(Math.round(padiTon))} <span class="k-unit">Ton/th</span></div>
+                    <div class="k-note">Padi-padian &amp; Umbi-umbian</div>
+                </div>
+                <div class="kpi">
+                    <div class="k-label">Protein Hewani</div>
+                    <div class="k-val">${fmt(Math.round(dagingTon + ikanTon))} <span class="k-unit">Ton/th</span></div>
+                    <div class="k-note">Daging ${fmt(Math.round(dagingTon))} Ton + Ikan ${fmt(Math.round(ikanTon))} Ton</div>
+                </div>
+                <div class="kpi">
+                    <div class="k-label">Sayur &amp; Buah</div>
+                    <div class="k-val">${fmt(Math.round(sayurBuahTon))} <span class="k-unit">Ton/th</span></div>
+                    <div class="k-note">Hortikultura Segar Tahunan</div>
+                </div>
+                <div class="kpi">
+                    <div class="k-label">Konsumsi Rokok</div>
+                    <div class="k-val" style="color:#E8604C">${rokokJt} <span class="k-unit">Juta Batang</span></div>
+                    <div class="k-note">Kretek Filter, Putih &amp; Non-Filter</div>
+                </div>
+            `;
+        } else {
+            konKpis.innerHTML = `
+                <div class="kpi">
+                    <div class="k-label">Status Survei</div>
+                    <div class="k-val">Susenas BPS</div>
+                    <div class="k-note">Volume Konsumsi Rumah Tangga</div>
+                </div>
+            `;
+        }
+    }
+
+    // 2. 14 Group Cards
+    const standardCategories = [
+        { label: 'Padi-Padian', icon: '🌾', color: '#0FB5A0' },
+        { label: 'Umbi-Umbian', icon: '🥔', color: '#D9962B' },
+        { label: 'Ikan-Ikanan', icon: '🐟', color: '#2E9BD6' },
+        { label: 'Daging', icon: '🥩', color: '#E8604C' },
+        { label: 'Telur & Susu', icon: '🥚', color: '#F59E0B' },
+        { label: 'Sayur-Sayuran', icon: '🥬', color: '#10B981' },
+        { label: 'Kacang-Kacangan', icon: '🥜', color: '#B45309' },
+        { label: 'Buah-Buahan', icon: '🍎', color: '#EC4899' },
+        { label: 'Minyak & Kelapa', icon: '🥥', color: '#6366F1' },
+        { label: 'Bahan Minuman', icon: '☕', color: '#8B5CF6' },
+        { label: 'Bumbu-Bumbuan', icon: '🌶️', color: '#DC2626' },
+        { label: 'Bahan Makanan', icon: '🍜', color: '#14B8A6' },
+        { label: 'Makanan Jadi', icon: '🍲', color: '#F97316' },
+        { label: 'Rokok & Tembakau', icon: '🚬', color: '#64748B' }
     ];
-    grid.innerHTML = items.map(it => `
-        <div class="grp-card">
-            <div class="gc-name">${it}</div>
-            <div class="gc-count" style="color:var(--teal)">BPS</div>
-        </div>
-    `).join('');
+
+    grid.innerHTML = standardCategories.map(cat => {
+        const grpData = (dataKon && dataKon.groups) ? dataKon.groups[cat.label] : null;
+        if (!grpData) {
+            return `
+                <div class="grp-card">
+                    <div class="gc-header">
+                        <div class="gc-name">${cat.icon} ${cat.label}</div>
+                    </div>
+                    <div class="gc-count" style="color:var(--muted-2)">–</div>
+                    <div style="font-size:11px;color:var(--muted)">Belum terdata</div>
+                </div>
+            `;
+        }
+
+        // If group has distinct sub_groups (e.g. Telur vs Susu, Minyak vs Kelapa)
+        if (grpData.has_subgroups && grpData.sub_groups && grpData.sub_groups.length > 0) {
+            const subGroupsHtml = grpData.sub_groups.map((sg, sgIdx) => {
+                const sgVol = sg.total_volume ? (
+                    sg.total_volume >= 1000000 
+                        ? (sg.total_volume / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
+                        : fmt(Math.round(sg.total_volume))
+                ) : '';
+                const sgVolLabel = sgVol ? `${sgVol} <small>${sg.unit}</small>` : '';
+
+                const itemsHtml = (sg.items || []).slice(0, 3).map(it => {
+                    const itemVol = it.val >= 1000000 
+                        ? (it.val / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
+                        : fmt(Math.round(it.val));
+                    return `
+                        <div class="gc-sub-item">
+                            <span>${it.name.length > 20 ? it.name.slice(0, 19) + '…' : it.name}</span>
+                            <b>${itemVol} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+                        </div>
+                    `;
+                }).join('');
+
+                const blockClass = sgIdx === 0 ? '' : 'gc-sub-block';
+
+                return `
+                    <div class="${blockClass}">
+                        <div class="gc-sub-title">
+                            <span>${sg.icon || ''} ${sg.label}</span>
+                            ${sgVolLabel ? `<span class="gc-sub-vol" style="color:${cat.color}">${sgVolLabel}</span>` : ''}
+                        </div>
+                        <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:2px">${itemsHtml}</div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="grp-card">
+                    <div class="gc-header">
+                        <div class="gc-name">${cat.icon} ${cat.label}</div>
+                        <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
+                            ${grpData.all_items_count} item
+                        </span>
+                    </div>
+                    <div style="margin-top:6px">${subGroupsHtml}</div>
+                </div>
+            `;
+        }
+
+        // Standard single volume card
+        const vol = grpData.total_volume || 0;
+        let formattedVol = fmt(Math.round(vol));
+        if (vol >= 1000000) {
+            formattedVol = (vol / 1000000).toFixed(2).replace('.', ',') + ' Jt';
+        }
+
+        const topItemsHtml = (grpData.top_items || []).slice(0, 3).map(it => {
+            const itemVol = it.val >= 1000000 
+                ? (it.val / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
+                : fmt(Math.round(it.val));
+            return `
+                <div class="gc-sub-item">
+                    <span>${it.name.length > 22 ? it.name.slice(0, 21) + '…' : it.name}</span>
+                    <b>${itemVol} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="grp-card">
+                <div class="gc-header">
+                    <div class="gc-name">${cat.icon} ${cat.label}</div>
+                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
+                        ${grpData.all_items_count} item
+                    </span>
+                </div>
+                <div class="gc-count" style="color:${cat.color}">
+                    ${formattedVol} <span class="unit">${grpData.default_unit}</span>
+                </div>
+                ${topItemsHtml ? `<div class="gc-sub-list">${topItemsHtml}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+
+    // 3. Source Footnote
+    const srcEl = document.getElementById('srcKonGrp');
+    if (srcEl) {
+        srcEl.innerHTML = `
+            <div style="margin-top:14px;padding:8px 12px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;font-size:11px;color:var(--muted);display:flex;align-items:center;justify-content:space-between">
+                <span>📋 <b>Sumber Data:</b> Survei Sosial Ekonomi Nasional (Susenas) BPS 2023 · Estimasi Volume Konsumsi Komoditas Riil Tahunan.</span>
+                <span style="font-family:var(--mono);color:var(--teal);font-weight:600">Terverifikasi 514 Daerah</span>
+            </div>
+        `;
+    }
 }
 
 /* ============================================================

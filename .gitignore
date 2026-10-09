@@ -1,0 +1,7 @@
+# Temporary & duplicate files
+*copy*
+*Copy*
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
