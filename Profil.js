@@ -10,11 +10,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // 1. Get Current Region from URL
+    // 1. Get Current Region from URL & Storage
     const urlParams = new URLSearchParams(window.location.search);
-    const targetId = urlParams.get('id');
-    const targetSlug = urlParams.get('slug');
+    let targetId = urlParams.get('id');
+    let targetSlug = urlParams.get('slug');
     const returnView = urlParams.get('view') || urlParams.get('from');
+
+    // Fallback ke hash jika URL memakai hash (#19 atau #id=19 atau #id=19&slug=...)
+    if ((!targetId || !targetSlug) && window.location.hash) {
+        const hashStr = window.location.hash.replace(/^#/, '');
+        const hashParams = new URLSearchParams(hashStr);
+        if (!targetId) {
+            targetId = hashParams.get('id') || (!hashStr.includes('=') && !isNaN(hashStr) ? hashStr : null);
+        }
+        if (!targetSlug) {
+            targetSlug = hashParams.get('slug') || (!hashStr.includes('=') && isNaN(hashStr) ? hashStr : null);
+        }
+    }
+
+    // Fallback ke sessionStorage / localStorage jika query string di-strip oleh server (misal cleanUrls /profil)
+    if (!targetId && !targetSlug) {
+        try {
+            targetId = sessionStorage.getItem('selected_region_id') || localStorage.getItem('selected_region_id');
+            targetSlug = sessionStorage.getItem('selected_region_slug') || localStorage.getItem('selected_region_slug');
+        } catch (e) {}
+    }
 
     // Dynamic Back Button Adjustment
     const backLink = document.getElementById('backLink');
@@ -31,13 +51,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let r = null;
     if (targetId) {
-        r = REGION_DATA.find(x => String(x.id) === String(targetId));
+        r = REGION_DATA.find(x => String(x.id) === String(targetId) || String(x.no) === String(targetId));
     }
     if (!r && targetSlug) {
         r = REGION_DATA.find(x => x.slug === targetSlug);
     }
     if (!r) {
+        try {
+            const savedName = sessionStorage.getItem('selected_region_name') || localStorage.getItem('selected_region_name');
+            if (savedName) {
+                r = REGION_DATA.find(x => (x.kabkota || '').toLowerCase() === savedName.toLowerCase());
+            }
+        } catch (e) {}
+    }
+    if (!r) {
         r = REGION_DATA[0];
+    }
+
+    // Selalu simpan daerah aktif ke storage agar persisten
+    try {
+        localStorage.setItem('selected_region_id', String(r.id || r.no));
+        localStorage.setItem('selected_region_slug', String(r.slug || ''));
+        localStorage.setItem('selected_region_name', String(r.kabkota || ''));
+        sessionStorage.setItem('selected_region_id', String(r.id || r.no));
+        sessionStorage.setItem('selected_region_slug', String(r.slug || ''));
+        sessionStorage.setItem('selected_region_name', String(r.kabkota || ''));
+    } catch (e) {}
+
+    // Perbarui URL address bar jika query string hilang tanpa mereload halaman
+    if (!urlParams.get('id') && window.history && window.history.replaceState) {
+        const hashSuffix = `#id=${r.id}&slug=${r.slug}`;
+        window.history.replaceState(null, '', `profil.html?id=${r.id}&slug=${r.slug}${hashSuffix}`);
     }
 
     document.title = `${r.kabkota || 'Wilayah'} — Profil Data & Statistik Resmi`;
@@ -301,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPenduduk(r);
     renderEkonomi(r);
     renderKonsumsi(r);
-    renderPertanian();
+    renderPertanian(r);
     renderSosial();
     renderPodes();
 
@@ -1228,51 +1272,115 @@ function renderKonsumsi(r) {
         { label: 'Rokok & Tembakau', icon: '🚬', color: '#64748B' }
     ];
 
-    grid.innerHTML = standardCategories.map(cat => {
-        const grpData = (dataKon && dataKon.groups) ? dataKon.groups[cat.label] : null;
-        if (!grpData) {
-            return `
-                <div class="grp-card">
-                    <div class="gc-header">
-                        <div class="gc-name">${cat.icon} ${cat.label}</div>
+    function renderCards(filterQuery = '') {
+        const q = filterQuery.toLowerCase().trim();
+        let matchedCount = 0;
+
+        const cards = standardCategories.map(cat => {
+            const grpData = (dataKon && dataKon.groups) ? dataKon.groups[cat.label] : null;
+            if (!grpData) {
+                if (q && !cat.label.toLowerCase().includes(q)) return '';
+                matchedCount++;
+                return `
+                    <div class="grp-card">
+                        <div class="gc-header">
+                            <div class="gc-name">${cat.icon} ${cat.label}</div>
+                        </div>
+                        <div class="gc-count" style="color:var(--muted-2)">–</div>
+                        <div style="font-size:11px;color:var(--muted)">Belum terdata</div>
                     </div>
-                    <div class="gc-count" style="color:var(--muted-2)">–</div>
-                    <div style="font-size:11px;color:var(--muted)">Belum terdata</div>
-                </div>
-            `;
-        }
+                `;
+            }
 
-        // If group has distinct sub_groups (e.g. Telur vs Susu, Minyak vs Kelapa)
-        if (grpData.has_subgroups && grpData.sub_groups && grpData.sub_groups.length > 0) {
-            const subGroupsHtml = grpData.sub_groups.map((sg, sgIdx) => {
-                const sgVol = sg.total_volume ? (
-                    sg.total_volume >= 1000000 
-                        ? (sg.total_volume / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
-                        : fmt(Math.round(sg.total_volume))
-                ) : '';
-                const sgVolLabel = sgVol ? `${sgVol} <small>${sg.unit}</small>` : '';
+            const catMatches = !q || cat.label.toLowerCase().includes(q);
 
-                const itemsHtml = (sg.items || []).slice(0, 3).map(it => {
-                    const itemVol = it.val >= 1000000 
-                        ? (it.val / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
-                        : fmt(Math.round(it.val));
+            // If group has distinct sub_groups
+            if (grpData.has_subgroups && grpData.sub_groups && grpData.sub_groups.length > 0) {
+                let filteredSubGroups = grpData.sub_groups.map(sg => {
+                    const sgMatches = catMatches || sg.label.toLowerCase().includes(q);
+                    const matchingItems = (sg.items || []).filter(it => sgMatches || it.name.toLowerCase().includes(q));
+                    return {
+                        ...sg,
+                        displayItems: q && !sgMatches ? matchingItems : (matchingItems.length > 0 ? (q ? matchingItems : matchingItems.slice(0, 3)) : (q ? [] : (sg.items || []).slice(0, 3))),
+                        hasMatch: sgMatches || matchingItems.length > 0
+                    };
+                });
+
+                if (q) {
+                    filteredSubGroups = filteredSubGroups.filter(sg => sg.hasMatch);
+                    if (filteredSubGroups.length === 0) return '';
+                }
+
+                matchedCount++;
+
+                const subGroupsHtml = filteredSubGroups.map((sg, sgIdx) => {
+                    const sgVol = sg.total_volume ? (
+                        sg.total_volume >= 1000000 
+                            ? (sg.total_volume / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
+                            : fmt(Math.round(sg.total_volume))
+                    ) : '';
+                    const sgVolLabel = sgVol ? `${sgVol} <small>${sg.unit}</small>` : '';
+
+                    const itemsHtml = (sg.displayItems || []).map(it => {
+                        const itemVol = it.val >= 1000000 
+                            ? (it.val / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
+                            : fmt(Math.round(it.val));
+                        return `
+                            <div class="gc-sub-item">
+                                <span>${it.name.length > 20 ? it.name.slice(0, 19) + '…' : it.name}</span>
+                                <b>${itemVol} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+                            </div>
+                        `;
+                    }).join('');
+
+                    const blockClass = sgIdx === 0 ? '' : 'gc-sub-block';
+
                     return `
-                        <div class="gc-sub-item">
-                            <span>${it.name.length > 20 ? it.name.slice(0, 19) + '…' : it.name}</span>
-                            <b>${itemVol} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+                        <div class="${blockClass}">
+                            <div class="gc-sub-title">
+                                <span>${sg.icon || ''} ${sg.label}</span>
+                                ${sgVolLabel ? `<span class="gc-sub-vol" style="color:${cat.color}">${sgVolLabel}</span>` : ''}
+                            </div>
+                            <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:2px">${itemsHtml || '<div style="font-size:10px;color:var(--muted)">Tidak ada item cocok</div>'}</div>
                         </div>
                     `;
                 }).join('');
 
-                const blockClass = sgIdx === 0 ? '' : 'gc-sub-block';
-
                 return `
-                    <div class="${blockClass}">
-                        <div class="gc-sub-title">
-                            <span>${sg.icon || ''} ${sg.label}</span>
-                            ${sgVolLabel ? `<span class="gc-sub-vol" style="color:${cat.color}">${sgVolLabel}</span>` : ''}
+                    <div class="grp-card">
+                        <div class="gc-header">
+                            <div class="gc-name">${cat.icon} ${cat.label}</div>
+                            <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
+                                ${q ? 'Cocok' : `${grpData.all_items_count} item`}
+                            </span>
                         </div>
-                        <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:2px">${itemsHtml}</div>
+                        <div style="margin-top:6px">${subGroupsHtml}</div>
+                    </div>
+                `;
+            }
+
+            // Standard single volume card
+            const allItems = grpData.top_items || [];
+            const matchingItems = allItems.filter(it => catMatches || it.name.toLowerCase().includes(q));
+
+            if (q && !catMatches && matchingItems.length === 0) return '';
+            matchedCount++;
+
+            const vol = grpData.total_volume || 0;
+            let formattedVol = fmt(Math.round(vol));
+            if (vol >= 1000000) {
+                formattedVol = (vol / 1000000).toFixed(2).replace('.', ',') + ' Jt';
+            }
+
+            const displayItems = q && !catMatches ? matchingItems : (q ? matchingItems : allItems.slice(0, 3));
+            const topItemsHtml = displayItems.map(it => {
+                const itemVol = it.val >= 1000000 
+                    ? (it.val / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
+                    : fmt(Math.round(it.val));
+                return `
+                    <div class="gc-sub-item">
+                        <span>${it.name.length > 22 ? it.name.slice(0, 21) + '…' : it.name}</span>
+                        <b>${itemVol} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
                     </div>
                 `;
             }).join('');
@@ -1282,79 +1390,459 @@ function renderKonsumsi(r) {
                     <div class="gc-header">
                         <div class="gc-name">${cat.icon} ${cat.label}</div>
                         <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
-                            ${grpData.all_items_count} item
+                            ${q ? `${displayItems.length} cocok` : `${grpData.all_items_count} item`}
                         </span>
                     </div>
-                    <div style="margin-top:6px">${subGroupsHtml}</div>
+                    <div class="gc-count" style="color:${cat.color}">
+                        ${formattedVol} <span class="unit">${grpData.default_unit}</span>
+                    </div>
+                    ${topItemsHtml ? `<div class="gc-sub-list">${topItemsHtml}</div>` : ''}
                 </div>
             `;
-        }
+        }).filter(Boolean).join('');
 
-        // Standard single volume card
-        const vol = grpData.total_volume || 0;
-        let formattedVol = fmt(Math.round(vol));
-        if (vol >= 1000000) {
-            formattedVol = (vol / 1000000).toFixed(2).replace('.', ',') + ' Jt';
-        }
-
-        const topItemsHtml = (grpData.top_items || []).slice(0, 3).map(it => {
-            const itemVol = it.val >= 1000000 
-                ? (it.val / 1000000).toFixed(1).replace('.', ',') + ' Jt' 
-                : fmt(Math.round(it.val));
-            return `
-                <div class="gc-sub-item">
-                    <span>${it.name.length > 22 ? it.name.slice(0, 21) + '…' : it.name}</span>
-                    <b>${itemVol} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+        if (matchedCount === 0 && q) {
+            grid.innerHTML = `
+                <div style="grid-column: 1 / -1; padding: 36px 20px; text-align: center; color: var(--muted); font-size: 13px; background: var(--panel-2); border: 1px dashed var(--line); border-radius: 8px;">
+                    Tidak ada komoditas konsumsi yang cocok dengan pencarian "<b>${filterQuery}</b>"
                 </div>
             `;
-        }).join('');
+        } else {
+            grid.innerHTML = cards;
+        }
+    }
 
-        return `
-            <div class="grp-card">
-                <div class="gc-header">
-                    <div class="gc-name">${cat.icon} ${cat.label}</div>
-                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
-                        ${grpData.all_items_count} item
-                    </span>
-                </div>
-                <div class="gc-count" style="color:${cat.color}">
-                    ${formattedVol} <span class="unit">${grpData.default_unit}</span>
-                </div>
-                ${topItemsHtml ? `<div class="gc-sub-list">${topItemsHtml}</div>` : ''}
-            </div>
-        `;
-    }).join('');
+    renderCards();
 
-    // 3. Source Footnote
+    // Hook search input
+    const searchInput = document.getElementById('konSearch');
+    if (searchInput && !searchInput._bound) {
+        searchInput._bound = true;
+        searchInput.addEventListener('input', e => renderCards(e.target.value));
+    }
+
+    // 3. Source Footnote (dihilangkan sesuai preferensi tampilan)
     const srcEl = document.getElementById('srcKonGrp');
     if (srcEl) {
-        srcEl.innerHTML = `
-            <div style="margin-top:14px;padding:8px 12px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;font-size:11px;color:var(--muted);display:flex;align-items:center;justify-content:space-between">
-                <span>📋 <b>Sumber Data:</b> Survei Sosial Ekonomi Nasional (Susenas) BPS 2023 · Estimasi Volume Konsumsi Komoditas Riil Tahunan.</span>
-                <span style="font-family:var(--mono);color:var(--teal);font-weight:600">Terverifikasi 514 Daerah</span>
-            </div>
-        `;
+        srcEl.innerHTML = '';
     }
 }
 
 /* ============================================================
    TAB 7: PERTANIAN
    ============================================================ */
-function renderPertanian() {
-    const grid = document.getElementById('taniSektorGrid');
-    if (!grid) return;
-    const sectors = [
-        { n: 'Hortikultura', c: '#2FA65E' },
-        { n: 'Perkebunan', c: '#D9962B' },
-        { n: 'Peternakan', c: '#E8604C' },
-        { n: 'Tanaman Pangan', c: '#0FB5A0' }
-    ];
-    grid.innerHTML = sectors.map(s => `
-        <div class="sektor-card">
-            <div class="sk-name">${s.n}</div>
-            <div class="sk-count" style="color:${s.c}">Terdata</div>
-        </div>
-    `).join('');
+function renderPertanian(r) {
+    const kpisEl = document.getElementById('taniKpis');
+    const gridEl = document.getElementById('taniSektorGrid');
+    const srcEl = document.getElementById('srcTaniSektor');
+    if (!gridEl) return;
+
+    if (!r) return;
+    const regId = String(r.id || r.no || '');
+    const pData = (typeof window.PERTANIAN_DATA !== 'undefined' && window.PERTANIAN_DATA) 
+        ? window.PERTANIAN_DATA[regId] 
+        : null;
+
+    if (!pData || !pData.has_data) {
+        if (kpisEl) {
+            kpisEl.innerHTML = `
+                <div class="kpi"><div class="k-label">Tanaman Pangan</div><div class="k-val" style="color:var(--muted)">0 <span class="k-unit">Ton</span></div><div class="k-note">Data Resmi BPS</div></div>
+                <div class="kpi"><div class="k-label">Hortikultura</div><div class="k-val" style="color:var(--muted)">0 <span class="k-unit">Ton</span></div><div class="k-note">Data Resmi BPS</div></div>
+                <div class="kpi"><div class="k-label">Perkebunan</div><div class="k-val" style="color:var(--muted)">0 <span class="k-unit">Ton</span></div><div class="k-note">Data Resmi BPS</div></div>
+                <div class="kpi"><div class="k-label">Peternakan</div><div class="k-val" style="color:var(--muted)">0 <span class="k-unit">Ekor</span></div><div class="k-note">Data Resmi BPS</div></div>
+            `;
+        }
+        gridEl.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 36px 20px; text-align: center; background: var(--panel-2); border: 1px dashed var(--line); border-radius: 8px; color: var(--muted);">
+                <div style="font-size: 28px; margin-bottom: 8px;">🚜</div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 5px;">Tidak Tercatat Aktivitas Produksi Pertanian Signifikan</div>
+                <div style="font-size: 12px; max-width: 540px; margin: 0 auto; line-height: 1.6;">
+                    Wilayah <b>${r.kabkota}</b> tidak memiliki catatan produksi komoditas tanaman pangan, hortikultura, perkebunan, maupun peternakan dalam publikasi resmi BPS / Kementerian Pertanian RI (umumnya kawasan perkotaan / non-agraris).
+                </div>
+            </div>
+        `;
+        if (srcEl) {
+            srcEl.innerHTML = '';
+        }
+        return;
+    }
+
+    // 1. Render KPI Cards
+    const ring = pData.ringkasan || {};
+    const fmtVol = (v) => {
+        if (!v || v === 0) return '0';
+        if (v >= 1000000) return (v / 1000000).toFixed(2).replace('.', ',') + ' Jt';
+        if (v >= 10000) return (v / 1000).toFixed(1).replace('.', ',') + ' Rb';
+        return fmt(Math.round(v));
+    };
+
+    if (kpisEl) {
+        kpisEl.innerHTML = `
+            <div class="kpi">
+                <div class="k-label">Tanaman Pangan</div>
+                <div class="k-val" style="color:#0FB5A0">${fmtVol(ring.tanaman_pangan_total_produksi_ton)} <span class="k-unit">Ton</span></div>
+                <div class="k-note">Total Produksi Pangan</div>
+            </div>
+            <div class="kpi">
+                <div class="k-label">Hortikultura</div>
+                <div class="k-val" style="color:#2FA65E">${fmtVol(ring.hortikultura_total_produksi_ton)} <span class="k-unit">Ton</span></div>
+                <div class="k-note">Estimasi Produksi Hortikultura</div>
+            </div>
+            <div class="kpi">
+                <div class="k-label">Perkebunan</div>
+                <div class="k-val" style="color:#D9962B">${fmtVol(ring.perkebunan_total_produksi_ton)} <span class="k-unit">Ton</span></div>
+                <div class="k-note">Total Panen Perkebunan</div>
+            </div>
+            <div class="kpi">
+                <div class="k-label">Peternakan (Populasi)</div>
+                <div class="k-val" style="color:#E8604C">${fmtVol(ring.peternakan_total_populasi_ekor)} <span class="k-unit">Ekor</span></div>
+                <div class="k-note">Populasi Ternak Hidup</div>
+            </div>
+        `;
+    }
+
+    // 2. Render 4 Sector Cards
+    const sektor = pData.sektor || {};
+    const tpItems = sektor.tanaman_pangan || [];
+    const hortiItems = sektor.hortikultura || [];
+    const kebunItems = sektor.perkebunan || [];
+    const ternakPop = (sektor.peternakan && sektor.peternakan.populasi) || [];
+    const ternakProd = (sektor.peternakan && sektor.peternakan.produksi) || [];
+    const totalTernakCount = ternakPop.length + ternakProd.length;
+
+    const fmtItemVal = (v) => {
+        if (!v || v === 0) return '0';
+        if (v >= 1000000) return (v / 1000000).toFixed(1).replace('.', ',') + ' Jt';
+        if (v >= 10000) return (v / 1000).toFixed(1).replace('.', ',') + ' Rb';
+        return typeof v === 'number' ? v.toLocaleString('id-ID') : v;
+    };
+
+    function renderSectorCards(filterQuery = '') {
+        const q = filterQuery.toLowerCase().trim();
+
+        // Filter lists
+        const filteredTp = q ? tpItems.filter(it => it.komoditas.toLowerCase().includes(q)) : tpItems.slice(0, 5);
+        const filteredHorti = q ? hortiItems.filter(it => it.komoditas.toLowerCase().includes(q)) : hortiItems.slice(0, 5);
+        const filteredKebun = q ? kebunItems.filter(it => it.komoditas.toLowerCase().includes(q)) : kebunItems.slice(0, 5);
+        const filteredPop = q ? ternakPop.filter(it => it.komoditas.toLowerCase().includes(q)) : ternakPop.slice(0, 3);
+        const filteredProd = q ? ternakProd.filter(it => it.komoditas.toLowerCase().includes(q)) : ternakProd.slice(0, 3);
+
+        let cardsHtml = '';
+
+        // Card 1: Tanaman Pangan
+        const tpListHtml = filteredTp.map(it => {
+            const prod = it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '-';
+            const luas = it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '';
+            const prodv = it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '';
+            const metaStr = [luas ? `Luas: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
+            return `
+                <div class="gc-sub-item" style="flex-direction:column;gap:1px;padding:3px 0">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-weight:600;color:var(--text)">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#0FB5A0">${prod}</b>
+                    </div>
+                    ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        cardsHtml += `
+            <div class="grp-card" style="border-top:3px solid #0FB5A0">
+                <div class="gc-header">
+                    <div class="gc-name">🌾 Tanaman Pangan</div>
+                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
+                        ${q ? `${filteredTp.length} cocok` : `${tpItems.length} komoditas`}
+                    </span>
+                </div>
+                <div class="gc-count" style="color:#0FB5A0">
+                    ${fmtVol(ring.tanaman_pangan_total_produksi_ton)} <span class="unit">Ton/th</span>
+                </div>
+                ${tpListHtml ? `<div class="gc-sub-list">${tpListHtml}</div>` : '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>'}
+                ${tpItems.length > 5 ? `<button type="button" class="btn-see-all" data-sektor="tp">Lihat Semua ${tpItems.length} Komoditas</button>` : ''}
+            </div>
+        `;
+
+        // Card 2: Hortikultura
+        const hortiListHtml = filteredHorti.map(it => {
+            const prod = it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '-';
+            const luas = it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '';
+            const prodv = it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '';
+            const metaStr = [luas ? `Luas: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
+            return `
+                <div class="gc-sub-item" style="flex-direction:column;gap:1px;padding:3px 0">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-weight:600;color:var(--text)">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#2FA65E">${prod}</b>
+                    </div>
+                    ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        cardsHtml += `
+            <div class="grp-card" style="border-top:3px solid #2FA65E">
+                <div class="gc-header">
+                    <div class="gc-name">🥬 Hortikultura</div>
+                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
+                        ${q ? `${filteredHorti.length} cocok` : `${hortiItems.length} komoditas`}
+                    </span>
+                </div>
+                <div class="gc-count" style="color:#2FA65E">
+                    ${fmtVol(ring.hortikultura_total_produksi_ton)} <span class="unit">Ton/th</span>
+                </div>
+                ${hortiListHtml ? `<div class="gc-sub-list">${hortiListHtml}</div>` : '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>'}
+                ${hortiItems.length > 5 ? `<button type="button" class="btn-see-all" data-sektor="horti">Lihat Semua ${hortiItems.length} Komoditas</button>` : ''}
+            </div>
+        `;
+
+        // Card 3: Perkebunan
+        const kebunListHtml = filteredKebun.map(it => {
+            const prod = it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '-';
+            const luas = it.luas_areal ? `${fmtItemVal(it.luas_areal.val)} ${it.luas_areal.unit}` : '';
+            const prodv = it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '';
+            const metaStr = [luas ? `Areal: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
+            return `
+                <div class="gc-sub-item" style="flex-direction:column;gap:1px;padding:3px 0">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-weight:600;color:var(--text)">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#D9962B">${prod}</b>
+                    </div>
+                    ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        cardsHtml += `
+            <div class="grp-card" style="border-top:3px solid #D9962B">
+                <div class="gc-header">
+                    <div class="gc-name">🌴 Perkebunan</div>
+                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
+                        ${q ? `${filteredKebun.length} cocok` : `${kebunItems.length} komoditas`}
+                    </span>
+                </div>
+                <div class="gc-count" style="color:#D9962B">
+                    ${fmtVol(ring.perkebunan_total_produksi_ton)} <span class="unit">Ton/th</span>
+                </div>
+                ${kebunListHtml ? `<div class="gc-sub-list">${kebunListHtml}</div>` : '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>'}
+                ${kebunItems.length > 5 ? `<button type="button" class="btn-see-all" data-sektor="kebun">Lihat Semua ${kebunItems.length} Komoditas</button>` : ''}
+            </div>
+        `;
+
+        // Card 4: Peternakan
+        const popListHtml = filteredPop.map(it => `
+            <div class="gc-sub-item" style="padding:2px 0">
+                <span>${it.komoditas}</span>
+                <b style="font-family:var(--mono);color:#E8604C">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+            </div>
+        `).join('');
+
+        const prodListHtml = filteredProd.map(it => `
+            <div class="gc-sub-item" style="padding:2px 0">
+                <span>${it.komoditas}</span>
+                <b style="font-family:var(--mono);color:#E8604C">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+            </div>
+        `).join('');
+
+        const matchedTernakTotal = filteredPop.length + filteredProd.length;
+
+        cardsHtml += `
+            <div class="grp-card" style="border-top:3px solid #E8604C">
+                <div class="gc-header">
+                    <div class="gc-name">🐄 Peternakan</div>
+                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
+                        ${q ? `${matchedTernakTotal} cocok` : `${totalTernakCount} item`}
+                    </span>
+                </div>
+                <div class="gc-count" style="color:#E8604C">
+                    ${fmtVol(ring.peternakan_total_populasi_ekor)} <span class="unit">Ekor Populasi</span>
+                </div>
+                <div>
+                    ${popListHtml ? `
+                        <div style="font-size:10.5px;font-weight:700;color:var(--text);margin-top:6px;margin-bottom:2px">Populasi Ternak Hidup:</div>
+                        <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:0">${popListHtml}</div>
+                    ` : (q && !prodListHtml ? '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>' : '')}
+                    ${prodListHtml ? `
+                        <div style="font-size:10.5px;font-weight:700;color:var(--text);margin-top:7px;margin-bottom:2px;border-top:1px dashed var(--line);padding-top:5px">Produksi Hasil Ternak:</div>
+                        <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:0">${prodListHtml}</div>
+                    ` : ''}
+                </div>
+                ${totalTernakCount > 6 ? `<button type="button" class="btn-see-all" data-sektor="ternak">Lihat Semua ${totalTernakCount} Item Peternakan</button>` : ''}
+            </div>
+        `;
+
+        gridEl.innerHTML = cardsHtml;
+        bindModalTriggers();
+    }
+
+    function bindModalTriggers() {
+        gridEl.querySelectorAll('.btn-see-all').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const sType = btn.getAttribute('data-sektor');
+                openModal(sType);
+            });
+        });
+    }
+
+    // Render awal
+    renderSectorCards();
+
+    // Event listener search di luar modal
+    const taniSearchInput = document.getElementById('taniSearch');
+    if (taniSearchInput && !taniSearchInput._bound) {
+        taniSearchInput._bound = true;
+        taniSearchInput.addEventListener('input', e => renderSectorCards(e.target.value));
+    }
+
+    // 3. Modal Popup Logic
+    const modalEl = document.getElementById('taniModal');
+    const modalTitleEl = document.getElementById('taniModalTitle');
+    const modalSubEl = document.getElementById('taniModalSub');
+    const modalCountEl = document.getElementById('taniModalCount');
+    const modalTableEl = document.getElementById('taniModalTable');
+    const modalSearchEl = document.getElementById('taniModalSearch');
+    const modalCloseBtn = document.getElementById('btnTaniModalClose');
+
+    let currentModalRows = [];
+    let currentModalSektor = '';
+
+    function renderModalTable(filterQuery = '') {
+        if (!modalTableEl) return;
+        const q = filterQuery.toLowerCase().trim();
+        const filtered = q ? currentModalRows.filter(r => r.name.toLowerCase().includes(q)) : currentModalRows;
+        if (modalCountEl) modalCountEl.textContent = `${filtered.length} Komoditas`;
+
+        const isTernak = currentModalSektor === 'ternak';
+
+        if (filtered.length === 0) {
+            modalTableEl.innerHTML = `
+                <tbody><tr><td colspan="${isTernak ? 4 : 5}" style="text-align:center;padding:28px;color:var(--muted)">Tidak ada komoditas yang cocok dengan pencarian "<b>${filterQuery}</b>"</td></tr></tbody>
+            `;
+            return;
+        }
+
+        const theadHtml = isTernak ? `
+            <thead>
+                <tr>
+                    <th style="width:45px">No</th>
+                    <th>Nama Komoditas</th>
+                    <th style="text-align:right">Populasi / Produksi</th>
+                    <th style="text-align:right">Kategori</th>
+                </tr>
+            </thead>
+        ` : `
+            <thead>
+                <tr>
+                    <th style="width:45px">No</th>
+                    <th>Nama Komoditas</th>
+                    <th style="text-align:right">Volume Produksi</th>
+                    <th style="text-align:right">Luas Lahan / Areal</th>
+                    <th style="text-align:right">Produktivitas</th>
+                </tr>
+            </thead>
+        `;
+
+        modalTableEl.innerHTML = `
+            ${theadHtml}
+            <tbody>
+                ${filtered.map((item, idx) => `
+                    <tr>
+                        <td style="font-family:var(--mono);color:var(--muted-2);font-weight:600">${idx + 1}</td>
+                        <td style="font-weight:600;color:var(--text)">${item.name}</td>
+                        <td style="text-align:right;font-family:var(--mono);color:${item.color || 'var(--text)'};font-weight:600">${item.prod}</td>
+                        <td style="text-align:right;font-family:var(--mono);color:var(--muted)">${item.luas || '–'}</td>
+                        ${!isTernak ? `<td style="text-align:right;font-family:var(--mono);color:var(--muted)">${item.prodv || '–'}</td>` : ''}
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+    }
+
+    function openModal(sektorType) {
+        if (!modalEl) return;
+        if (modalSearchEl) modalSearchEl.value = '';
+        currentModalSektor = sektorType;
+
+        if (sektorType === 'tp') {
+            if (modalTitleEl) modalTitleEl.textContent = `🌾 Sektor Tanaman Pangan (${r.kabkota})`;
+            if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi BPS · Seluruh Komoditas Pangan`;
+            currentModalRows = tpItems.map(it => ({
+                name: it.komoditas,
+                prod: it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '–',
+                luas: it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '–',
+                prodv: it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '–',
+                color: '#0FB5A0'
+            }));
+        } else if (sektorType === 'horti') {
+            if (modalTitleEl) modalTitleEl.textContent = `🥬 Sektor Hortikultura (${r.kabkota})`;
+            if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi BPS · Sayuran, Buah, Biofarmaka & Florikultura`;
+            currentModalRows = hortiItems.map(it => ({
+                name: it.komoditas,
+                prod: it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '–',
+                luas: it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '–',
+                prodv: it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '–',
+                color: '#2FA65E'
+            }));
+        } else if (sektorType === 'kebun') {
+            if (modalTitleEl) modalTitleEl.textContent = `🌴 Sektor Perkebunan (${r.kabkota})`;
+            if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi BPS · Komoditas Perkebunan Rakyat & Swasta`;
+            currentModalRows = kebunItems.map(it => ({
+                name: it.komoditas,
+                prod: it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '–',
+                luas: it.luas_areal ? `${fmtItemVal(it.luas_areal.val)} ${it.luas_areal.unit}` : '–',
+                prodv: it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '–',
+                color: '#D9962B'
+            }));
+        } else if (sektorType === 'ternak') {
+            if (modalTitleEl) modalTitleEl.textContent = `🐄 Sektor Peternakan (${r.kabkota})`;
+            if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi BPS · Populasi Ternak Hidup & Produksi Olahan`;
+            const popRows = ternakPop.map(it => ({
+                name: `${it.komoditas} (Populasi Ternak)`,
+                prod: `${fmtItemVal(it.val)} ${it.unit}`,
+                luas: 'Populasi Hidup',
+                color: '#E8604C'
+            }));
+            const prodRows = ternakProd.map(it => ({
+                name: `${it.komoditas} (Hasil Olahan)`,
+                prod: `${fmtItemVal(it.val)} ${it.unit}`,
+                luas: 'Daging/Telur/Susu',
+                color: '#E8604C'
+            }));
+            currentModalRows = [...popRows, ...prodRows];
+        }
+
+        renderModalTable();
+        modalEl.hidden = false;
+        setTimeout(() => { if (modalSearchEl) modalSearchEl.focus(); }, 50);
+    }
+
+    function closeModal() {
+        if (modalEl) modalEl.hidden = true;
+    }
+
+    if (modalCloseBtn && !modalCloseBtn._bound) {
+        modalCloseBtn._bound = true;
+        modalCloseBtn.addEventListener('click', closeModal);
+    }
+    if (modalEl && !modalEl._bound) {
+        modalEl._bound = true;
+        modalEl.addEventListener('click', (e) => {
+            if (e.target === modalEl) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modalEl.hidden) closeModal();
+        });
+    }
+    if (modalSearchEl && !modalSearchEl._bound) {
+        modalSearchEl._bound = true;
+        modalSearchEl.addEventListener('input', (e) => {
+            renderModalTable(e.target.value);
+        });
+    }
+
+    // 4. Source Footnote (dihilangkan sesuai preferensi tampilan)
+    if (srcEl) {
+        srcEl.innerHTML = '';
+    }
 }
 
 /* ============================================================
@@ -1520,8 +2008,17 @@ function setupRegionPicker(currentRegion, returnView) {
             item.addEventListener('click', () => {
                 const targetId = item.dataset.id;
                 const targetSlug = item.dataset.slug;
+                const targetItem = REGION_DATA.find(x => String(x.id) === String(targetId));
+                try {
+                    localStorage.setItem('selected_region_id', String(targetId));
+                    localStorage.setItem('selected_region_slug', String(targetSlug || ''));
+                    if (targetItem) localStorage.setItem('selected_region_name', String(targetItem.kabkota || ''));
+                    sessionStorage.setItem('selected_region_id', String(targetId));
+                    sessionStorage.setItem('selected_region_slug', String(targetSlug || ''));
+                    if (targetItem) sessionStorage.setItem('selected_region_name', String(targetItem.kabkota || ''));
+                } catch (e) {}
                 const viewParam = returnView ? `&view=${returnView}` : '';
-                window.location.href = `profil.html?id=${targetId}&slug=${targetSlug}${viewParam}`;
+                window.location.href = `profil.html?id=${targetId}&slug=${targetSlug}${viewParam}#id=${targetId}&slug=${targetSlug}`;
             });
         });
     }

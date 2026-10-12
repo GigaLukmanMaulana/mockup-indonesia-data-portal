@@ -1,3 +1,10 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Raw Agricultural Excel data
+data-mentah/xlsx/data-pertanian/
+
 # Temporary & duplicate files
 *copy*
 *Copy*
@@ -5,3 +12,5 @@
 *.bak
 .DS_Store
 Thumbs.db
+
+

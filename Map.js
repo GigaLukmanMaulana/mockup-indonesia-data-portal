@@ -244,28 +244,53 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
-    function findBpsRegionData(gCountry, gName) {
+    function findBpsRegionData(gCountry, gName, gType) {
         if (!gName) return null;
+        const isKotaGeo = (gType || '').toLowerCase() === 'kota' || normalizeStr(gName).startsWith('kota');
+        const gKab = normalizeStr(gName);
+        const cGeo = gKab.replace(/^kota/, '').replace(/^kabupaten/, '');
 
-        // 1. Primary match with province verification
+        const nameAliases = {
+            'kotamobagu': 'kotakotamobagu',
+            'malukutenggarabarat': 'kepulauantanimbar',
+            'mamujuutara': 'pasangkayu',
+            'tanjungjabungb': 'tanjungjabungbarat',
+            'tanjungjabungt': 'tanjungjabungtimur',
+            'kepulauansangihetalaud': 'kepulauansangihe'
+        };
+        const targetAlias = nameAliases[gKab] || nameAliases[cGeo];
+
+        // 1. Primary match with province & type verification (Kota vs Kabupaten)
         let found = REGION_DATA.find(d => {
             if (!sameProvName(d.prov, gCountry)) return false;
+            const bpsIsKota = (d.kabkota || '').toUpperCase().startsWith('KOTA');
+            if (gType && bpsIsKota !== isKotaGeo) return false;
             const bpsKab = normalizeStr(d.kabkota);
-            const gKab = normalizeStr(gName);
+            if (targetAlias && bpsKab === targetAlias) return true;
             if (bpsKab === gKab) return true;
             const cBps = bpsKab.replace(/^kota/, '').replace(/^kabupaten/, '');
-            const cGeo = gKab.replace(/^kota/, '').replace(/^kabupaten/, '');
             return cBps === cGeo && cBps.length > 2;
         });
 
         if (found) return found;
 
-        // 2. Fallback match by regency name across all 514 regions
-        const gKab = normalizeStr(gName);
-        const cGeo = gKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+        // 2. Match with province regardless of type
+        found = REGION_DATA.find(d => {
+            if (!sameProvName(d.prov, gCountry)) return false;
+            const bpsKab = normalizeStr(d.kabkota);
+            if (targetAlias && bpsKab === targetAlias) return true;
+            if (bpsKab === gKab) return true;
+            const cBps = bpsKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+            return cBps === cGeo && cBps.length > 2;
+        });
+
+        if (found) return found;
+
+        // 3. Fallback match by regency name across all 514 regions
         if (cGeo.length > 2) {
             found = REGION_DATA.find(d => {
                 const bpsKab = normalizeStr(d.kabkota);
+                if (targetAlias && bpsKab === targetAlias) return true;
                 const cBps = bpsKab.replace(/^kota/, '').replace(/^kabupaten/, '');
                 return cBps === cGeo;
             });
@@ -657,9 +682,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (allGeoJsonFeatures.length > 0 && target.prov && target.kabkota) {
             const normProv = target.prov;
             const normKab = target.kabkota;
-            const matchingFeature = allGeoJsonFeatures.find(f => {
+            const targetIsKota = (target.kabkota || '').toUpperCase().startsWith('KOTA');
+
+            // 1. Match respecting Kota vs Kabupaten
+            let matchingFeature = allGeoJsonFeatures.find(f => {
                 if (!f.properties) return false;
                 if (!sameProvName(f.properties.COUNTRY, normProv)) return false;
+                const fIsKota = (f.properties.VARNAME_2 || '').toLowerCase() === 'kota';
+                if (targetIsKota !== fIsKota) return false;
                 const geoKab = normalizeStr(f.properties.NAME_1);
                 const bpsKab = normalizeStr(normKab);
                 if (geoKab === bpsKab) return true;
@@ -667,6 +697,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const cGeo = geoKab.replace(/^kota/, '').replace(/^kabupaten/, '');
                 return cBps === cGeo && cBps.length > 2;
             });
+
+            // 2. Fallback without strict type check
+            if (!matchingFeature) {
+                matchingFeature = allGeoJsonFeatures.find(f => {
+                    if (!f.properties) return false;
+                    if (!sameProvName(f.properties.COUNTRY, normProv)) return false;
+                    const geoKab = normalizeStr(f.properties.NAME_1);
+                    const bpsKab = normalizeStr(normKab);
+                    if (geoKab === bpsKab) return true;
+                    const cBps = bpsKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+                    const cGeo = geoKab.replace(/^kota/, '').replace(/^kabupaten/, '');
+                    return cBps === cGeo && cBps.length > 2;
+                });
+            }
 
             if (matchingFeature) {
                 const tempLayer = L.geoJSON(matchingFeature);
@@ -767,7 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const geoLayer = L.geoJSON(displayFeatures, {
                     style: (feature) => {
                         const props = feature.properties || {};
-                        const regData = findBpsRegionData(props.COUNTRY, props.NAME_1);
+                        const regData = findBpsRegionData(props.COUNTRY, props.NAME_1, props.VARNAME_2);
                         const val = regData ? m.getValue(regData) : null;
 
                         let fillColor = '#8b95a5';
@@ -791,7 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const regType = (props.VARNAME_2 || '').trim();
                         const fullName = `${regType} ${regName}`.trim();
                         const provName = (props.COUNTRY || '').trim();
-                        const regData = findBpsRegionData(provName, regName);
+                        const regData = findBpsRegionData(provName, regName, regType);
                         const val = regData ? m.getValue(regData) : null;
                         const valDisplay = val !== null ? m.format(val) : 'Data belum tersedia';
                         const classification = val !== null ? m.classify(val) : '';
@@ -934,7 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         tableBody.innerHTML = filtered.map((r, idx) => {
-            const targetUrl = `profil.html?id=${encodeURIComponent(r.id || '')}&slug=${encodeURIComponent(r.slug || '')}&view=table`;
+            const targetUrl = `profil.html?id=${encodeURIComponent(r.id || '')}&slug=${encodeURIComponent(r.slug || '')}&view=table#id=${encodeURIComponent(r.id || '')}&slug=${encodeURIComponent(r.slug || '')}`;
             const activeVal = m.getValue(r);
             const activeDisplay = activeVal !== null ? m.formatShort(activeVal) : '–';
 
@@ -949,11 +993,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td style="text-align: right;">${r.pdrb_perkapita ? 'Rp ' + Number(r.pdrb_perkapita).toFixed(1) + ' Jt' : '–'}</td>
                     <td style="text-align: right;">${r.persentase_miskin ? r.persentase_miskin.toFixed(2) + '%' : '–'}</td>
                     <td style="text-align: center;">
-                        <a href="${targetUrl}" class="action-btn">Lihat Profil &rarr;</a>
+                        <a href="${targetUrl}" class="action-btn" data-id="${r.id}" data-slug="${r.slug || ''}" data-name="${escapeHtml(r.kabkota || '')}">Lihat Profil &rarr;</a>
                     </td>
                 </tr>
             `;
         }).join('');
+
+        tableBody.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                const slug = btn.getAttribute('data-slug');
+                const name = btn.getAttribute('data-name');
+                if (id) {
+                    try {
+                        localStorage.setItem('selected_region_id', id);
+                        if (slug) localStorage.setItem('selected_region_slug', slug);
+                        if (name) localStorage.setItem('selected_region_name', name);
+                        sessionStorage.setItem('selected_region_id', id);
+                        if (slug) sessionStorage.setItem('selected_region_slug', slug);
+                        if (name) sessionStorage.setItem('selected_region_name', name);
+                    } catch (e) {}
+                }
+            });
+        });
     }
 
     // Attach table header click listeners for sorting
@@ -1043,6 +1105,20 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedRegion = region;
         if (!regionPanel || !rpContent) return;
 
+        if (region && (region.id || region.no)) {
+            const regId = String(region.id || region.no);
+            const regSlug = String(region.slug || '');
+            const regName = String(region.kabkota || '');
+            try {
+                localStorage.setItem('selected_region_id', regId);
+                localStorage.setItem('selected_region_slug', regSlug);
+                localStorage.setItem('selected_region_name', regName);
+                sessionStorage.setItem('selected_region_id', regId);
+                sessionStorage.setItem('selected_region_slug', regSlug);
+                sessionStorage.setItem('selected_region_name', regName);
+            } catch (e) {}
+        }
+
         const isKota = (region.kabkota || '').toUpperCase().startsWith('KOTA');
         const completeness = region.completeness || (Math.round(
             (Object.values(region).filter(v => v !== null && v !== undefined && v !== '').length / Object.keys(region).length) * 100
@@ -1055,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .map(w => w[0].toUpperCase())
             .join('');
 
-        const targetUrl = `profil.html?id=${encodeURIComponent(region.id || '')}&slug=${encodeURIComponent(region.slug || '')}`;
+        const targetUrl = `profil.html?id=${encodeURIComponent(region.id || '')}&slug=${encodeURIComponent(region.slug || '')}#id=${encodeURIComponent(region.id || '')}&slug=${encodeURIComponent(region.slug || '')}`;
 
         // Active metric calculation for spotlight card
         const m = METRICS[currentMetric];
@@ -1138,6 +1214,25 @@ document.addEventListener('DOMContentLoaded', () => {
             </a>
         `;
 
+        const ctaBtn = rpContent.querySelector('.rp-cta');
+        if (ctaBtn) {
+            ctaBtn.addEventListener('click', () => {
+                if (region && (region.id || region.no)) {
+                    const regId = String(region.id || region.no);
+                    const regSlug = String(region.slug || '');
+                    const regName = String(region.kabkota || '');
+                    try {
+                        localStorage.setItem('selected_region_id', regId);
+                        localStorage.setItem('selected_region_slug', regSlug);
+                        localStorage.setItem('selected_region_name', regName);
+                        sessionStorage.setItem('selected_region_id', regId);
+                        sessionStorage.setItem('selected_region_slug', regSlug);
+                        sessionStorage.setItem('selected_region_name', regName);
+                    } catch (e) {}
+                }
+            });
+        }
+
         regionPanel.classList.add('open');
     }
 
@@ -1209,6 +1304,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const target = matches[idx];
                 searchResults.hidden = true;
                 if (searchInput) searchInput.value = target.kabkota || '';
+
+                if (target && (target.id || target.no)) {
+                    const regId = String(target.id || target.no);
+                    const regSlug = String(target.slug || '');
+                    const regName = String(target.kabkota || '');
+                    try {
+                        localStorage.setItem('selected_region_id', regId);
+                        localStorage.setItem('selected_region_slug', regSlug);
+                        localStorage.setItem('selected_region_name', regName);
+                        sessionStorage.setItem('selected_region_id', regId);
+                        sessionStorage.setItem('selected_region_slug', regSlug);
+                        sessionStorage.setItem('selected_region_name', regName);
+                    } catch (e) {}
+                }
 
                 focusRegionMap(target);
                 selectRegion(target);
