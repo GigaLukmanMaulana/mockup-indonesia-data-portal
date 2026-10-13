@@ -135,6 +135,16 @@
                 statusFilter: 'all'
             };
 
+            this.tableState = {
+                page: 1,
+                pageSize: 25,
+                contractFilter: 'all',
+                kpiFilter: 'all',
+                searchQuery: '',
+                sortField: 'contract',
+                sortAsc: true
+            };
+
             this.layers = {
                 clusters: L.layerGroup(),
                 poiMarkers: L.layerGroup(),
@@ -151,6 +161,7 @@
                 this.renderHeaderFilters();
             });
             this.setupUI();
+            this.initTable();
             this.bindEvents();
             this.renderHeaderFilters();
         }
@@ -205,14 +216,19 @@
 
             const data = this.getData();
             const provs = data.provinces || [];
+            const curIsland = this.state.selectedIsland;
             const curProv = this.state.selectedProv;
             const curCity = this.state.selectedCity;
+            
+            // Batasi provinsi sesuai pulau yang aktif jika ada
+            const availableProvs = curIsland ? provs.filter((p) => curIsland.provIds.includes(p.id)) : provs;
             const citiesInProv = curProv ? (data.cities || []).filter((c) => c.provId === curProv.id) : [];
 
             // Update Province options
+            const provDefaultLabel = curIsland ? `Semua Provinsi di ${curIsland.name} (${availableProvs.length})` : `Semua Provinsi (${provs.length})`;
             provSelect.innerHTML = `
-                <option value="" ${!curProv ? 'selected' : ''}>Semua Provinsi (${provs.length})</option>
-                ${provs.map((p) => `<option value="${p.id}" ${curProv && p.id === curProv.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                <option value="" ${!curProv ? 'selected' : ''}>${provDefaultLabel}</option>
+                ${availableProvs.map((p) => `<option value="${p.id}" ${curProv && p.id === curProv.id ? 'selected' : ''}>${p.name}</option>`).join('')}
             `;
 
             // Update City options
@@ -333,20 +349,32 @@
             const btnViewMap = document.getElementById('btnViewMap');
 
             btnViewTable?.addEventListener('click', () => {
-                if (this.modeSwitcherWrap) this.modeSwitcherWrap.style.display = 'none';
-                if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = 'none';
-                if (this.active) this.clearLayersFromMap();
+                if (this.regionPanel) this.regionPanel.classList.remove('open');
+                if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = this.active ? 'flex' : 'none';
+                if (this.active) {
+                    this.renderSidebar();
+                    this.renderTable();
+                }
             });
 
             btnViewMap?.addEventListener('click', () => {
                 if (this.modeSwitcherWrap) this.modeSwitcherWrap.style.display = 'flex';
                 if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = this.active ? 'flex' : 'none';
-                if (this.active) this.renderMapLayers();
+                if (this.active) {
+                    this.renderSidebar();
+                    this.renderMapLayers();
+                    this.updateContextStrip();
+                    this.updateLegend();
+                }
             });
         }
 
         setMode(mode) {
             const data = this.getData();
+            const tableViewWrap = document.getElementById('tableViewWrap');
+            const potensiTableViewWrap = document.getElementById('potensiTableViewWrap');
+            const isTableView = tableViewWrap?.classList.contains('active') || potensiTableViewWrap?.classList.contains('active');
+
             if (mode === 'potensi') {
                 this.active = true;
                 this.btnModePotensi?.classList.add('active');
@@ -360,21 +388,29 @@
                 if (this.sidebarProfileView) this.sidebarProfileView.style.display = 'none';
                 if (this.sidebarPotensiView) this.sidebarPotensiView.style.display = 'flex';
 
-                // Hide standard geojson choropleth if any
-                if (window.profileGeojsonLayer && this.map && this.map.hasLayer(window.profileGeojsonLayer)) {
-                    this.map.removeLayer(window.profileGeojsonLayer);
-                }
-
-                // If no province is selected, start at national view
-                if (!this.state.selectedProv && !this.state.selectedCity) {
-                    this.state.scope = 'nasional';
-                    if (this.map) this.map.flyTo([-2.5, 118], 5, { duration: 1.0 });
-                }
-
+                // SELALU render sidebar potensi saat masuk ke mode potensi (baik mode tabel maupun map)
                 this.renderSidebar();
-                this.renderMapLayers();
-                this.updateContextStrip();
-                this.updateLegend();
+
+                if (isTableView) {
+                    tableViewWrap?.classList.remove('active');
+                    potensiTableViewWrap?.classList.add('active');
+                    this.renderTable();
+                } else {
+                    // Hide standard geojson choropleth if any
+                    if (window.profileGeojsonLayer && this.map && this.map.hasLayer(window.profileGeojsonLayer)) {
+                        this.map.removeLayer(window.profileGeojsonLayer);
+                    }
+
+                    // If no province is selected, start at national view
+                    if (!this.state.selectedProv && !this.state.selectedCity) {
+                        this.state.scope = 'nasional';
+                        if (this.map) this.map.flyTo([-2.5, 118], 5, { duration: 1.0 });
+                    }
+
+                    this.renderMapLayers();
+                    this.updateContextStrip();
+                    this.updateLegend();
+                }
             } else {
                 this.active = false;
                 this.btnModeProfil?.classList.add('active');
@@ -388,17 +424,23 @@
                 if (this.sidebarPotensiView) this.sidebarPotensiView.style.display = 'none';
                 if (this.sidebarProfileView) this.sidebarProfileView.style.display = 'flex';
 
-                // Remove Potensi layers
-                this.clearLayersFromMap();
+                if (isTableView) {
+                    potensiTableViewWrap?.classList.remove('active');
+                    tableViewWrap?.classList.add('active');
+                    if (window.renderTable) window.renderTable();
+                } else {
+                    // Remove Potensi layers
+                    this.clearLayersFromMap();
 
-                // Restore standard geojson choropleth
-                if (window.profileGeojsonLayer && this.map && !this.map.hasLayer(window.profileGeojsonLayer)) {
-                    this.map.addLayer(window.profileGeojsonLayer);
+                    // Restore standard geojson choropleth
+                    if (window.profileGeojsonLayer && this.map && !this.map.hasLayer(window.profileGeojsonLayer)) {
+                        this.map.addLayer(window.profileGeojsonLayer);
+                    }
+
+                    // Restore profile context & legend
+                    if (window.updateProfileContext) window.updateProfileContext();
+                    if (window.updateProfileLegend) window.updateProfileLegend();
                 }
-
-                // Restore profile context & legend
-                if (window.updateProfileContext) window.updateProfileContext();
-                if (window.updateProfileLegend) window.updateProfileLegend();
             }
         }
 
@@ -423,6 +465,7 @@
                 this.renderSidebar();
                 this.renderMapLayers();
                 this.updateContextStrip();
+                this.renderTable();
                 return;
             }
             const isl = ISLAND_REGIONS.find((i) => i.id === islandId);
@@ -433,6 +476,7 @@
             this.state.selectedCorridor = null;
             this.state.selectedObject = null;
             this.state.scope = 'pulau';
+            this.tableState.page = 1;
 
             if (fly && this.map) {
                 const data = this.getData();
@@ -447,15 +491,29 @@
             this.renderSidebar();
             this.renderMapLayers();
             this.updateContextStrip();
+            this.renderTable();
         }
 
         selectProvince(provId, fly = true) {
             if (!provId) {
+                this.state.selectedProv = null;
+                this.state.selectedCity = null;
+                this.state.selectedCorridor = null;
+                this.state.selectedObject = null;
+                this.tableState.page = 1;
                 if (this.state.selectedIsland) {
-                    this.selectIsland(this.state.selectedIsland.id, fly);
+                    this.state.scope = 'pulau';
+                    if (fly && this.map) {
+                        this.map.flyTo([this.state.selectedIsland.lat, this.state.selectedIsland.lng], this.state.selectedIsland.zoom || 6.5, { duration: 1.2 });
+                    }
                 } else {
-                    this.selectIsland(null, fly);
+                    this.state.scope = 'nasional';
+                    if (fly && this.map) this.map.flyTo([-2.5, 118], 5, { duration: 1.2 });
                 }
+                this.renderSidebar();
+                this.renderMapLayers();
+                this.updateContextStrip();
+                this.renderTable();
                 return;
             }
             const data = this.getData();
@@ -470,6 +528,7 @@
             this.state.selectedCorridor = null;
             this.state.selectedObject = null;
             this.state.scope = 'provinsi';
+            this.tableState.page = 1;
 
             if (fly && this.map) {
                 const citiesInProv = data.cities.filter((c) => c.provId === prov.id);
@@ -483,17 +542,33 @@
             this.renderSidebar();
             this.renderMapLayers();
             this.updateContextStrip();
+            this.renderTable();
         }
 
         selectCity(cityId, fly = true) {
             if (!cityId) {
+                this.state.selectedCity = null;
+                this.state.selectedCorridor = null;
+                this.state.selectedObject = null;
+                this.tableState.page = 1;
                 if (this.state.selectedProv) {
-                    this.selectProvince(this.state.selectedProv.id, fly);
+                    this.state.scope = 'provinsi';
+                    if (fly && this.map) {
+                        this.map.flyTo([this.state.selectedProv.lat, this.state.selectedProv.lng], 7.5, { duration: 1.2 });
+                    }
                 } else if (this.state.selectedIsland) {
-                    this.selectIsland(this.state.selectedIsland.id, fly);
+                    this.state.scope = 'pulau';
+                    if (fly && this.map) {
+                        this.map.flyTo([this.state.selectedIsland.lat, this.state.selectedIsland.lng], this.state.selectedIsland.zoom || 6.5, { duration: 1.2 });
+                    }
                 } else {
-                    this.selectIsland(null, fly);
+                    this.state.scope = 'nasional';
+                    if (fly && this.map) this.map.flyTo([-2.5, 118], 5, { duration: 1.2 });
                 }
+                this.renderSidebar();
+                this.renderMapLayers();
+                this.updateContextStrip();
+                this.renderTable();
                 return;
             }
             const data = this.getData();
@@ -508,6 +583,7 @@
             this.state.selectedCity = city;
             this.state.selectedCorridor = null;
             this.state.selectedObject = null;
+            this.tableState.page = 1;
 
             if (fly && this.map) {
                 this.map.flyTo([city.lat, city.lng], city.zoom || 13, { duration: 1.2 });
@@ -515,6 +591,7 @@
             this.renderSidebar();
             this.renderMapLayers();
             this.updateContextStrip();
+            this.renderTable();
         }
 
         selectCorridor(corrId) {
@@ -523,6 +600,7 @@
             if (!corr) return;
             this.state.scope = 'koridor';
             this.state.selectedCorridor = corr;
+            this.tableState.page = 1;
 
             const routeCoords = corr.path || corr.route;
             if (routeCoords && routeCoords.length && this.map) {
@@ -532,6 +610,7 @@
             this.renderSidebar();
             this.renderMapLayers();
             this.updateContextStrip();
+            this.renderTable();
         }
 
         selectObject(objId) {
@@ -928,8 +1007,8 @@
                                 : curIsland && !curProv && !curCity
                                 ? `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">›</span><span class="scope-crumb active">${curIsland.shortName || curIsland.name}</span>`
                                 : curProv && !curCity
-                                ? `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">›</span><span class="scope-crumb active" title="${curProv.name}">${formatDisplayName(curProv.name)}</span>`
-                                : `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">›</span><button type="button" class="scope-crumb" id="btnScopeProv" title="${curProv ? curProv.name : 'Provinsi'}">${curProv ? formatDisplayName(curProv.name) : 'Provinsi'}</button><span class="crumb-sep">›</span><span class="scope-crumb active" title="${curCity.name}">${formatDisplayName(curCity.name)}</span>`
+                                ? `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">›</span>${curIsland ? `<button type="button" class="scope-crumb" id="btnScopeIsland">${curIsland.shortName || curIsland.name}</button><span class="crumb-sep">›</span>` : ''}<span class="scope-crumb active" title="${curProv.name}">${formatDisplayName(curProv.name)}</span>`
+                                : `<button type="button" class="scope-crumb" id="btnScopeNasional">Nasional</button><span class="crumb-sep">›</span>${curIsland ? `<button type="button" class="scope-crumb" id="btnScopeIsland">${curIsland.shortName || curIsland.name}</button><span class="crumb-sep">›</span>` : ''}<button type="button" class="scope-crumb" id="btnScopeProv" title="${curProv ? curProv.name : 'Provinsi'}">${curProv ? formatDisplayName(curProv.name) : 'Provinsi'}</button><span class="crumb-sep">›</span><span class="scope-crumb active" title="${curCity.name}">${formatDisplayName(curCity.name)}</span>`
                         }
                     </div>
                 </div>
@@ -940,13 +1019,13 @@
                         <span class="section-tag">${curCity ? `Indikasi Potensi: ${curCity.name}` : curProv ? `Indikasi Potensi: Provinsi ${curProv.name}` : curIsland ? `Indikasi Potensi: ${curIsland.name}` : `Indikasi Potensi: Nasional (38 Provinsi)`}</span>
                     </div>
                     <div class="potensi-kpi-grid">
-                        <div class="pot-kpi-card">
+                        <div class="pot-kpi-card ${this.tableState.kpiFilter === 'all' ? 'active' : ''}" id="kpiCardAllPoi" style="cursor: pointer; transition: all 0.2s;" title="Klik untuk menampilkan semua titik POI">
                             <span class="pot-kpi-val" style="color: #0d9488;">${fmt(totalPoi)}</span>
                             <span class="pot-kpi-lbl">POI Terpetakan</span>
                         </div>
-                        <div class="pot-kpi-card">
+                        <div class="pot-kpi-card ${this.tableState.kpiFilter === 'unverified' ? 'active' : ''}" id="kpiCardUnverified" style="cursor: pointer; transition: all 0.2s; ${this.tableState.kpiFilter === 'unverified' ? 'border: 2px solid #d97706; background: #fffbeb;' : ''}" title="Klik untuk menyaring objek yang perlu verifikasi">
                             <span class="pot-kpi-val" style="color: #d97706;">${fmt(perluVerif)}</span>
-                            <span class="pot-kpi-lbl">Perlu Verifikasi</span>
+                            <span class="pot-kpi-lbl">${this.tableState.kpiFilter === 'unverified' ? '✓ Perlu Verifikasi' : 'Perlu Verifikasi'}</span>
                         </div>
                         <div class="pot-kpi-card wide">
                             <span class="pot-kpi-val" style="color: #0369a1;">${rp(potFinansial)}</span>
@@ -1146,11 +1225,27 @@
                 if (curProv) this.selectProvince(curProv.id, true);
             });
 
+            document.getElementById('kpiCardAllPoi')?.addEventListener('click', () => {
+                this.tableState.kpiFilter = 'all';
+                this.tableState.page = 1;
+                this.renderSidebar();
+                this.renderTable();
+            });
+
+            document.getElementById('kpiCardUnverified')?.addEventListener('click', () => {
+                this.tableState.kpiFilter = (this.tableState.kpiFilter === 'unverified') ? 'all' : 'unverified';
+                this.tableState.page = 1;
+                this.renderSidebar();
+                this.renderTable();
+            });
+
             this.sidebarPotensiView.querySelectorAll('.pot-cat-pill').forEach((btn) => {
                 btn.addEventListener('click', () => {
                     this.state.categoryFilter = btn.dataset.cat;
+                    this.tableState.page = 1;
                     this.renderSidebar();
                     this.renderMapLayers();
+                    this.renderTable();
                 });
             });
 
@@ -1235,6 +1330,7 @@
 
         renderDetailPanel(obj) {
             if (!this.regionPanel || !this.rpContent) return;
+            this.rpContent.scrollTop = 0;
 
             const data = this.getData();
             const city = data.cities.find((c) => c.id === obj.cityId);
@@ -1242,6 +1338,61 @@
             const regionLabel = city ? `${city.name}${prov ? ', ' + prov.name : ''}` : obj.cityId;
 
             const stepperFlow = ['Impor POI', 'Prioritas', 'Survei & Bukti', 'Validasi Objek', 'Tindak Lanjut', 'Realisasi'];
+
+            const daysLeft = obj.contractDaysLeft !== undefined ? obj.contractDaysLeft : 999;
+            let contractBadgeHtml = '';
+            if (daysLeft < 0) {
+                contractBadgeHtml = `<span style="font-size:10px;font-weight:700;padding:2px 7px;background:#fee2e2;color:#b91c1c;border-radius:4px;">🔴 Kadaluarsa (${Math.abs(daysLeft)} hari lalu)</span>`;
+            } else if (daysLeft <= 30) {
+                contractBadgeHtml = `<span style="font-size:10px;font-weight:700;padding:2px 7px;background:#fef3c7;color:#b45309;border-radius:4px;">⚠️ Sisa ${daysLeft} Hari</span>`;
+            } else if (daysLeft <= 60) {
+                contractBadgeHtml = `<span style="font-size:10px;font-weight:600;padding:2px 7px;background:#e0f2fe;color:#0369a1;border-radius:4px;">📅 Sisa ${daysLeft} Hari</span>`;
+            } else {
+                contractBadgeHtml = `<span style="font-size:10px;font-weight:600;padding:2px 7px;background:#d1fae5;color:#065f46;border-radius:4px;">🟢 Aktif (${daysLeft} Hari)</span>`;
+            }
+
+            // WhatsApp link & message
+            const cleanPhone = String(obj.contactPhone || '6281234567890').replace(/\D/g, '');
+            const cityLabel = (obj.cityId || '').toUpperCase();
+            const waMsg = `Halo ${obj.contactPerson || 'Bpk/Ibu Pengelola'},\n\nKami dari Tim Rekonsiliasi & Pendataan Pajak Daerah (PAD360) wilayah ${cityLabel}. Berdasarkan catatan sistem kami, izin/kontrak sewa untuk objek "${obj.name}" di lokasi ${obj.addr || '-'} tercatat berakhir pada ${obj.contractEnd || '-'} (${daysLeft < 0 ? 'sudah lewat jatuh tempo' : daysLeft + ' hari lagi'}).\n\nMohon konfirmasi terkait rencana perpanjangan izin dan pemenuhan kewajiban pajak daerah tersebut. Terima kasih.`;
+            const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}`;
+            const gmapsLink = obj.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${obj.lat || 0},${obj.lng || 0}`;
+
+            // Google Maps Review & Rating Data
+            const ratingVal = (obj.gmapsRating || 4.7).toFixed(1);
+            const totalReviews = obj.gmapsTotalReviews || 84;
+            const starCount = Math.round(obj.gmapsRating || 4.7);
+            const starIcons = '★'.repeat(starCount) + '☆'.repeat(5 - starCount);
+            const reviewsList = obj.gmapsReviews && obj.gmapsReviews.length > 0 ? obj.gmapsReviews : [
+                {
+                    author: 'Rian Pratama',
+                    badge: 'Local Guide · Level 7',
+                    rating: 5,
+                    time: '2 minggu lalu',
+                    text: 'Penerangan lampu LED megatron sangat terang dan kontras tinggi di malam hari. Titik persimpangan strategis dan ramai lalu lintas.'
+                },
+                {
+                    author: 'Siti Rahma',
+                    badge: 'Local Guide · Level 5',
+                    rating: 5,
+                    time: '1 bulan lalu',
+                    text: 'Posisi objek menghadap langsung ke arus utama kendaraan dari arah pusat kota. Sangat eye-catching dan visibilitas tinggi.'
+                }
+            ];
+
+            const reviewsHtml = reviewsList.map(r => `
+                <div style="background: #ffffff; border: 1px solid var(--line-light, #f1f5f9); border-radius: 6px; padding: 9px 11px; font-size: 11.5px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                        <div>
+                            <strong style="color: var(--text-hi); font-size: 11.5px;">${escapeHtml(r.author)}</strong>
+                            <span style="font-size: 10px; color: var(--text-mid); margin-left: 4px;">• ${escapeHtml(r.badge || 'Pengunjung')}</span>
+                        </div>
+                        <span style="color: #f59e0b; font-size: 11px; letter-spacing: 1px;">${'★'.repeat(r.rating || 5)}</span>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-low); margin-bottom: 4px;">${escapeHtml(r.time || 'Baru saja')}</div>
+                    <p style="margin: 0; color: var(--text-mid); line-height: 1.45; font-size: 11px;">"${escapeHtml(r.text)}"</p>
+                </div>
+            `).join('');
 
             this.rpContent.innerHTML = `
                 <div class="rp-type-tag" style="background:#ccfbf1; color:#0f766e;">${obj.catName}</div>
@@ -1263,14 +1414,82 @@
                     <div class="sp-compare" style="font-size: 11px;">Dasar: ${obj.formula}</div>
                 </div>
 
+                <!-- Card Masa Kontrak / Izin & Aksi Cepat -->
+                <div style="margin: 10px 0 6px; padding: 12px; background: ${daysLeft <= 30 ? '#fffbeb' : '#f0fdf4'}; border: 1px solid ${daysLeft <= 30 ? '#fde68a' : '#bbf7d0'}; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 11px; font-weight: 700; color: ${daysLeft <= 30 ? '#92400e' : '#166534'}; text-transform: uppercase; letter-spacing: 0.5px;">
+                            ${daysLeft < 0 ? '🔴 Kontrak Jatuh Tempo' : daysLeft <= 30 ? '⚠️ Masa Kontrak Segera Habis' : '🟢 Masa Kontrak / Izin'}
+                        </span>
+                        ${contractBadgeHtml}
+                    </div>
+                    <div style="font-size: 11.5px; color: var(--text-mid); line-height: 1.4; margin-bottom: 10px;">
+                        Jatuh tempo: <b style="color: var(--text-hi); font-family: var(--font-mono); font-size: 12px;">${escapeHtml(obj.contractEnd || '–')}</b> &bull; Pengelola: <b>${escapeHtml(obj.contactPerson || obj.owner || '–')}</b>
+                    </div>
+                    <div style="display: flex;">
+                        ${daysLeft <= 30 ? `
+                        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: #25D366; color: #ffffff; border-radius: 6px; font-size: 12px; font-weight: 700; text-decoration: none; box-shadow: 0 1px 3px rgba(37,211,102,0.3);" title="Hubungi ${obj.contactPerson || 'Pengelola'} via WhatsApp">
+                            💬 Hubungi WA
+                        </a>` : `
+                        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: #ffffff; color: #334155; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none;" title="Kirim Pesan WhatsApp">
+                            💬 Hubungi Pengelola
+                        </a>`}
+                    </div>
+                </div>
+
                 <!-- Spesifikasi Fisik & Legalitas -->
                 <div class="potensi-spec-card">
+                    <div class="spec-row"><span>Masa Kontrak / Izin</span><b style="font-family: var(--font-mono); font-size: 12.5px;">${escapeHtml(obj.contractEnd || '–')}</b></div>
+                    <div class="spec-row"><span>Status Kontrak</span><div>${contractBadgeHtml}</div></div>
                     <div class="spec-row"><span>Dimensi Fisik</span><b>${obj.w} × ${obj.h} meter (${obj.w * obj.h} m²)</b></div>
                     <div class="spec-row"><span>Jenis / Sisi</span><b>${obj.jenis} (${obj.sisi} Sisi)</b></div>
                     <div class="spec-row"><span>Pemilik / Operator</span><b>${obj.owner}</b></div>
                     <div class="spec-row"><span>Periode Pajak</span><b>${obj.periode}</b></div>
                     <div class="spec-row"><span>Status Register</span><b style="color:${obj.regStatus.includes('Cocok') || obj.regStatus.includes('Tervalidasi') ? '#0d9488' : '#d97706'}">${obj.regStatus}</b></div>
                     <div class="spec-row"><span>Izin Usaha / Lokasi</span><b>${obj.izinUsaha}</b></div>
+                    <div class="spec-row"><span>Izin Tayang / Reklame</span><b>${escapeHtml(obj.izinRek || '–')}</b></div>
+                    <div class="spec-row"><span>Kontak Pengelola</span><b>${escapeHtml(obj.contactPerson || obj.owner || '–')}</b></div>
+                    <div class="spec-row"><span>No. Telepon / WA</span><b style="font-family: var(--font-mono);">${escapeHtml(obj.contactPhone || '–')}</b></div>
+                </div>
+
+                <!-- Ulasan & Rating Google Maps Mendalam -->
+                <div class="potensi-gmaps-card" style="margin-top: 12px; background: #ffffff; border: 1px solid var(--line); border-radius: var(--radius-s, 8px); padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                            </svg>
+                            <b style="font-size: 12px; color: var(--text-hi);">Ulasan &amp; Rating Google Maps</b>
+                        </div>
+                        <span style="font-size: 10px; font-weight: 700; color: #166534; background: #dcfce7; padding: 2px 7px; border-radius: 4px;">✓ Terverifikasi Publik</span>
+                    </div>
+
+                    <!-- Rating Summary -->
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 10px;">
+                        <div style="text-align: center; min-width: 54px;">
+                            <div style="font-size: 24px; font-weight: 800; color: var(--text-hi); line-height: 1;">${ratingVal}</div>
+                            <div style="color: #f59e0b; font-size: 11px; margin-top: 3px; letter-spacing: 1px;">${starIcons}</div>
+                        </div>
+                        <div style="flex: 1; border-left: 1px solid var(--line); padding-left: 10px;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-hi);">Basis ${totalReviews} Ulasan Pengunjung</div>
+                            <div style="font-size: 10px; color: var(--text-mid); margin-top: 2px; line-height: 1.35;">
+                                Titik lokasi ramai, strategis, dan keterlihatan publik tinggi.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Review Snippets List -->
+                    <div style="display: flex; flex-direction: column; gap: 7px;">
+                        ${reviewsHtml}
+                    </div>
+
+                    <!-- Button direct ke Google Maps -->
+                    <a href="${gmapsLink}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; margin-top: 10px; padding: 7px 10px; background: #f1f5f9; color: #1e293b; border: 1px solid var(--line); border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none; transition: all 0.15s;">
+                        <span>Buka Ulasan Lengkap di Google Maps</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    </a>
                 </div>
 
                 <!-- 6 Tahap Alur Kasus -->
@@ -1413,6 +1632,11 @@
                         </div>
 
                         <div class="potensi-form-group">
+                            <label for="updContractEnd">Tanggal Berakhir Kontrak / Izin</label>
+                            <input type="date" id="updContractEnd" class="potensi-form-control" value="${obj.contractEnd || ''}">
+                        </div>
+
+                        <div class="potensi-form-group">
                             <label for="updReason">Alasan Perubahan / Catatan Verifikasi</label>
                             <textarea id="updReason" class="potensi-form-control" rows="2" placeholder="Contoh: Wajib pajak sudah melunasi SKPD nomor 0192/BAPENDA dan izin diperpanjang."></textarea>
                         </div>
@@ -1441,6 +1665,7 @@
                 const newStage = parseInt(modal.querySelector('#updStage').value, 10) || obj.stage;
                 const newW = parseFloat(modal.querySelector('#updW').value) || obj.w;
                 const newH = parseFloat(modal.querySelector('#updH').value) || obj.h;
+                const newContractEnd = modal.querySelector('#updContractEnd')?.value || obj.contractEnd;
                 const reason = modal.querySelector('#updReason').value.trim() || 'Pembaruan status kepatuhan pajak & izin oleh Admin.';
 
                 // Update Object state
@@ -1449,18 +1674,33 @@
                 obj.stage = newStage;
                 obj.w = newW;
                 obj.h = newH;
+                if (newContractEnd) {
+                    obj.contractEnd = newContractEnd;
+                    const today = new Date();
+                    const endDate = new Date(newContractEnd);
+                    const diffTime = endDate - today;
+                    obj.contractDaysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (obj.contractDaysLeft < 0) {
+                        obj.contractStatus = 'Kadaluarsa';
+                    } else if (obj.contractDaysLeft <= 30) {
+                        obj.contractStatus = 'Segera Habis';
+                    } else {
+                        obj.contractStatus = 'Aktif';
+                    }
+                }
 
                 const todayStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
                 obj.hist = obj.hist || [];
                 obj.hist.unshift([
                     todayStr,
-                    `Status diperbarui: ${newReg} (${newIzin})`,
+                    `Status diperbarui: ${newReg} (${newIzin}) - Kontrak: ${obj.contractEnd}`,
                     `Admin Bapenda · ${reason}`
                 ]);
 
                 closeModal();
                 this.renderDetailPanel(obj);
                 this.renderMapLayers();
+                this.renderTable();
             });
         }
 
@@ -1489,7 +1729,393 @@
 
             this.regionPanel.classList.add('open');
         }
+
+        initTable() {
+            const btnAll = document.getElementById('btnContractAll');
+            const btnSoon = document.getElementById('btnContractExpiringSoon');
+            const btnWarn60 = document.getElementById('btnContractWarning60');
+            const btnExpired = document.getElementById('btnContractExpired');
+
+            const setQuickFilter = (type) => {
+                this.tableState.contractFilter = type;
+                this.tableState.page = 1;
+                [btnAll, btnSoon, btnWarn60, btnExpired].forEach(b => b?.classList.remove('active'));
+                if (type === 'all') btnAll?.classList.add('active');
+                else if (type === 'expiring_soon') btnSoon?.classList.add('active');
+                else if (type === 'warning_60') btnWarn60?.classList.add('active');
+                else if (type === 'expired') btnExpired?.classList.add('active');
+                this.renderTable();
+            };
+
+            btnAll?.addEventListener('click', () => setQuickFilter('all'));
+            btnSoon?.addEventListener('click', () => setQuickFilter('expiring_soon'));
+            btnWarn60?.addEventListener('click', () => setQuickFilter('warning_60'));
+            btnExpired?.addEventListener('click', () => setQuickFilter('expired'));
+
+            // Realtime Search Input Handler
+            const searchInput = document.getElementById('potensiTableSearchInput');
+            const searchClear = document.getElementById('potensiTableSearchClear');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const val = e.target.value.trim();
+                    this.tableState.searchQuery = val;
+                    this.tableState.page = 1;
+                    if (searchClear) searchClear.style.display = val ? 'block' : 'none';
+                    this.renderTable();
+                });
+
+                searchClear?.addEventListener('click', () => {
+                    searchInput.value = '';
+                    this.tableState.searchQuery = '';
+                    this.tableState.page = 1;
+                    searchClear.style.display = 'none';
+                    searchInput.focus();
+                    this.renderTable();
+                });
+            }
+
+            // Interactive Column Sorting Listener on Header
+            const thead = document.querySelector('#potensiDataTable thead');
+            thead?.querySelectorAll('th[data-potensi-sort]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const sortKey = th.getAttribute('data-potensi-sort');
+                    if (!sortKey) return;
+
+                    if (this.tableState.sortField === sortKey) {
+                        this.tableState.sortAsc = !this.tableState.sortAsc;
+                    } else {
+                        this.tableState.sortField = sortKey;
+                        // Default descending for numeric value (highest first), ascending for others
+                        this.tableState.sortAsc = (sortKey === 'value') ? false : true;
+                    }
+                    this.tableState.page = 1;
+                    this.renderTable();
+                });
+            });
+
+            // Event delegation untuk tombol detail & reset search pada tabel potensi
+            const tbody = document.getElementById('potensiTableBody');
+            tbody?.addEventListener('click', (e) => {
+                const btnDetail = e.target.closest('.btn-detail-poi');
+                if (btnDetail) {
+                    const oid = btnDetail.getAttribute('data-obj-id');
+                    const data = this.getData();
+                    const obj = data.objects ? data.objects[oid] : null;
+                    if (obj) this.renderDetailPanel(obj);
+                    return;
+                }
+
+                const btnReset = e.target.closest('#btnResetTableSearch');
+                if (btnReset && searchInput) {
+                    searchInput.value = '';
+                    this.tableState.searchQuery = '';
+                    this.tableState.page = 1;
+                    if (searchClear) searchClear.style.display = 'none';
+                    this.renderTable();
+                }
+            });
+        }
+
+        updateTableSortIcons() {
+            const curField = this.tableState.sortField;
+            const curAsc = this.tableState.sortAsc;
+
+            ['name', 'category', 'value', 'contract'].forEach(f => {
+                const th = document.querySelector(`#potensiDataTable th[data-potensi-sort="${f}"]`);
+                const icon = document.getElementById(`sortIcon_${f}`);
+                if (!th || !icon) return;
+
+                if (curField === f) {
+                    th.classList.add('sort-active');
+                    icon.textContent = curAsc ? '▲' : '▼';
+                    icon.style.opacity = '1';
+                } else {
+                    th.classList.remove('sort-active');
+                    icon.textContent = '↕';
+                    icon.style.opacity = '0.4';
+                }
+            });
+        }
+
+        renderTable() {
+            const tbody = document.getElementById('potensiTableBody');
+            const countLabel = document.getElementById('potensiTableCountLabel');
+            const pageInfo = document.getElementById('potensiPageInfo');
+            const pageBtns = document.getElementById('potensiPageBtns');
+            if (!tbody) return;
+
+            // Sinkronkan indikator visual panah sorting pada header tabel
+            this.updateTableSortIcons();
+
+            const data = this.getData();
+            const allObjs = Object.values(data.objects || {});
+
+            // Filter Wilayah (Tersinkronisasi Lengkap: Kota -> Provinsi -> Pulau -> Nasional)
+            let filtered = allObjs;
+            let scopeLabel = 'Nasional (Seluruh Indonesia)';
+            if (this.state.selectedCity) {
+                filtered = filtered.filter(o => o.cityId === this.state.selectedCity.id);
+                scopeLabel = `${this.state.selectedCity.name}, ${this.state.selectedProv?.name || ''}`;
+            } else if (this.state.selectedProv) {
+                const provCityIds = (data.cities || []).filter(c => c.provId === this.state.selectedProv.id).map(c => c.id);
+                filtered = filtered.filter(o => provCityIds.includes(o.cityId));
+                scopeLabel = `Provinsi ${this.state.selectedProv.name}`;
+            } else if (this.state.selectedIsland) {
+                const islandProvIds = this.state.selectedIsland.provIds || [];
+                const islandCityIds = (data.cities || []).filter(c => islandProvIds.includes(c.provId)).map(c => c.id);
+                filtered = filtered.filter(o => islandCityIds.includes(o.cityId));
+                scopeLabel = `${this.state.selectedIsland.name} (${islandProvIds.length} Provinsi)`;
+            }
+
+            // Filter Kategori POI (dari Sidebar)
+            let catLabel = '';
+            if (this.state.categoryFilter && this.state.categoryFilter !== 'all') {
+                filtered = filtered.filter(o => o.category === this.state.categoryFilter);
+                const matchedCat = (data.categories || []).find(c => c.id === this.state.categoryFilter);
+                catLabel = matchedCat ? ` · Kategori ${matchedCat.name || matchedCat.label}` : ` · Kategori ${this.state.categoryFilter.toUpperCase()}`;
+            }
+
+            // Filter KPI Verifikasi (dari Sidebar KPI Card)
+            let kpiLabel = '';
+            if (this.tableState.kpiFilter === 'unverified') {
+                filtered = filtered.filter(o => o.stage <= 2 || (o.regStatus && (o.regStatus.toLowerCase().includes('kandidat') || o.regStatus.toLowerCase().includes('perlu'))));
+                kpiLabel = ' · Perlu Verifikasi';
+            }
+
+            // Filter Quick Status Kontrak
+            let contractLabel = '';
+            if (this.tableState.contractFilter === 'expiring_soon') {
+                filtered = filtered.filter(o => (o.contractDaysLeft >= 0 && o.contractDaysLeft <= 30));
+                contractLabel = ' · ⚠️ Segera Habis (≤ 30 Hari)';
+            } else if (this.tableState.contractFilter === 'warning_60') {
+                filtered = filtered.filter(o => (o.contractDaysLeft > 30 && o.contractDaysLeft <= 60));
+                contractLabel = ' · 📅 Sisa 31-60 Hari';
+            } else if (this.tableState.contractFilter === 'expired') {
+                filtered = filtered.filter(o => (o.contractDaysLeft < 0));
+                contractLabel = ' · 🔴 Kadaluarsa';
+            }
+
+            // Filter Pencarian Teks Objek (Nama Objek, Alamat/Jalan, Pengelola/Pemilik, Jenis, ID)
+            let searchLabel = '';
+            if (this.tableState.searchQuery) {
+                const q = this.tableState.searchQuery.toLowerCase();
+                filtered = filtered.filter(o =>
+                    (o.name && o.name.toLowerCase().includes(q)) ||
+                    (o.addr && o.addr.toLowerCase().includes(q)) ||
+                    (o.contactPerson && o.contactPerson.toLowerCase().includes(q)) ||
+                    (o.owner && o.owner.toLowerCase().includes(q)) ||
+                    (o.jenis && o.jenis.toLowerCase().includes(q)) ||
+                    (o.id && o.id.toLowerCase().includes(q))
+                );
+                searchLabel = ` · Pencarian: "${this.tableState.searchQuery}"`;
+            }
+
+            // Interactive Column Sorting
+            const sortField = this.tableState.sortField || 'contract';
+            const sortAsc = this.tableState.sortAsc !== false;
+
+            filtered.sort((a, b) => {
+                let res = 0;
+                if (sortField === 'name') {
+                    res = (a.name || '').localeCompare(b.name || '', 'id');
+                } else if (sortField === 'category') {
+                    const catA = a.catName || a.category || '';
+                    const catB = b.catName || b.category || '';
+                    res = catA.localeCompare(catB, 'id');
+                } else if (sortField === 'value') {
+                    const valA = a.potValJt !== undefined ? a.potValJt : 0;
+                    const valB = b.potValJt !== undefined ? b.potValJt : 0;
+                    res = valA - valB;
+                } else if (sortField === 'contract' || sortField === 'contractDaysLeft') {
+                    const daysA = a.contractDaysLeft !== undefined ? a.contractDaysLeft : 999;
+                    const daysB = b.contractDaysLeft !== undefined ? b.contractDaysLeft : 999;
+                    res = daysA - daysB;
+                }
+                return sortAsc ? res : -res;
+            });
+
+            const totalRows = filtered.length;
+            const pageSize = this.tableState.pageSize || 25;
+            const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+
+            if (this.tableState.page > totalPages) this.tableState.page = totalPages;
+            if (this.tableState.page < 1) this.tableState.page = 1;
+
+            const curPage = this.tableState.page;
+            const startIdx = (curPage - 1) * pageSize;
+            const pageItems = filtered.slice(startIdx, startIdx + pageSize);
+
+            if (countLabel) {
+                countLabel.textContent = `Menampilkan ${totalRows.toLocaleString('id-ID')} objek potensi · ${scopeLabel}${catLabel}${kpiLabel}${contractLabel}${searchLabel}`;
+            }
+
+            if (pageInfo) {
+                pageInfo.textContent = `Halaman ${curPage} dari ${totalPages} (Total ${totalRows.toLocaleString('id-ID')} objek)`;
+            }
+
+            if (pageItems.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align:center;padding:40px 20px;color:var(--text-mid);">
+                            <div style="font-size: 14px; font-weight: 700; margin-bottom: 6px; color: var(--text-hi);">Tidak ada objek potensi yang cocok</div>
+                            <div style="font-size: 12px; margin-bottom: 12px;">Filter aktif: ${scopeLabel}${catLabel}${kpiLabel}${contractLabel}${searchLabel}</div>
+                            ${this.tableState.searchQuery ? `
+                            <button type="button" id="btnResetTableSearch" style="padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid var(--line); background: #ffffff; cursor: pointer; color: var(--merah); box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+                                ✕ Reset Pencarian
+                            </button>` : ''}
+                        </td>
+                    </tr>
+                `;
+                if (pageBtns) pageBtns.innerHTML = '';
+                return;
+            }
+
+            const catColors = {
+                rek: { bg: '#e0f2fe', color: '#0369a1', label: 'Reklame' },
+                pkr: { bg: '#fef3c7', color: '#b45309', label: 'Parkir' },
+                mall: { bg: '#ede9fe', color: '#6d28d9', label: 'Mall & Belanja' },
+                pab: { bg: '#dbeafe', color: '#1d4ed8', label: 'Pabrik & Gudang' },
+                tmn: { bg: '#d1fae5', color: '#065f46', label: 'Ruang Publik' }
+            };
+
+            const rowsHtml = pageItems.map((item, idx) => {
+                const no = startIdx + idx + 1;
+                const catCfg = catColors[item.category] || { bg: '#e2e8f0', color: '#334155', label: item.catName || 'Objek' };
+                const daysLeft = item.contractDaysLeft !== undefined ? item.contractDaysLeft : 999;
+
+                // Status Kontrak Badge
+                let contractBadgeHtml = '';
+                if (daysLeft < 0) {
+                    contractBadgeHtml = `<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;background:#fee2e2;color:#b91c1c;border-radius:4px;white-space:nowrap;">🔴 Kadaluarsa (${Math.abs(daysLeft)}h lalu)</span>`;
+                } else if (daysLeft <= 30) {
+                    contractBadgeHtml = `<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;background:#fef3c7;color:#b45309;border-radius:4px;white-space:nowrap;">⚠️ Sisa ${daysLeft} Hari</span>`;
+                } else if (daysLeft <= 60) {
+                    contractBadgeHtml = `<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;background:#e0f2fe;color:#0369a1;border-radius:4px;white-space:nowrap;">📅 Sisa ${daysLeft} Hari</span>`;
+                } else {
+                    contractBadgeHtml = `<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;background:#d1fae5;color:#065f46;border-radius:4px;white-space:nowrap;">🟢 Aktif (${daysLeft} Hari)</span>`;
+                }
+
+                // WhatsApp Action (HANYA MUNCUL JIKA KONTRAK <= 30 HARI ATAU KADALUARSA)
+                let contactActionHtml = '';
+                if (daysLeft <= 30) {
+                    const cleanPhone = String(item.contactPhone || '6281234567890').replace(/\D/g, '');
+                    const cityLabel = (item.cityId || '').toUpperCase();
+                    const waMsg = `Halo ${item.contactPerson || 'Bpk/Ibu Pengelola'},\n\nKami dari Tim Rekonsiliasi & Pendataan Pajak Daerah (PAD360) wilayah ${cityLabel}. Berdasarkan catatan sistem kami, izin/kontrak sewa untuk objek "${item.name}" di lokasi ${item.addr || '-'} tercatat berakhir pada ${item.contractEnd || '-'} (${daysLeft < 0 ? 'sudah lewat jatuh tempo' : daysLeft + ' hari lagi'}).\n\nMohon konfirmasi terkait rencana perpanjangan izin dan pemenuhan kewajiban pajak daerah tersebut. Terima kasih.`;
+                    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}`;
+
+                    contactActionHtml = `
+                        <div style="display:inline-flex;align-items:center;gap:5px;justify-content:center;">
+                            <a href="${waUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:3px;padding:5px 8px;background:#25D366;color:#ffffff;border-radius:5px;font-size:11px;font-weight:700;text-decoration:none;box-shadow:0 1px 3px rgba(37,211,102,0.3);white-space:nowrap;" title="Hubungi ${item.contactPerson || 'Pengelola'} via WhatsApp">
+                                💬 Hubungi WA
+                            </a>
+                            <button type="button" class="btn-detail-poi" data-obj-id="${item.id}" style="padding:5px 7px;background:var(--surface);border:1px solid var(--line);border-radius:5px;font-size:11px;cursor:pointer;color:var(--text-hi);" title="Lihat Detail Objek">👁️</button>
+                        </div>
+                    `;
+                } else {
+                    contactActionHtml = `
+                        <div style="display:inline-flex;align-items:center;gap:5px;justify-content:center;">
+                            <span style="font-size:10.5px;color:var(--text-low);font-weight:600;padding:3px 7px;background:var(--surface);border-radius:4px;border:1px solid var(--line-light);white-space:nowrap;">Kontrak Aktif</span>
+                            <button type="button" class="btn-detail-poi" data-obj-id="${item.id}" style="padding:5px 7px;background:var(--surface);border:1px solid var(--line);border-radius:5px;font-size:11px;cursor:pointer;color:var(--text-hi);" title="Lihat Detail Objek">👁️</button>
+                        </div>
+                    `;
+                }
+
+                // Google Maps Direct Link (Inline bersama alamat)
+                const gmapsLink = item.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${item.lat || 0},${item.lng || 0}`;
+
+                // Pisahkan nilai estimasi rupiah dan periode waktu
+                const valParts = (item.estimatedValue || '–').split('/');
+                const valRupiah = valParts[0].trim();
+                const valPeriode = valParts.length > 1 ? `/${valParts[1].trim()}` : '';
+
+                return `
+                    <tr>
+                        <td style="text-align:center;font-family:var(--font-mono);color:var(--text-low);font-weight:600;">${no}</td>
+                        <td>
+                            <div style="font-weight:700;color:var(--text-hi);font-size:12px;line-height:1.35;margin-bottom:3px;">${escapeHtml(item.name)}</div>
+                            <div style="font-size:11px;color:var(--text-mid);line-height:1.35;display:flex;align-items:flex-start;gap:3px;">
+                                <span style="flex-shrink:0;">📍</span>
+                                <span>${escapeHtml(item.addr || '-')} <a href="${gmapsLink}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:2px;color:var(--merah);font-size:10px;font-weight:700;text-decoration:none;margin-left:3px;padding:0px 4px;background:var(--merah-bg);border-radius:3px;border:1px solid rgba(197,34,31,0.2);white-space:nowrap;" title="Buka Titik Koordinat di Google Maps">Peta ↗</a></span>
+                            </div>
+                            <div style="font-size:10.5px;color:var(--text-low);margin-top:2px;">Pengelola: <b style="color:var(--text-mid);">${escapeHtml(item.contactPerson || item.owner || '-')}</b></div>
+                        </td>
+                        <td>
+                            <span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;background:${catCfg.bg};color:${catCfg.color};white-space:nowrap;">${catCfg.label}</span>
+                            <div style="font-size:11px;color:var(--text-mid);margin-top:2px;line-height:1.25;">${escapeHtml(item.jenis || '-')}</div>
+                        </td>
+                        <td style="text-align:right;">
+                            <div style="font-family:var(--font-mono);font-weight:700;font-size:12px;color:var(--text-hi);white-space:nowrap;">${escapeHtml(valRupiah)}</div>
+                            <div style="font-size:10px;color:var(--text-low);margin-top:1px;white-space:nowrap;">${escapeHtml(valPeriode || '/ tahun')}</div>
+                        </td>
+                        <td>
+                            <div style="font-family:var(--font-mono);font-size:11.5px;font-weight:700;color:var(--text-hi);">${escapeHtml(item.contractEnd || '–')}</div>
+                            <div style="margin-top:2px;">${contractBadgeHtml}</div>
+                        </td>
+                        <td style="text-align:center;">
+                            ${contactActionHtml}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            tbody.innerHTML = rowsHtml;
+
+            // Render Pagination Buttons
+            if (pageBtns) {
+                let btnsHtml = `
+                    <button type="button" class="btn-prev-page" style="padding:4px 10px;font-size:11.5px;background:var(--surface);border:1px solid var(--line);border-radius:5px;cursor:pointer;" ${curPage === 1 ? 'disabled' : ''}>&larr; Sebelumnya</button>
+                `;
+
+                // Tampilkan beberapa tombol nomor
+                const maxButtons = 5;
+                let startPage = Math.max(1, curPage - 2);
+                let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                if (endPage - startPage < maxButtons - 1) {
+                    startPage = Math.max(1, endPage - maxButtons + 1);
+                }
+
+                for (let p = startPage; p <= endPage; p++) {
+                    const isActive = p === curPage;
+                    btnsHtml += `
+                        <button type="button" class="btn-page-num" data-page="${p}" style="padding:4px 9px;font-size:11.5px;border-radius:5px;cursor:pointer;border:1px solid var(--line);${isActive ? 'background:var(--merah);color:#fff;font-weight:700;' : 'background:var(--surface);color:var(--text);'}">${p}</button>
+                    `;
+                }
+
+                btnsHtml += `
+                    <button type="button" class="btn-next-page" style="padding:4px 10px;font-size:11.5px;background:var(--surface);border:1px solid var(--line);border-radius:5px;cursor:pointer;" ${curPage === totalPages ? 'disabled' : ''}>Selanjutnya &rarr;</button>
+                `;
+
+                pageBtns.innerHTML = btnsHtml;
+
+                // Event listener pagination
+                pageBtns.querySelector('.btn-prev-page')?.addEventListener('click', () => {
+                    if (this.tableState.page > 1) {
+                        this.tableState.page--;
+                        this.renderTable();
+                    }
+                });
+
+                pageBtns.querySelector('.btn-next-page')?.addEventListener('click', () => {
+                    if (this.tableState.page < totalPages) {
+                        this.tableState.page++;
+                        this.renderTable();
+                    }
+                });
+
+                pageBtns.querySelectorAll('.btn-page-num').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const targetPage = parseInt(e.target.getAttribute('data-page'), 10);
+                        if (targetPage && targetPage !== this.tableState.page) {
+                            this.tableState.page = targetPage;
+                            this.renderTable();
+                        }
+                    });
+                });
+            }
+        }
     }
 
     window.PotensiController = PotensiController;
 })();
+

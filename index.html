@@ -1215,6 +1215,136 @@
             transform: translateY(-1px);
         }
 
+        /* ---------------- Anti-Offside & Sorting: Tabel Potensi POI (PAD360) ---------------- */
+        #potensiTableViewWrap .data-table-container {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            background: #ffffff;
+            border-radius: var(--radius-m);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow-card);
+        }
+
+        #potensiDataTable {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        #potensiDataTable th {
+            background: var(--cream-200);
+            padding: 10px 10px;
+            font-weight: 700;
+            font-size: 10.5px;
+            color: var(--text-mid);
+            text-transform: uppercase;
+            letter-spacing: .02em;
+            border-bottom: 1px solid var(--line-strong);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        #potensiDataTable th[data-potensi-sort] {
+            cursor: pointer;
+            transition: background 0.15s var(--ease), color 0.15s var(--ease);
+        }
+
+        #potensiDataTable th[data-potensi-sort]:hover {
+            background: var(--merah-bg);
+            color: var(--merah);
+        }
+
+        #potensiDataTable th.sort-active {
+            color: var(--merah);
+            font-weight: 800;
+            background: rgba(197, 34, 31, 0.05);
+        }
+
+        #potensiDataTable .sort-icon {
+            display: inline-block;
+            margin-left: 3px;
+            font-size: 10px;
+            opacity: 0.4;
+            vertical-align: middle;
+            transition: opacity 0.15s;
+        }
+
+        #potensiDataTable th.sort-active .sort-icon {
+            opacity: 1;
+            color: var(--merah);
+            font-weight: 800;
+        }
+
+        #potensiDataTable td {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--line);
+            color: var(--text-hi);
+            vertical-align: middle;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        #potensiDataTable tr:last-child td {
+            border-bottom: none;
+        }
+
+        #potensiDataTable tr:hover td {
+            background: #f8fafc;
+        }
+
+        /* 6-Column Strict Layout Allocation (100% Fit) */
+        #potensiDataTable th:nth-child(1),
+        #potensiDataTable td:nth-child(1) {
+            width: 42px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        #potensiDataTable th:nth-child(2),
+        #potensiDataTable td:nth-child(2) {
+            width: 33%;
+        }
+
+        #potensiDataTable th:nth-child(3),
+        #potensiDataTable td:nth-child(3) {
+            width: 15%;
+        }
+
+        #potensiDataTable th:nth-child(4),
+        #potensiDataTable td:nth-child(4) {
+            width: 17%;
+            text-align: right;
+        }
+
+        #potensiDataTable th:nth-child(5),
+        #potensiDataTable td:nth-child(5) {
+            width: 18%;
+        }
+
+        #potensiDataTable th:nth-child(6),
+        #potensiDataTable td:nth-child(6) {
+            width: 17%;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .potensi-search-input:focus {
+            border-color: #0d9488 !important;
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+        }
+
+        @media (max-width: 860px) {
+            #potensiTableViewWrap .data-table-container {
+                overflow-x: auto;
+            }
+            #potensiDataTable {
+                min-width: 760px;
+            }
+        }
+
         /* ---------------- Detail Sliding Drawer ---------------- */
         .region-panel {
             position: absolute;
@@ -1226,8 +1356,10 @@
             border: 1px solid var(--line-strong);
             box-shadow: var(--shadow-panel);
             border-radius: var(--radius-l);
-            padding: 22px 22px 18px;
-            overflow-y: auto;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
             transform: translateX(440px);
             opacity: 0;
             transition: transform .35s var(--ease), opacity .3s var(--ease);
@@ -1241,25 +1373,40 @@
             pointer-events: auto;
         }
 
+        #rpContent {
+            flex: 1;
+            overflow-y: auto;
+            padding: 22px 22px 24px;
+            box-sizing: border-box;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
         .rp-close {
             position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 26px;
-            height: 26px;
+            top: 14px;
+            right: 14px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            border: 1px solid var(--line);
-            background: var(--cream-50);
+            border: 1px solid var(--line-strong, #cbd5e1);
+            background: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             color: var(--text-mid);
+            z-index: 1050;
+            transition: transform .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
         }
 
         .rp-close:hover {
-            color: var(--text-hi);
-            background: var(--cream-200);
+            color: #ef4444;
+            background: #fef2f2;
+            border-color: #fca5a5;
+            box-shadow: 0 3px 12px rgba(239, 68, 68, 0.25);
+            transform: scale(1.1);
         }
 
         .rp-type-tag {
@@ -1707,6 +1854,7 @@
                 </div>
 
                 <!-- Table View -->
+                <!-- Table View Profil Daerah (514 Wilayah BPS) -->
                 <div class="table-view-wrap" id="tableViewWrap">
                     <div class="table-header-row">
                         <div>
@@ -1733,6 +1881,63 @@
                                 <!-- Populated dynamically -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Table View Khusus Peta Potensi (POI PAD360) -->
+                <div class="table-view-wrap" id="potensiTableViewWrap">
+                    <div class="table-header-row" style="flex-wrap: wrap; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+                        <div style="flex: 1; min-width: 260px;">
+                            <h2>Direktori Objek Potensi Pajak (PAD360)</h2>
+                            <p style="margin: 3px 0 0; font-size: 12.5px; color: var(--text-mid);" id="potensiTableCountLabel">Menampilkan seluruh objek potensi terdata</p>
+                        </div>
+                        <div class="potensi-table-toolbar" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <!-- Search Bar Khusus Tabel Objek POI -->
+                            <div class="potensi-table-search-box" style="position: relative; width: 280px;">
+                                <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-mid); pointer-events: none;">🔍</span>
+                                <input type="text" id="potensiTableSearchInput" class="potensi-search-input" placeholder="Cari nama objek, pengelola, alamat..." aria-label="Cari objek potensi" style="width: 100%; box-sizing: border-box; padding: 6px 28px 6px 30px; font-size: 12px; border: 1px solid var(--line); border-radius: 6px; background: #ffffff; color: var(--text-hi); outline: none; transition: border-color 0.2s, box-shadow 0.2s;">
+                                <button type="button" id="potensiTableSearchClear" style="display: none; position: absolute; right: 7px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; color: var(--text-low); cursor: pointer; padding: 2px;" title="Reset pencarian">✕</button>
+                            </div>
+                            <!-- Quick Filters / Preset Status Kontrak -->
+                            <div class="potensi-quick-filters" style="display: flex; gap: 5px; align-items: center; flex-wrap: wrap;">
+                                <button type="button" class="type-pill active" data-contract-filter="all" id="btnContractAll">Semua</button>
+                                <button type="button" class="type-pill" data-contract-filter="expiring_soon" id="btnContractExpiringSoon" style="border-color:#D9962B;color:#D9962B;font-weight:600;">⚠️ ≤ 30 Hari</button>
+                                <button type="button" class="type-pill" data-contract-filter="warning_60" id="btnContractWarning60" style="border-color:#0284c7;color:#0284c7;font-weight:600;">📅 31-60 Hari</button>
+                                <button type="button" class="type-pill" data-contract-filter="expired" id="btnContractExpired" style="border-color:#E8604C;color:#E8604C;font-weight:600;">🔴 Kadaluarsa</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="data-table-container">
+                        <table class="data-table" id="potensiDataTable">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center; width: 42px;">No</th>
+                                    <th data-potensi-sort="name" style="width: 32%;">
+                                        Nama Objek &amp; Lokasi <span class="sort-icon" id="sortIcon_name">↕</span>
+                                    </th>
+                                    <th data-potensi-sort="category" style="width: 16%;">
+                                        Kategori &amp; Jenis <span class="sort-icon" id="sortIcon_category">↕</span>
+                                    </th>
+                                    <th data-potensi-sort="value" style="text-align: right; width: 18%;">
+                                        Estimasi Potensi <span class="sort-icon" id="sortIcon_value">↕</span>
+                                    </th>
+                                    <th data-potensi-sort="contract" style="width: 18%;">
+                                        Masa Kontrak / Izin <span class="sort-icon" id="sortIcon_contract">▲</span>
+                                    </th>
+                                    <th style="text-align: center; width: 16%;">Kontak &amp; Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="potensiTableBody">
+                                <!-- Populated dynamically by potensi.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination Bar -->
+                    <div class="potensi-pagination" id="potensiPagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding: 4px 6px;">
+                        <span id="potensiPageInfo" style="font-size: 12px; color: var(--text-mid); font-family: var(--font-mono);">Halaman 1</span>
+                        <div style="display: flex; gap: 6px;" id="potensiPageBtns">
+                            <!-- Populated dynamically -->
+                        </div>
                     </div>
                 </div>
             </main>

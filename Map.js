@@ -194,24 +194,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Helper to handle wheel scroll explicitly for overlay containers so hovering over any child element in the middle scrolls the container smoothly
-    function attachExplicitWheelScroll(container, nestedSelector = null) {
+    function attachExplicitWheelScroll(container, nestedSelector = null, getScrollTarget = null) {
         if (!container) return;
         container.addEventListener('wheel', (e) => {
             if (nestedSelector && e.target.closest(nestedSelector)) {
                 return;
             }
             e.stopPropagation();
-            let delta = e.deltaY;
-            if (e.deltaMode === 1) delta *= 18;
-            else if (e.deltaMode === 2) delta *= container.clientHeight;
+            const target = getScrollTarget ? getScrollTarget() : container;
+            if (!target) return;
 
-            container.scrollBy({ top: delta, behavior: 'instant' });
+            let delta = e.deltaY;
+            if (e.deltaMode === 1) delta *= 24;
+            else if (e.deltaMode === 2) delta *= target.clientHeight;
+
+            target.scrollTop += delta;
             e.preventDefault();
         }, { passive: false });
     }
 
     attachExplicitWheelScroll(sidebarEl, '#provOptionsList, .prov-menu-options');
-    attachExplicitWheelScroll(regionPanelEl);
+    attachExplicitWheelScroll(regionPanelEl, null, () => document.getElementById('rpContent'));
     attachExplicitWheelScroll(searchResultsEl);
 
     let allGeoJsonFeatures = [];
@@ -1018,8 +1021,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Attach table header click listeners for sorting
-    document.querySelectorAll('.data-table th[data-sort]').forEach(th => {
+    // Attach table header click listeners for sorting (Profil Daerah BPS Table)
+    document.querySelectorAll('#dataTable th[data-sort]').forEach(th => {
         th.addEventListener('click', () => {
             const sortKey = th.getAttribute('data-sort');
             if (sortKey === 'rank') return;
@@ -1038,33 +1041,78 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnViewMap = document.getElementById('btnViewMap');
     const btnViewTable = document.getElementById('btnViewTable');
     const tableViewWrap = document.getElementById('tableViewWrap');
+    const potensiTableViewWrap = document.getElementById('potensiTableViewWrap');
     const mapLegend = document.getElementById('mapLegend');
     const mapContextStrip = document.getElementById('mapContextStrip');
+
+    let savedMapCenter = null;
+    let savedMapZoom = null;
 
     function setViewMode(mode) {
         currentView = mode;
         const mapEl = document.getElementById('map');
         const leafletControls = document.querySelector('.leaflet-control-container');
+        const isPotensi = Boolean(window.PotensiCtrl && window.PotensiCtrl.active);
+
         if (mode === 'map') {
             btnViewMap?.classList.add('active');
             btnViewTable?.classList.remove('active');
             tableViewWrap?.classList.remove('active');
+            potensiTableViewWrap?.classList.remove('active');
             if (mapEl) mapEl.style.display = 'block';
-            if (mapLegend) mapLegend.style.display = 'block';
+            if (mapLegend) mapLegend.style.display = isPotensi ? 'none' : 'block';
             if (mapContextStrip) mapContextStrip.style.display = 'flex';
             if (leafletControls) leafletControls.style.display = 'block';
-            setTimeout(() => map.invalidateSize(), 100);
+
+            if (isPotensi && window.PotensiCtrl) {
+                window.PotensiCtrl.renderSidebar();
+                window.PotensiCtrl.renderMapLayers();
+                window.PotensiCtrl.updateContextStrip();
+                window.PotensiCtrl.updateLegend();
+            }
+
+            setTimeout(() => {
+                if (map) {
+                    map.invalidateSize();
+                    if (savedMapCenter && savedMapZoom) {
+                        map.setView(savedMapCenter, savedMapZoom, { animate: false });
+                    }
+                }
+            }, 60);
         } else {
+            // Simpan posisi dan zoom peta saat ini sebelum membuka tabel
+            if (map) {
+                savedMapCenter = map.getCenter();
+                savedMapZoom = map.getZoom();
+            }
+            // Sembunyikan drawer / sidebar kanan saat membuka tabel agar tidak menimpa data
+            const regionPanelEl = document.getElementById('regionPanel');
+            if (regionPanelEl) {
+                regionPanelEl.classList.remove('open');
+            }
+
             btnViewTable?.classList.add('active');
             btnViewMap?.classList.remove('active');
-            tableViewWrap?.classList.add('active');
             if (mapEl) mapEl.style.display = 'none';
             if (mapLegend) mapLegend.style.display = 'none';
             if (mapContextStrip) mapContextStrip.style.display = 'none';
             if (leafletControls) leafletControls.style.display = 'none';
-            renderTable();
+
+            if (isPotensi) {
+                tableViewWrap?.classList.remove('active');
+                potensiTableViewWrap?.classList.add('active');
+                if (window.PotensiCtrl && typeof window.PotensiCtrl.renderTable === 'function') {
+                    window.PotensiCtrl.renderSidebar();
+                    window.PotensiCtrl.renderTable();
+                }
+            } else {
+                potensiTableViewWrap?.classList.remove('active');
+                tableViewWrap?.classList.add('active');
+                renderTable();
+            }
         }
     }
+    window.setViewMode = setViewMode;
 
     btnViewMap?.addEventListener('click', () => setViewMode('map'));
     btnViewTable?.addEventListener('click', () => setViewMode('table'));
@@ -1104,6 +1152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function selectRegion(region) {
         selectedRegion = region;
         if (!regionPanel || !rpContent) return;
+        rpContent.scrollTop = 0;
 
         if (region && (region.id || region.no)) {
             const regId = String(region.id || region.no);
