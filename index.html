@@ -1833,23 +1833,43 @@
                     </svg>
                 </button>
 
-                <!-- Map Context Strip -->
+                <!-- Map Context Strip (Profil Daerah) -->
                 <div class="map-context-strip" id="mapContextStrip">
                     <span class="dot"></span>
                     <span>Peta Sebaran: <b id="stripMetricLabel">Kepadatan Penduduk</b></span>
                     <span class="sub-tag" id="stripFilterLabel">Seluruh Indonesia • 514 Wilayah</span>
                 </div>
 
+                <!-- Map Context Strip (Peta Potensi PAD360) -->
+                <div class="map-context-strip" id="potensiContextStrip" style="display: none;">
+                    <span class="dot" style="background: #0d9488;"></span>
+                    <span id="potensiMainLabel">Mode Potensi: <b>Peta Sebaran Potensi</b></span>
+                    <span class="sub-tag" id="potensiSubLabel">7 Wilayah Utama • 514 Kabupaten &amp; Kota</span>
+                </div>
+
                 <!-- Map Container -->
                 <div id="map" role="application" aria-label="Peta interaktif kabupaten dan kota Indonesia"></div>
 
-                <!-- Floating Map Legend -->
+                <!-- Floating Map Legend (Profil Daerah) -->
                 <div class="map-legend" id="mapLegend">
                     <div class="leg-title" id="legendMetricTitle">Kepadatan Penduduk (jiwa/km²)</div>
                     <div class="scale-bar"></div>
                     <div class="scale-vals">
                         <span id="scaleMin">–</span>
                         <span id="scaleMax">–</span>
+                    </div>
+                </div>
+
+                <!-- Floating Map Legend (Peta Potensi PAD360) -->
+                <div class="map-legend" id="potensiMapLegend" style="display: none;">
+                    <div class="leg-title">Kategori Objek Potensi Pajak (PAD360)</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 11px;">
+                        <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0E9E9A;margin-right:4px;"></i>Reklame</span>
+                        <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#d97706;margin-right:4px;"></i>Parkir PBJT</span>
+                        <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#7c3aed;margin-right:4px;"></i>Mall / PBB</span>
+                        <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563eb;margin-right:4px;"></i>Pabrik/Gudang</span>
+                        <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#059669;margin-right:4px;"></i>Ruang Publik</span>
+                        <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-right:4px;"></i>Koridor Sisir</span>
                     </div>
                 </div>
 

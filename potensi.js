@@ -157,12 +157,14 @@
         init(map) {
             this.map = map;
             window.PotensiCtrl = this;
+            this._isFlying = false;
             this.loadData().then(() => {
                 this.renderHeaderFilters();
             });
             this.setupUI();
             this.initTable();
             this.bindEvents();
+            this.setupSemanticZoom();
             this.renderHeaderFilters();
         }
 
@@ -203,10 +205,14 @@
             this.potensiSearchResults = document.getElementById('potensiSearchResults');
             this.sidebarProfileView = document.getElementById('sidebarProfileView');
             this.sidebarPotensiView = document.getElementById('sidebarPotensiView');
-            this.mapContextStrip = document.getElementById('mapContextStrip');
+            this.profileContextStrip = document.getElementById('mapContextStrip');
+            this.potensiContextStrip = document.getElementById('potensiContextStrip');
+            this.profileMapLegend = document.getElementById('mapLegend');
+            this.potensiMapLegend = document.getElementById('potensiMapLegend');
+            this.mapContextStrip = this.potensiContextStrip;
+            this.mapLegend = this.potensiMapLegend;
             this.regionPanel = document.getElementById('regionPanel');
             this.rpContent = document.getElementById('rpContent');
-            this.mapLegend = document.getElementById('mapLegend');
         }
 
         renderHeaderFilters() {
@@ -394,12 +400,22 @@
                 if (isTableView) {
                     tableViewWrap?.classList.remove('active');
                     potensiTableViewWrap?.classList.add('active');
+                    if (this.potensiContextStrip) this.potensiContextStrip.style.display = 'none';
+                    if (this.potensiMapLegend) this.potensiMapLegend.style.display = 'none';
+                    if (this.profileContextStrip) this.profileContextStrip.style.display = 'none';
+                    if (this.profileMapLegend) this.profileMapLegend.style.display = 'none';
                     this.renderTable();
                 } else {
                     // Hide standard geojson choropleth if any
                     if (window.profileGeojsonLayer && this.map && this.map.hasLayer(window.profileGeojsonLayer)) {
                         this.map.removeLayer(window.profileGeojsonLayer);
                     }
+
+                    // Tampilkan status strip dan legenda khusus PAD360, sembunyikan profil BPS
+                    if (this.potensiContextStrip) this.potensiContextStrip.style.display = 'flex';
+                    if (this.potensiMapLegend) this.potensiMapLegend.style.display = 'block';
+                    if (this.profileContextStrip) this.profileContextStrip.style.display = 'none';
+                    if (this.profileMapLegend) this.profileMapLegend.style.display = 'none';
 
                     // If no province is selected, start at national view
                     if (!this.state.selectedProv && !this.state.selectedCity) {
@@ -424,22 +440,34 @@
                 if (this.sidebarPotensiView) this.sidebarPotensiView.style.display = 'none';
                 if (this.sidebarProfileView) this.sidebarProfileView.style.display = 'flex';
 
+                // Bersihkan layer potensi secara total tanpa syarat
+                this.clearLayersFromMap();
+
+                // Sembunyikan elemen potensi
+                if (this.potensiContextStrip) this.potensiContextStrip.style.display = 'none';
+                if (this.potensiMapLegend) this.potensiMapLegend.style.display = 'none';
+
                 if (isTableView) {
                     potensiTableViewWrap?.classList.remove('active');
                     tableViewWrap?.classList.add('active');
+                    if (this.profileContextStrip) this.profileContextStrip.style.display = 'none';
+                    if (this.profileMapLegend) this.profileMapLegend.style.display = 'none';
                     if (window.renderTable) window.renderTable();
                 } else {
-                    // Remove Potensi layers
-                    this.clearLayersFromMap();
+                    // Tampilkan kembali status strip dan legenda profil daerah
+                    if (this.profileContextStrip) this.profileContextStrip.style.display = 'flex';
+                    if (this.profileMapLegend) this.profileMapLegend.style.display = 'block';
 
-                    // Restore standard geojson choropleth
-                    if (window.profileGeojsonLayer && this.map && !this.map.hasLayer(window.profileGeojsonLayer)) {
-                        this.map.addLayer(window.profileGeojsonLayer);
+                    // Restore penuh tampilan profil daerah menggunakan helper global atau manual fallback
+                    if (typeof window.restoreProfileView === 'function') {
+                        window.restoreProfileView();
+                    } else {
+                        if (window.profileGeojsonLayer && this.map && !this.map.hasLayer(window.profileGeojsonLayer)) {
+                            this.map.addLayer(window.profileGeojsonLayer);
+                        }
+                        if (window.updateProfileContext) window.updateProfileContext();
+                        if (window.updateProfileLegend) window.updateProfileLegend();
                     }
-
-                    // Restore profile context & legend
-                    if (window.updateProfileContext) window.updateProfileContext();
-                    if (window.updateProfileLegend) window.updateProfileLegend();
                 }
             }
         }
@@ -453,6 +481,181 @@
             });
         }
 
+        setupSemanticZoom() {
+            if (!this.map || this._semanticZoomBound) return;
+            this._semanticZoomBound = true;
+            let zoomDebounceTimer = null;
+
+            const handleZoomOrMove = () => {
+                if (!this.active) return;
+                if (this._isFlying) return;
+                if (this.isTableViewActive()) return;
+
+                const zoom = this.map.getZoom();
+                const bounds = this.map.getBounds().pad(0.12);
+                this.onSemanticZoomChange(zoom, bounds);
+            };
+
+            this.map.on('zoomend', () => {
+                clearTimeout(zoomDebounceTimer);
+                zoomDebounceTimer = setTimeout(handleZoomOrMove, 150);
+            });
+
+            this.map.on('moveend', () => {
+                clearTimeout(zoomDebounceTimer);
+                zoomDebounceTimer = setTimeout(handleZoomOrMove, 200);
+            });
+        }
+
+        isTableViewActive() {
+            const tableViewWrap = document.getElementById('tableViewWrap');
+            const potensiTableViewWrap = document.getElementById('potensiTableViewWrap');
+            return (tableViewWrap && tableViewWrap.classList.contains('active')) ||
+                   (potensiTableViewWrap && potensiTableViewWrap.classList.contains('active'));
+        }
+
+        findNearestCity(latlng) {
+            const data = this.getData();
+            if (!data.cities || !data.cities.length) return null;
+            let minD = Infinity;
+            let nearest = null;
+            const target = L.latLng(latlng);
+            data.cities.forEach((c) => {
+                const d = target.distanceTo([c.lat, c.lng]);
+                if (d < minD) {
+                    minD = d;
+                    nearest = c;
+                }
+            });
+            return nearest;
+        }
+
+        findNearestProvince(latlng) {
+            const data = this.getData();
+            if (!data.provinces || !data.provinces.length) return null;
+            let minD = Infinity;
+            let nearest = null;
+            const target = L.latLng(latlng);
+            data.provinces.forEach((p) => {
+                const d = target.distanceTo([p.lat, p.lng]);
+                if (d < minD) {
+                    minD = d;
+                    nearest = p;
+                }
+            });
+            return nearest;
+        }
+
+        onSemanticZoomChange(zoom, bounds) {
+            if (!this.active || !this.map) return;
+            const data = this.getData();
+            const center = this.map.getCenter();
+
+            // Level 1: Zoom <= 5.5 (Nasional)
+            if (zoom <= 5.5) {
+                if (this.state.scope !== 'nasional' || this.state.selectedCity || this.state.selectedProv || this.state.selectedIsland) {
+                    this.state.scope = 'nasional';
+                    this.state.selectedIsland = null;
+                    this.state.selectedProv = null;
+                    this.state.selectedCity = null;
+                    this.state.selectedCorridor = null;
+                    this.state.selectedObject = null;
+                    this.renderHeaderFilters();
+                    this.renderSidebar();
+                    this.updateContextStrip();
+                }
+                this.renderMapLayers();
+                return;
+            }
+
+            // Level 2: Zoom 5.6 - 8.5 (Scope Provinsi / Antar Provinsi)
+            if (zoom > 5.5 && zoom <= 8.5) {
+                let stateChanged = false;
+                // Lepas kuncian kota saat pengguna zoom-out ke level provinsi
+                if (this.state.selectedCity) {
+                    this.state.selectedCity = null;
+                    this.state.selectedCorridor = null;
+                    this.state.selectedObject = null;
+                    stateChanged = true;
+                }
+
+                // Tentukan provinsi terdekat dari tengah layar jika belum ada atau berada di luar viewport
+                if (!this.state.selectedProv || !bounds.contains([this.state.selectedProv.lat, this.state.selectedProv.lng])) {
+                    const nearestProv = this.findNearestProvince(center);
+                    if (nearestProv) {
+                        this.state.selectedProv = nearestProv;
+                        this.state.selectedIsland = ISLAND_REGIONS.find((i) => i.provIds.includes(nearestProv.id)) || null;
+                        stateChanged = true;
+                    }
+                }
+
+                if (this.state.scope !== 'provinsi') {
+                    this.state.scope = 'provinsi';
+                    stateChanged = true;
+                }
+
+                if (stateChanged) {
+                    this.renderHeaderFilters();
+                    this.renderSidebar();
+                    this.updateContextStrip();
+                }
+                this.renderMapLayers();
+                return;
+            }
+
+            // Level 3: Zoom 8.6 - 11.0 (Scope Kabupaten / Kota Overview)
+            if (zoom > 8.5 && zoom <= 11.0) {
+                let stateChanged = false;
+                if (!this.state.selectedProv) {
+                    const nearestProv = this.findNearestProvince(center);
+                    if (nearestProv) {
+                        this.state.selectedProv = nearestProv;
+                        this.state.selectedIsland = ISLAND_REGIONS.find((i) => i.provIds.includes(nearestProv.id)) || null;
+                        stateChanged = true;
+                    }
+                }
+
+                if (this.state.scope !== 'kota_overview') {
+                    this.state.scope = 'kota_overview';
+                    stateChanged = true;
+                }
+
+                if (stateChanged) {
+                    this.renderHeaderFilters();
+                    this.updateContextStrip();
+                }
+                this.renderMapLayers();
+                return;
+            }
+
+            // Level 4: Zoom > 11.0 (Detail Lapangan: POI & Koridor)
+            if (zoom > 11.0) {
+                let stateChanged = false;
+                if (!this.state.selectedCity) {
+                    const nearestCity = this.findNearestCity(center);
+                    if (nearestCity) {
+                        this.state.selectedCity = nearestCity;
+                        const prov = (data.provinces || []).find((p) => p.id === nearestCity.provId);
+                        this.state.selectedProv = prov || null;
+                        this.state.selectedIsland = prov ? ISLAND_REGIONS.find((i) => i.provIds.includes(prov.id)) || null : null;
+                        stateChanged = true;
+                    }
+                }
+
+                if (this.state.scope !== 'kota' && this.state.scope !== 'koridor') {
+                    this.state.scope = 'kota';
+                    stateChanged = true;
+                }
+
+                if (stateChanged) {
+                    this.renderHeaderFilters();
+                    this.renderSidebar();
+                    this.updateContextStrip();
+                }
+                this.renderMapLayers();
+            }
+        }
+
         selectIsland(islandId, fly = true) {
             if (!islandId) {
                 this.state.scope = 'nasional';
@@ -461,7 +664,12 @@
                 this.state.selectedCity = null;
                 this.state.selectedCorridor = null;
                 this.state.selectedObject = null;
-                if (fly && this.map) this.map.flyTo([-2.5, 118], 5, { duration: 1.2 });
+                if (fly && this.map) {
+                    this._isFlying = true;
+                    this.map.flyTo([-2.5, 118], 5, { duration: 1.2 });
+                    setTimeout(() => { this._isFlying = false; }, 1350);
+                }
+                this.renderHeaderFilters();
                 this.renderSidebar();
                 this.renderMapLayers();
                 this.updateContextStrip();
@@ -479,6 +687,7 @@
             this.tableState.page = 1;
 
             if (fly && this.map) {
+                this._isFlying = true;
                 const data = this.getData();
                 const provsInIsland = data.provinces.filter((p) => isl.provIds.includes(p.id));
                 if (provsInIsland.length > 0) {
@@ -487,7 +696,9 @@
                 } else {
                     this.map.flyTo([isl.lat, isl.lng], isl.zoom || 6.5, { duration: 1.2 });
                 }
+                setTimeout(() => { this._isFlying = false; }, 1350);
             }
+            this.renderHeaderFilters();
             this.renderSidebar();
             this.renderMapLayers();
             this.updateContextStrip();
@@ -504,12 +715,19 @@
                 if (this.state.selectedIsland) {
                     this.state.scope = 'pulau';
                     if (fly && this.map) {
+                        this._isFlying = true;
                         this.map.flyTo([this.state.selectedIsland.lat, this.state.selectedIsland.lng], this.state.selectedIsland.zoom || 6.5, { duration: 1.2 });
+                        setTimeout(() => { this._isFlying = false; }, 1350);
                     }
                 } else {
                     this.state.scope = 'nasional';
-                    if (fly && this.map) this.map.flyTo([-2.5, 118], 5, { duration: 1.2 });
+                    if (fly && this.map) {
+                        this._isFlying = true;
+                        this.map.flyTo([-2.5, 118], 5, { duration: 1.2 });
+                        setTimeout(() => { this._isFlying = false; }, 1350);
+                    }
                 }
+                this.renderHeaderFilters();
                 this.renderSidebar();
                 this.renderMapLayers();
                 this.updateContextStrip();
@@ -531,6 +749,7 @@
             this.tableState.page = 1;
 
             if (fly && this.map) {
+                this._isFlying = true;
                 const citiesInProv = data.cities.filter((c) => c.provId === prov.id);
                 if (citiesInProv.length > 0) {
                     const bounds = L.latLngBounds(citiesInProv.map((c) => [c.lat, c.lng]));
@@ -538,7 +757,9 @@
                 } else {
                     this.map.flyTo([prov.lat, prov.lng], 7.5, { duration: 1.2 });
                 }
+                setTimeout(() => { this._isFlying = false; }, 1350);
             }
+            this.renderHeaderFilters();
             this.renderSidebar();
             this.renderMapLayers();
             this.updateContextStrip();
@@ -554,17 +775,26 @@
                 if (this.state.selectedProv) {
                     this.state.scope = 'provinsi';
                     if (fly && this.map) {
+                        this._isFlying = true;
                         this.map.flyTo([this.state.selectedProv.lat, this.state.selectedProv.lng], 7.5, { duration: 1.2 });
+                        setTimeout(() => { this._isFlying = false; }, 1350);
                     }
                 } else if (this.state.selectedIsland) {
                     this.state.scope = 'pulau';
                     if (fly && this.map) {
+                        this._isFlying = true;
                         this.map.flyTo([this.state.selectedIsland.lat, this.state.selectedIsland.lng], this.state.selectedIsland.zoom || 6.5, { duration: 1.2 });
+                        setTimeout(() => { this._isFlying = false; }, 1350);
                     }
                 } else {
                     this.state.scope = 'nasional';
-                    if (fly && this.map) this.map.flyTo([-2.5, 118], 5, { duration: 1.2 });
+                    if (fly && this.map) {
+                        this._isFlying = true;
+                        this.map.flyTo([-2.5, 118], 5, { duration: 1.2 });
+                        setTimeout(() => { this._isFlying = false; }, 1350);
+                    }
                 }
+                this.renderHeaderFilters();
                 this.renderSidebar();
                 this.renderMapLayers();
                 this.updateContextStrip();
@@ -586,8 +816,11 @@
             this.tableState.page = 1;
 
             if (fly && this.map) {
+                this._isFlying = true;
                 this.map.flyTo([city.lat, city.lng], city.zoom || 13, { duration: 1.2 });
+                setTimeout(() => { this._isFlying = false; }, 1350);
             }
+            this.renderHeaderFilters();
             this.renderSidebar();
             this.renderMapLayers();
             this.updateContextStrip();
@@ -682,16 +915,19 @@
             });
 
             const data = this.getData();
+            const zoom = this.map.getZoom();
+            const bounds = this.map.getBounds().pad(0.12);
             const currentCity = this.state.selectedCity;
             const currentProv = this.state.selectedProv;
             const currentIsland = this.state.selectedIsland;
 
-            // 1. Level 1: Scope Nasional (Overview of 7 Major Island Regions)
-            if (this.state.scope === 'nasional' || (!currentIsland && !currentProv && !currentCity)) {
+            // ==========================================
+            // LEVEL 1: NASIONAL (Zoom <= 5.5)
+            // ==========================================
+            if (zoom <= 5.5) {
                 ISLAND_REGIONS.forEach((isl) => {
-                    const provsInIsland = data.provinces.filter((p) => isl.provIds.includes(p.id));
+                    const provsInIsland = (data.provinces || []).filter((p) => isl.provIds.includes(p.id));
                     const totalPoi = provsInIsland.reduce((s, p) => s + (p.poi || 0), 0);
-                    const totalPot = provsInIsland.reduce((s, p) => s + (p.pot || 0), 0);
 
                     const iconHtml = `
                         <div class="potensi-cluster-stick-pin island-variant">
@@ -724,10 +960,21 @@
                 return;
             }
 
-            // 2. Level 2: Scope Pulau (Provinces within this selected Island)
-            if (currentIsland && !currentProv && !currentCity) {
-                const provsInIsland = data.provinces.filter((p) => currentIsland.provIds.includes(p.id));
-                provsInIsland.forEach((p, idx) => {
+            // ==========================================
+            // LEVEL 2: PROVINSI (Zoom 5.6 - 8.5)
+            // Tampilkan semua provinsi yang berada dalam batas pandang (viewport)
+            // ==========================================
+            if (zoom > 5.5 && zoom <= 8.5) {
+                let provsToRender = (data.provinces || []).filter((p) => bounds.contains([p.lat, p.lng]));
+                if (provsToRender.length === 0) {
+                    if (currentIsland) {
+                        provsToRender = (data.provinces || []).filter((p) => currentIsland.provIds.includes(p.id));
+                    } else {
+                        provsToRender = data.provinces || [];
+                    }
+                }
+
+                provsToRender.forEach((p, idx) => {
                     const shortName = formatDisplayName(p.name);
                     const isEven = idx % 2 === 0;
                     const stemClass = isEven ? '' : 'stem-mid';
@@ -765,20 +1012,26 @@
                 return;
             }
 
-            // 3. Level 3: Scope Provinsi (Kabupaten & Kota in this Province)
-            if (currentProv && !currentCity) {
-                const citiesInProv = data.cities.filter((c) => c.provId === currentProv.id);
-                const cityIdsInProv = new Set(citiesInProv.map((c) => c.id));
+            // ==========================================
+            // LEVEL 3: KABUPATEN / KOTA OVERVIEW (Zoom 8.6 - 11.0)
+            // Tampilkan pin gugusan kabupaten & kota yang ada di dalam viewport
+            // ==========================================
+            if (zoom > 8.5 && zoom <= 11.0) {
+                let citiesToRender = (data.cities || []).filter((c) => bounds.contains([c.lat, c.lng]));
+                if (citiesToRender.length === 0 && currentProv) {
+                    citiesToRender = (data.cities || []).filter((c) => c.provId === currentProv.id);
+                }
 
-                citiesInProv.forEach((city, idx) => {
+                citiesToRender.forEach((city, idx) => {
                     const shortName = formatDisplayName(city.name);
                     const isEven = idx % 2 === 0;
+                    const isSelected = currentCity && currentCity.id === city.id;
                     const stemClass = isEven ? '' : 'stem-mid';
                     const h = isEven ? 64 : 72;
                     const anchorY = isEven ? 59 : 67;
 
                     const iconHtml = `
-                        <div class="potensi-cluster-stick-pin city-variant ${stemClass}">
+                        <div class="potensi-cluster-stick-pin city-variant ${isSelected ? 'selected' : ''} ${stemClass}">
                             <div class="cluster-stick-badge">
                                 <span class="poi-count">${city.poi}</span>
                                 <span class="poi-unit">POI</span>
@@ -808,155 +1061,156 @@
                 return;
             }
 
-            // 4. Level 4: If at City Level
-            if (currentCity) {
-                // Render neighboring cities bubbles in the same province
-                if (currentProv) {
-                    data.cities
-                        .filter((c) => c.provId === currentProv.id && c.id !== currentCity.id)
-                        .forEach((otherCity, idx) => {
-                            const shortName = formatDisplayName(otherCity.name);
-                            const isEven = idx % 2 === 0;
-                            const stemClass = isEven ? '' : 'stem-mid';
-                            const h = isEven ? 60 : 68;
-                            const anchorY = isEven ? 55 : 63;
+            // ==========================================
+            // LEVEL 4: DETAIL LAPANGAN (Zoom > 11.0)
+            // Tampilkan Objek POI, Koridor Jalan, dan Tetangga Sekitar
+            // ==========================================
+            const activeCity = currentCity || this.findNearestCity(this.map.getCenter());
+            if (!activeCity) return;
 
-                            const otherIconHtml = `
-                                <div class="potensi-cluster-stick-pin neighbor-variant ${stemClass}">
-                                    <div class="cluster-stick-badge">
-                                        <span class="poi-count">${otherCity.poi}</span>
-                                    </div>
-                                    <div class="cluster-stick-label" title="${otherCity.name}">${shortName}</div>
-                                    <div class="cluster-stick-stem"></div>
-                                    <div class="cluster-stick-ground">
-                                        <div class="ground-ring ring-outer"></div>
-                                        <div class="ground-ring ring-inner"></div>
-                                        <div class="ground-center-dot"></div>
-                                    </div>
+            // Render pin kota-kota tetangga yang terlihat di viewport
+            (data.cities || [])
+                .filter((c) => c.id !== activeCity.id && bounds.contains([c.lat, c.lng]))
+                .forEach((otherCity, idx) => {
+                    const shortName = formatDisplayName(otherCity.name);
+                    const isEven = idx % 2 === 0;
+                    const stemClass = isEven ? '' : 'stem-mid';
+                    const h = isEven ? 60 : 68;
+                    const anchorY = isEven ? 55 : 63;
+
+                    const otherIconHtml = `
+                        <div class="potensi-cluster-stick-pin neighbor-variant ${stemClass}">
+                            <div class="cluster-stick-badge">
+                                <span class="poi-count">${otherCity.poi}</span>
+                            </div>
+                            <div class="cluster-stick-label" title="${otherCity.name}">${shortName}</div>
+                            <div class="cluster-stick-stem"></div>
+                            <div class="cluster-stick-ground">
+                                <div class="ground-ring ring-outer"></div>
+                                <div class="ground-ring ring-inner"></div>
+                                <div class="ground-center-dot"></div>
+                            </div>
+                        </div>
+                    `;
+                    const otherIcon = L.divIcon({
+                        className: 'potensi-cluster-wrapper',
+                        html: otherIconHtml,
+                        iconSize: [50, h],
+                        iconAnchor: [25, anchorY]
+                    });
+                    const otherMarker = L.marker([otherCity.lat, otherCity.lng], { icon: otherIcon });
+                    otherMarker.on('click', () => {
+                        this.selectCity(otherCity.id);
+                    });
+                    this.layers.clusters.addLayer(otherMarker);
+                });
+
+            // Render Koridor Jalan untuk activeCity
+            Object.values(data.corridors || {})
+                .filter((c) => c.cityId === activeCity.id)
+                .forEach((c) => {
+                    const isSelected = this.state.selectedCorridor?.id === c.id;
+                    const routeCoords = c._snappedPath || c.path || c.route || [];
+                    if (!routeCoords.length) return;
+
+                    const polyline = L.polyline(routeCoords, {
+                        color: isSelected ? '#cf1e2e' : c.color || '#0d9488',
+                        weight: isSelected ? 7 : 5,
+                        opacity: isSelected ? 0.95 : 0.75,
+                        dashArray: isSelected ? null : '6, 6',
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    });
+
+                    polyline.on('click', () => {
+                        this.selectCorridor(c.id);
+                    });
+                    polyline.bindTooltip(`<b>${c.name}</b> (${c.length || c.km || '1,8 km'})<br>${c.status || 'Aktif'}`, { sticky: true });
+                    this.layers.corridors.addLayer(polyline);
+
+                    const cpMarkers = {};
+
+                    // Jika koridor dipilih, tampilkan checkpoint
+                    if (isSelected && c.checkpoints) {
+                        c.checkpoints.forEach((cp, idx) => {
+                            const isDone = cp.done !== undefined ? cp.done : cp.status === 'done';
+                            const num = cp.num || cp.n || '1';
+                            const label = cp.title || cp.label || 'Checkpoint';
+                            const cpIconHtml = `
+                                <div class="potensi-cp-marker ${isDone ? 'done' : 'pending'}">
+                                    <span>${num}</span>
                                 </div>
                             `;
-                            const otherIcon = L.divIcon({
-                                className: 'potensi-cluster-wrapper',
-                                html: otherIconHtml,
-                                iconSize: [50, h],
-                                iconAnchor: [25, anchorY]
+                            const cpIcon = L.divIcon({
+                                className: 'potensi-cp-wrapper',
+                                html: cpIconHtml,
+                                iconSize: [28, 28],
+                                iconAnchor: [14, 14]
                             });
-                            const otherMarker = L.marker([otherCity.lat, otherCity.lng], { icon: otherIcon });
-                            otherMarker.on('click', () => {
-                                this.selectCity(otherCity.id);
+
+                            const cpMarker = L.marker([cp.lat, cp.lng], { icon: cpIcon });
+                            cpMarker.on('click', () => {
+                                this.renderCheckpointDetail(cp, c);
                             });
-                            this.layers.clusters.addLayer(otherMarker);
-                        });
-                }
-
-                // Render Corridors for this city (snapped to real street network)
-                Object.values(data.corridors)
-                    .filter((c) => c.cityId === currentCity.id)
-                    .forEach((c) => {
-                        const isSelected = this.state.selectedCorridor?.id === c.id;
-                        const routeCoords = c._snappedPath || c.path || c.route || [];
-                        if (!routeCoords.length) return;
-
-                        const polyline = L.polyline(routeCoords, {
-                            color: isSelected ? '#cf1e2e' : c.color || '#0d9488',
-                            weight: isSelected ? 7 : 5,
-                            opacity: isSelected ? 0.95 : 0.75,
-                            dashArray: isSelected ? null : '6, 6',
-                            lineCap: 'round',
-                            lineJoin: 'round'
-                        });
-
-                        polyline.on('click', () => {
-                            this.selectCorridor(c.id);
-                        });
-                        polyline.bindTooltip(`<b>${c.name}</b> (${c.length || c.km || '1,8 km'})<br>${c.status || 'Aktif'}`, { sticky: true });
-                        this.layers.corridors.addLayer(polyline);
-
-                        const cpMarkers = {};
-
-                        // If corridor is selected, render checkpoints
-                        if (isSelected && c.checkpoints) {
-                            c.checkpoints.forEach((cp, idx) => {
-                                const isDone = cp.done !== undefined ? cp.done : cp.status === 'done';
-                                const num = cp.num || cp.n || '1';
-                                const label = cp.title || cp.label || 'Checkpoint';
-                                const cpIconHtml = `
-                                    <div class="potensi-cp-marker ${isDone ? 'done' : 'pending'}">
-                                        <span>${num}</span>
-                                    </div>
-                                `;
-                                const cpIcon = L.divIcon({
-                                    className: 'potensi-cp-wrapper',
-                                    html: cpIconHtml,
-                                    iconSize: [28, 28],
-                                    iconAnchor: [14, 14]
-                                });
-
-                                const cpMarker = L.marker([cp.lat, cp.lng], { icon: cpIcon });
-                                cpMarker.on('click', () => {
-                                    this.renderCheckpointDetail(cp, c);
-                                });
-                                cpMarker.bindTooltip(`<b>Checkpoint ${num}</b>: ${label}<br>${isDone ? '✓ Sudah diperiksa' : '⏳ Belum diperiksa'}`, {
-                                    direction: 'top',
-                                    offset: [0, -14]
-                                });
-                                this.layers.checkpoints.addLayer(cpMarker);
-                                cpMarkers[idx] = cpMarker;
+                            cpMarker.bindTooltip(`<b>Checkpoint ${num}</b>: ${label}<br>${isDone ? '✓ Sudah diperiksa' : '⏳ Belum diperiksa'}`, {
+                                direction: 'top',
+                                offset: [0, -14]
                             });
-                        }
+                            this.layers.checkpoints.addLayer(cpMarker);
+                            cpMarkers[idx] = cpMarker;
+                        });
+                    }
 
-                        // Auto-fetch real street routing from OSM
-                        if (!c._snappedPath) {
-                            this.fetchRoadSnappedRoute(c, polyline, cpMarkers);
-                        }
-                    });
+                    // Auto-fetch real street routing dari OSM
+                    if (!c._snappedPath) {
+                        this.fetchRoadSnappedRoute(c, polyline, cpMarkers);
+                    }
+                });
 
-                // Render POI Markers for this city
-                Object.values(data.objects)
-                    .filter((o) => o.cityId === currentCity.id)
-                    .forEach((o) => {
-                        // Apply category filter
-                        if (this.state.categoryFilter !== 'all' && o.category !== this.state.categoryFilter) {
-                            return;
-                        }
+            // Render Titik POI untuk activeCity
+            Object.values(data.objects || {})
+                .filter((o) => o.cityId === activeCity.id)
+                .forEach((o) => {
+                    if (this.state.categoryFilter !== 'all' && o.category !== this.state.categoryFilter) {
+                        return;
+                    }
 
-                        const catMeta = data.categories.find((cat) => cat.id === o.category) || { color: '#0d9488', tag: 'POI' };
-                        const isObjSelected = this.state.selectedObject?.id === o.id;
+                    const catMeta = (data.categories || []).find((cat) => cat.id === o.category) || { color: '#0d9488', tag: 'POI' };
+                    const isObjSelected = this.state.selectedObject?.id === o.id;
 
-                        const poiIconHtml = `
-                            <div class="potensi-stick-pin ${isObjSelected ? 'selected' : ''}" style="--pin-color: ${catMeta.color};">
-                                <div class="stick-pin-head">
-                                    <span class="stick-pin-badge">${catMeta.tag || 'POI'}</span>
-                                </div>
-                                <div class="stick-pin-stem"></div>
-                                <div class="stick-pin-ground">
-                                    <div class="ground-ring ring-outer"></div>
-                                    <div class="ground-ring ring-inner"></div>
-                                    <div class="ground-center-dot"></div>
-                                </div>
+                    const poiIconHtml = `
+                        <div class="potensi-stick-pin ${isObjSelected ? 'selected' : ''}" style="--pin-color: ${catMeta.color};">
+                            <div class="stick-pin-head">
+                                <span class="stick-pin-badge">${catMeta.tag || 'POI'}</span>
                             </div>
-                        `;
+                            <div class="stick-pin-stem"></div>
+                            <div class="stick-pin-ground">
+                                <div class="ground-ring ring-outer"></div>
+                                <div class="ground-ring ring-inner"></div>
+                                <div class="ground-center-dot"></div>
+                            </div>
+                        </div>
+                    `;
 
-                        const poiIcon = L.divIcon({
-                            className: 'potensi-pin-wrapper',
-                            html: poiIconHtml,
-                            iconSize: [40, 52],
-                            iconAnchor: [20, 47]
-                        });
-
-                        const poiMarker = L.marker([o.lat, o.lng], { icon: poiIcon });
-                        poiMarker.on('click', () => {
-                            this.selectObject(o.id);
-                        });
-
-                        poiMarker.bindTooltip(
-                            `<b>${o.name}</b><br><span style="color:${catMeta.color}">●</span> ${o.catName}<br>${o.addr}<br><b>${o.estimatedValue}</b>`,
-                            { direction: 'top', offset: [0, -48] }
-                        );
-
-                        this.layers.poiMarkers.addLayer(poiMarker);
+                    const poiIcon = L.divIcon({
+                        className: 'potensi-pin-wrapper',
+                        html: poiIconHtml,
+                        iconSize: [40, 52],
+                        iconAnchor: [20, 47]
                     });
-            }
+
+                    const poiMarker = L.marker([o.lat, o.lng], { icon: poiIcon });
+                    poiMarker.on('click', () => {
+                        this.selectObject(o.id);
+                    });
+
+                    poiMarker.bindTooltip(
+                        `<b>${o.name}</b><br><span style="color:${catMeta.color}">●</span> ${o.catName}<br>${o.addr}<br><b>${o.estimatedValue}</b>`,
+                        { direction: 'top', offset: [0, -48] }
+                    );
+
+                    this.layers.poiMarkers.addLayer(poiMarker);
+                });
         }
 
         renderSidebar() {
@@ -1281,31 +1535,41 @@
         }
 
         updateContextStrip() {
-            if (!this.mapContextStrip) return;
-            const dot = this.mapContextStrip.querySelector('.dot');
-            const mainLabel = this.mapContextStrip.querySelector('span:nth-child(2)');
-            const subLabel = this.mapContextStrip.querySelector('.sub-tag');
+            if (!this.potensiContextStrip) {
+                this.potensiContextStrip = document.getElementById('potensiContextStrip');
+            }
+            const strip = this.potensiContextStrip;
+            if (!strip) return;
 
-            if (dot) dot.style.background = '#0d9488';
+            const mainLabel = strip.querySelector('#potensiMainLabel') || strip.querySelector('span:nth-child(2)');
+            const subLabel = strip.querySelector('#potensiSubLabel') || strip.querySelector('.sub-tag');
+            const zoom = this.map ? this.map.getZoom() : 5;
+
             if (mainLabel) {
-                if (this.state.selectedCity) {
+                if (this.state.selectedCity && zoom > 11.0) {
                     mainLabel.innerHTML = `Mode Potensi: <b>${this.state.selectedCity.name}</b>`;
-                } else if (this.state.selectedProv) {
+                } else if (zoom > 8.5 && zoom <= 11.0) {
+                    const provName = this.state.selectedProv ? ` (${this.state.selectedProv.name})` : '';
+                    mainLabel.innerHTML = `Mode Potensi: <b>Gugusan Kab/Kota${provName}</b>`;
+                } else if (this.state.selectedProv && zoom > 5.5) {
                     mainLabel.innerHTML = `Mode Potensi: <b>Provinsi ${this.state.selectedProv.name}</b>`;
-                } else if (this.state.selectedIsland) {
+                } else if (this.state.selectedIsland && zoom > 5.5) {
                     mainLabel.innerHTML = `Mode Potensi: <b>${this.state.selectedIsland.name}</b>`;
                 } else {
-                    mainLabel.innerHTML = `Mode Potensi: <b>Peta Sebaran Potensi</b>`;
+                    mainLabel.innerHTML = `Mode Potensi: <b>Peta Sebaran Potensi Nasional</b>`;
                 }
             }
+
             if (subLabel) {
-                if (this.state.selectedCorridor) {
+                if (this.state.selectedCorridor && zoom > 11.0) {
                     subLabel.textContent = `${this.state.selectedCorridor.name} • ${this.state.selectedCorridor.length || this.state.selectedCorridor.km || '1,8 km'}`;
-                } else if (this.state.selectedCity) {
+                } else if (this.state.selectedCity && zoom > 11.0) {
                     subLabel.textContent = `${this.state.selectedCity.poi} Titik POI • Estimasi ${rp(this.state.selectedCity.pot)}`;
-                } else if (this.state.selectedProv) {
+                } else if (zoom > 8.5 && zoom <= 11.0) {
+                    subLabel.textContent = `Tingkat Agregasi Kab/Kota • Zoom ${zoom.toFixed(1)}`;
+                } else if (this.state.selectedProv && zoom > 5.5) {
                     subLabel.textContent = `${this.state.selectedProv.poi} Titik POI • Estimasi ${rp(this.state.selectedProv.pot)}`;
-                } else if (this.state.selectedIsland) {
+                } else if (this.state.selectedIsland && zoom > 5.5) {
                     subLabel.textContent = `${this.state.selectedIsland.name} • ${this.state.selectedIsland.provIds.length} Provinsi`;
                 } else {
                     subLabel.textContent = '7 Wilayah Utama • 514 Kabupaten & Kota';
@@ -1314,18 +1578,16 @@
         }
 
         updateLegend() {
-            if (!this.mapLegend) return;
-            this.mapLegend.innerHTML = `
-                <div class="leg-title">Kategori Objek Potensi Pajak (PAD360)</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 11px;">
-                    <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0E9E9A;margin-right:4px;"></i>Reklame</span>
-                    <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#d97706;margin-right:4px;"></i>Parkir PBJT</span>
-                    <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#7c3aed;margin-right:4px;"></i>Mall / PBB</span>
-                    <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563eb;margin-right:4px;"></i>Pabrik/Gudang</span>
-                    <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#059669;margin-right:4px;"></i>Ruang Publik</span>
-                    <span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-right:4px;"></i>Koridor Sisir</span>
-                </div>
-            `;
+            if (!this.potensiMapLegend) {
+                this.potensiMapLegend = document.getElementById('potensiMapLegend');
+            }
+            if (this.potensiMapLegend) {
+                if (this.active && !this.isTableViewActive()) {
+                    this.potensiMapLegend.style.display = 'block';
+                } else {
+                    this.potensiMapLegend.style.display = 'none';
+                }
+            }
         }
 
         renderDetailPanel(obj) {

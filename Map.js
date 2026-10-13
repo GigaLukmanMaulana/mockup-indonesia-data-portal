@@ -676,6 +676,47 @@ document.addEventListener('DOMContentLoaded', () => {
     window.updateProfileContext = () => updateNationalSummary(getFilteredData());
     window.updateProfileLegend = () => updateNationalSummary(getFilteredData());
 
+    // Fungsi restorasi penuh tampilan profil daerah (layer, legenda, status strip, dan viewport)
+    window.restoreProfileView = function() {
+        if (!map) return;
+        // Kembalikan layer group profil daerah ke peta jika belum ada
+        if (geojsonLayerGroup && !map.hasLayer(geojsonLayerGroup)) {
+            map.addLayer(geojsonLayerGroup);
+        }
+        if (markersLayer && !map.hasLayer(markersLayer)) {
+            map.addLayer(markersLayer);
+        }
+        // Render ulang poligon choropleth & ringkasan metrik
+        createOrUpdateMarkers();
+        updateNationalSummary(getFilteredData());
+
+        // Sinkronkan visibilitas kontainer legenda & context strip profil vs potensi
+        const profLeg = document.getElementById('mapLegend');
+        const profStrip = document.getElementById('mapContextStrip');
+        const potLeg = document.getElementById('potensiMapLegend');
+        const potStrip = document.getElementById('potensiContextStrip');
+
+        if (profLeg) profLeg.style.display = 'block';
+        if (profStrip) profStrip.style.display = 'flex';
+        if (potLeg) potLeg.style.display = 'none';
+        if (potStrip) potStrip.style.display = 'none';
+
+        // Kembalikan viewport ke nasional/provinsi jika sebelumnya zoom mikro kota potensi (zoom > 8)
+        if (map.getZoom() > 8) {
+            if (filterProv && allGeoJsonFeatures.length > 0) {
+                const provFeatures = allGeoJsonFeatures.filter(f => f.properties && sameProvName(f.properties.COUNTRY, filterProv));
+                if (provFeatures.length > 0) {
+                    const tempLayer = L.geoJSON(provFeatures);
+                    map.flyToBounds(tempLayer.getBounds(), { padding: [40, 40], duration: 1.0 });
+                } else {
+                    map.flyTo([-1.2, 117.5], 5, { duration: 1.0 });
+                }
+            } else {
+                map.flyTo([-1.2, 117.5], 5, { duration: 1.0 });
+            }
+        }
+    };
+
     // Helper to fly to a region with right drawer offset (440px right padding)
     function focusRegionMap(target) {
         if (!target) return;
@@ -1054,6 +1095,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const leafletControls = document.querySelector('.leaflet-control-container');
         const isPotensi = Boolean(window.PotensiCtrl && window.PotensiCtrl.active);
 
+        const potLeg = document.getElementById('potensiMapLegend');
+        const potStrip = document.getElementById('potensiContextStrip');
+
         if (mode === 'map') {
             btnViewMap?.classList.add('active');
             btnViewTable?.classList.remove('active');
@@ -1061,7 +1105,9 @@ document.addEventListener('DOMContentLoaded', () => {
             potensiTableViewWrap?.classList.remove('active');
             if (mapEl) mapEl.style.display = 'block';
             if (mapLegend) mapLegend.style.display = isPotensi ? 'none' : 'block';
-            if (mapContextStrip) mapContextStrip.style.display = 'flex';
+            if (mapContextStrip) mapContextStrip.style.display = isPotensi ? 'none' : 'flex';
+            if (potLeg) potLeg.style.display = isPotensi ? 'block' : 'none';
+            if (potStrip) potStrip.style.display = isPotensi ? 'flex' : 'none';
             if (leafletControls) leafletControls.style.display = 'block';
 
             if (isPotensi && window.PotensiCtrl) {
@@ -1096,6 +1142,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mapEl) mapEl.style.display = 'none';
             if (mapLegend) mapLegend.style.display = 'none';
             if (mapContextStrip) mapContextStrip.style.display = 'none';
+            if (potLeg) potLeg.style.display = 'none';
+            if (potStrip) potStrip.style.display = 'none';
             if (leafletControls) leafletControls.style.display = 'none';
 
             if (isPotensi) {
