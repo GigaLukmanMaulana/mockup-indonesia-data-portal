@@ -2,8 +2,10 @@
 __pycache__/
 *.py[cod]
 
-# Raw Agricultural Excel data
+# Raw Excel data (large binary files)
 data-mentah/xlsx/data-pertanian/
+data-mentah/xlsx/pendidikan/
+data-mentah/xlsx/kesehatan/
 
 # Temporary & duplicate files
 *copy*

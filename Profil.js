@@ -4,6 +4,16 @@
    Diagram Kursi DPRD 2024, Piramida Penduduk, & Bar PDRB 17 Sektor.
    ============================================================ */
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof REGION_DATA === 'undefined' || !Array.isArray(REGION_DATA) || REGION_DATA.length === 0) {
         console.error('REGION_DATA is missing or not loaded.');
@@ -346,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderEkonomi(r);
     renderKonsumsi(r);
     renderPertanian(r);
-    renderSosial();
+    renderSosial(r);
     renderPodes();
 
     // Default to Wilayah Tab (index 1)
@@ -1848,42 +1858,290 @@ function renderPertanian(r) {
 /* ============================================================
    TAB 8: SOSIAL
    ============================================================ */
-function renderSosial() {
-    const eduSvg = document.getElementById('eduBar');
-    if (eduSvg) {
-        const E = [
-            { n: 'SD/MI', v: 480, c: '#0FB5A0' },
-            { n: 'SMP/MTs', v: 210, c: '#2E9BD6' },
-            { n: 'SMA/MA', v: 110, c: '#D9962B' },
-            { n: 'SMK', v: 95, c: '#5B6EE0' },
-            { n: 'Perguruan Tinggi', v: 28, c: '#2FA65E' }
-        ];
-        const W = 460, rowH = 34, labelW = 140, barMax = W - labelW - 40;
-        const maxV = Math.max(...E.map(e => e.v)) || 1;
-        let s = '';
-        E.forEach((e, i) => {
-            const y = i * rowH + 6;
-            const w = (e.v / maxV) * barMax;
-            s += `<text class="pd-lbl" x="0" y="${y + rowH / 2}">${e.n}</text>`;
-            s += `<rect x="${labelW}" y="${y + 4}" width="${Math.max(2, w)}" height="${rowH - 12}" rx="2" fill="${e.c}"/>`;
-            s += `<text class="pd-val" x="${labelW + w + 8}" y="${y + rowH / 2}">${e.v}</text>`;
-        });
-        eduSvg.innerHTML = s;
+function renderSosial(r) {
+    if (!r) return;
+    const regId = String(r.id || r.no || '');
+    const sData = (typeof window.SOSIAL_DATA !== 'undefined' && window.SOSIAL_DATA)
+        ? window.SOSIAL_DATA[regId]
+        : null;
+
+    const sosKpis = document.getElementById('sosKpis');
+    const eduBar = document.getElementById('eduBar');
+    const healthGrid = document.getElementById('healthGrid');
+    const eduTotalBadge = document.getElementById('eduTotalBadge');
+    const healthTotalBadge = document.getElementById('healthTotalBadge');
+    const eduStatusRow = document.getElementById('eduStatusRow');
+    const healthActionRow = document.getElementById('healthActionRow');
+    const kampusList = document.getElementById('kampusList');
+    const kampusCountBadge = document.getElementById('kampusCountBadge');
+    const akredGrid = document.getElementById('akredGrid');
+
+    if (!sData || !sData.has_data) {
+        if (sosKpis) {
+            sosKpis.innerHTML = `
+                <div class="kpi"><div class="k-label">Satuan Pendidikan</div><div class="k-val" style="color:var(--muted)">–</div><div class="k-note">Data belum tersedia</div></div>
+                <div class="kpi"><div class="k-label">Peserta Didik</div><div class="k-val" style="color:var(--muted)">–</div><div class="k-note">Data belum tersedia</div></div>
+                <div class="kpi"><div class="k-label">Tenaga Pendidik</div><div class="k-val" style="color:var(--muted)">–</div><div class="k-note">Data belum tersedia</div></div>
+                <div class="kpi"><div class="k-label">Fasilitas Kesehatan</div><div class="k-val" style="color:var(--muted)">–</div><div class="k-note">Data belum tersedia</div></div>
+            `;
+        }
+        return;
     }
 
-    const healthGrid = document.getElementById('healthGrid');
-    if (healthGrid) {
-        healthGrid.innerHTML = `
-            <div style="padding:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px">
-                <div style="font-family:var(--mono);font-size:22px;font-weight:600;color:#E8604C">24</div>
-                <div style="font-size:11px;color:var(--text)">Rumah Sakit</div>
+    const ring = sData.ringkasan || {};
+    const pend = sData.pendidikan || {};
+    const kes = sData.kesehatan || {};
+    const rekap = pend.rekap_jenjang || {};
+    const fmt = (n) => typeof n === 'number' ? n.toLocaleString('id-ID') : (n || '0');
+
+    // 1. Render KPI Cards
+    if (sosKpis) {
+        const rasio = ring.total_guru > 0 ? (ring.total_siswa / ring.total_guru).toFixed(1) : '–';
+        sosKpis.innerHTML = `
+            <div class="kpi">
+                <div class="k-label">Satuan Pendidikan</div>
+                <div class="k-val" style="color:#0FB5A0">${fmt(ring.total_sekolah)} <span class="k-unit">Unit</span></div>
+                <div class="k-note">PAUD/TK s.d. Menengah</div>
             </div>
-            <div style="padding:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px">
-                <div style="font-family:var(--mono);font-size:22px;font-weight:600;color:#0FB5A0">38</div>
-                <div style="font-size:11px;color:var(--text)">Puskesmas</div>
+            <div class="kpi">
+                <div class="k-label">Peserta Didik (Siswa)</div>
+                <div class="k-val" style="color:#2E9BD6">${fmt(ring.total_siswa)} <span class="k-unit">Jiwa</span></div>
+                <div class="k-note">Rasio Guru: 1 : ${rasio}</div>
+            </div>
+            <div class="kpi">
+                <div class="k-label">Tenaga Pendidik (Guru)</div>
+                <div class="k-val" style="color:#D9962B">${fmt(ring.total_guru)} <span class="k-unit">Orang</span></div>
+                <div class="k-note">Guru &amp; Tenaga Pengajar</div>
+            </div>
+            <div class="kpi">
+                <div class="k-label">Fasilitas Kesehatan</div>
+                <div class="k-val" style="color:#E8604C">${fmt(ring.total_faskes || (ring.total_puskesmas + ring.total_rs))} <span class="k-unit">Faskes</span></div>
+                <div class="k-note">${ring.total_puskesmas} Puskesmas · ${ring.total_rs} RS</div>
             </div>
         `;
     }
+
+    if (eduTotalBadge) {
+        eduTotalBadge.textContent = `${fmt(ring.total_sekolah)} Sekolah Terdata`;
+    }
+    if (healthTotalBadge) {
+        healthTotalBadge.textContent = `${fmt(ring.total_puskesmas + ring.total_rs)} Faskes Resmi`;
+    }
+
+    // 2. Render Grafik Batang Pendidikan (eduBar)
+    if (eduBar) {
+        const sdTotal = (rekap.sd ? rekap.sd.total : 0);
+        const smpTotal = (rekap.smp ? rekap.smp.total : 0);
+        const smaTotal = (rekap.sma ? rekap.sma.total : 0);
+        const smkTotal = (rekap.smk ? rekap.smk.total : 0);
+        const madrasahTotal = (rekap.madrasah ? rekap.madrasah.total : 0);
+        const paudTotal = (rekap.paud_tk ? rekap.paud_tk.total : 0);
+        const slbTotal = (rekap.slb ? rekap.slb.total : 0);
+        const kampusTotal = ring.total_kampus || (pend.daftar_kampus ? pend.daftar_kampus.length : 0);
+
+        const E = [
+            { n: 'SD / Sederajat', v: sdTotal, c: '#0FB5A0' },
+            { n: 'SMP / Sederajat', v: smpTotal, c: '#2E9BD6' },
+            { n: 'SMA / Sederajat', v: smaTotal, c: '#D9962B' },
+            { n: 'SMK', v: smkTotal, c: '#5B6EE0' },
+            { n: 'Madrasah (MI/MTs/MA)', v: madrasahTotal, c: '#2FA65E' },
+            { n: 'PAUD & TK', v: paudTotal, c: '#E8604C' },
+            { n: 'Perguruan Tinggi', v: kampusTotal, c: '#8E44AD' }
+        ].filter(item => item.v > 0);
+
+        if (E.length === 0) {
+            eduBar.innerHTML = `<text x="230" y="140" text-anchor="middle" fill="var(--muted)" font-size="12">Belum ada rincian sekolah terdata</text>`;
+        } else {
+            const W = 460, rowH = 36, labelW = 160, barMax = W - labelW - 60;
+            const maxV = Math.max(...E.map(e => e.v)) || 1;
+            eduBar.setAttribute('viewBox', `0 0 460 ${E.length * rowH + 20}`);
+            let s = '';
+            E.forEach((e, i) => {
+                const y = i * rowH + 8;
+                const w = Math.max(4, (e.v / maxV) * barMax);
+                s += `<text class="pd-lbl" x="0" y="${y + rowH / 2 + 1}" font-size="11" font-weight="600" fill="var(--text)">${e.n}</text>`;
+                s += `<rect x="${labelW}" y="${y + 5}" width="${w}" height="${rowH - 12}" rx="3" fill="${e.c}" opacity="0.88"/>`;
+                s += `<text class="pd-val" x="${labelW + w + 8}" y="${y + rowH / 2 + 2}" font-size="11" font-weight="700" font-family="var(--mono)" fill="${e.c}">${fmt(e.v)}</text>`;
+            });
+            eduBar.innerHTML = s;
+        }
+    }
+
+    // 3. Render Status Negeri vs Swasta
+    if (eduStatusRow) {
+        let negCount = 0, swasCount = 0;
+        ['sd', 'smp', 'sma', 'smk', 'paud_tk', 'slb'].forEach(k => {
+            if (rekap[k]) {
+                negCount += (rekap[k].negeri || 0);
+                swasCount += (rekap[k].swasta || 0);
+            }
+        });
+        const totalStatus = negCount + swasCount;
+        const pctNeg = totalStatus > 0 ? Math.round((negCount / totalStatus) * 100) : 0;
+        const pctSwas = totalStatus > 0 ? (100 - pctNeg) : 0;
+        eduStatusRow.innerHTML = `
+            <div>Negeri: <b style="color:#0FB5A0">${fmt(negCount)}</b> (${pctNeg}%)</div>
+            <div style="flex:1;max-width:180px;height:7px;background:var(--line);border-radius:4px;overflow:hidden;margin:0 12px;align-self:center">
+                <div style="width:${pctNeg}%;height:100%;background:#0FB5A0"></div>
+            </div>
+            <div>Swasta: <b style="color:#D9962B">${fmt(swasCount)}</b> (${pctSwas}%)</div>
+        `;
+    }
+
+    // 4. Render Fasilitas Kesehatan Grid
+    if (healthGrid) {
+        const pkmCount = ring.total_puskesmas || (kes.puskesmas ? kes.puskesmas.length : 0);
+        const rsCount = ring.total_rs || (kes.rumah_sakit ? kes.rumah_sakit.length : 0);
+        healthGrid.innerHTML = `
+            <div style="padding:14px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px">
+                <div style="font-family:var(--mono);font-size:24px;font-weight:700;color:#0FB5A0">${fmt(pkmCount)}</div>
+                <div style="font-size:12px;font-weight:600;color:var(--text);margin-top:2px">Puskesmas</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:3px">Pusat Kesehatan Masyarakat Resmi</div>
+            </div>
+            <div style="padding:14px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px">
+                <div style="font-family:var(--mono);font-size:24px;font-weight:700;color:${rsCount > 0 ? '#E8604C' : 'var(--muted)'}">${fmt(rsCount)}</div>
+                <div style="font-size:12px;font-weight:600;color:var(--text);margin-top:2px">Rumah Sakit</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:3px">RS Vertikal Rujukan Kemenkes</div>
+            </div>
+        `;
+    }
+
+    // 5. Action Buttons untuk Faskes
+    if (healthActionRow) {
+        const pkmList = kes.puskesmas || [];
+        const rsList = kes.rumah_sakit || [];
+        healthActionRow.innerHTML = `
+            ${pkmList.length > 0 ? `<button type="button" class="btn btn-sm" id="btnSeePuskesmas" style="font-size:11.5px;padding:6px 12px;cursor:pointer">Lihat ${pkmList.length} Puskesmas &rarr;</button>` : ''}
+            ${rsList.length > 0 ? `<button type="button" class="btn btn-sm" id="btnSeeRS" style="font-size:11.5px;padding:6px 12px;cursor:pointer">Lihat ${rsList.length} RS Rujukan &rarr;</button>` : ''}
+        `;
+        document.getElementById('btnSeePuskesmas')?.addEventListener('click', () => openSosModal('puskesmas', r, sData));
+        document.getElementById('btnSeeRS')?.addEventListener('click', () => openSosModal('rs', r, sData));
+    }
+
+    // 6. Render Daftar Kampus
+    if (kampusList && kampusCountBadge) {
+        const campuses = pend.daftar_kampus || [];
+        kampusCountBadge.textContent = `${campuses.length} Kampus`;
+        if (campuses.length === 0) {
+            kampusList.innerHTML = `<div style="font-size:11.5px;color:var(--muted);padding:10px 0">Tidak ada kampus perguruan tinggi beroperasi di wilayah ini.</div>`;
+        } else {
+            kampusList.innerHTML = campuses.map(c => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--surface);border-radius:6px;font-size:11.5px">
+                    <span style="font-weight:600;color:var(--text);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(c.nama)}</span>
+                    <span style="font-family:var(--mono);font-size:10px;color:#8E44AD;background:rgba(142,68,173,0.1);padding:2px 6px;border-radius:4px">${escapeHtml(c.akreditasi || 'Aktif')}</span>
+                </div>
+            `).join('');
+        }
+    }
+
+    // 7. Render Akreditasi Sekolah
+    if (akredGrid) {
+        const ak = pend.akreditasi || { a: 0, b: 0, c: 0, belum: 0 };
+        akredGrid.innerHTML = `
+            <div style="padding:10px;background:var(--surface);border-radius:6px">
+                <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#0FB5A0">${fmt(ak.a)}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Akreditasi A</div>
+            </div>
+            <div style="padding:10px;background:var(--surface);border-radius:6px">
+                <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#2E9BD6">${fmt(ak.b)}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Akreditasi B</div>
+            </div>
+            <div style="padding:10px;background:var(--surface);border-radius:6px">
+                <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#D9962B">${fmt(ak.c)}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Akreditasi C</div>
+            </div>
+            <div style="padding:10px;background:var(--surface);border-radius:6px">
+                <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--muted)">${fmt(ak.belum)}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Lainnya</div>
+            </div>
+        `;
+    }
+}
+
+function openSosModal(type, r, sData) {
+    const modalEl = document.getElementById('sosModal');
+    const modalTitleEl = document.getElementById('sosModalTitle');
+    const modalSubEl = document.getElementById('sosModalSub');
+    const modalCountEl = document.getElementById('sosModalCount');
+    const modalSearchEl = document.getElementById('sosModalSearch');
+    const modalTableEl = document.getElementById('sosModalTable');
+    const closeBtn = document.getElementById('btnSosModalClose');
+    if (!modalEl || !modalTableEl) return;
+
+    let rows = [];
+    if (type === 'puskesmas') {
+        if (modalTitleEl) modalTitleEl.textContent = `Puskesmas di ${r.kabkota}`;
+        if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi Kemenkes RI · Fasilitas Kesehatan Tingkat Pertama`;
+        rows = (sData.kesehatan && sData.kesehatan.puskesmas) || [];
+    } else if (type === 'rs') {
+        if (modalTitleEl) modalTitleEl.textContent = `Rumah Sakit di ${r.kabkota}`;
+        if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi Kemenkes RI · Fasilitas Rujukan Tingkat Lanjut`;
+        rows = (sData.kesehatan && sData.kesehatan.rumah_sakit) || [];
+    }
+
+    const renderTable = (q = '') => {
+        const query = q.toLowerCase().trim();
+        const filtered = rows.filter(it => (it.nama + ' ' + (it.alamat || '') + ' ' + (it.telepon || '')).toLowerCase().includes(query));
+        if (modalCountEl) modalCountEl.textContent = `${filtered.length} Fasilitas`;
+        
+        if (filtered.length === 0) {
+            modalTableEl.innerHTML = `<tbody><tr><td style="padding:24px;text-align:center;color:var(--muted)">Tidak ada fasilitas cocok dengan "${escapeHtml(q)}"</td></tr></tbody>`;
+            return;
+        }
+
+        if (type === 'puskesmas') {
+            modalTableEl.innerHTML = `
+                <thead>
+                    <tr>
+                        <th style="width:40px;text-align:center">No</th>
+                        <th>Nama Puskesmas</th>
+                        <th style="width:140px">Kontak Telepon</th>
+                        <th>Email Resmi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filtered.map((it, idx) => `
+                        <tr>
+                            <td style="text-align:center;color:var(--muted);font-family:var(--mono)">${idx + 1}</td>
+                            <td><strong style="color:var(--text)">${escapeHtml(it.nama)}</strong></td>
+                            <td style="font-family:var(--mono);font-size:11px">${escapeHtml(it.telepon || '–')}</td>
+                            <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${escapeHtml(it.email || '–')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        } else {
+            modalTableEl.innerHTML = `
+                <thead>
+                    <tr>
+                        <th style="width:40px;text-align:center">No</th>
+                        <th>Nama Rumah Sakit</th>
+                        <th>Alamat</th>
+                        <th style="width:130px">Kontak Telepon</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filtered.map((it, idx) => `
+                        <tr>
+                            <td style="text-align:center;color:var(--muted);font-family:var(--mono)">${idx + 1}</td>
+                            <td><strong style="color:var(--text)">${escapeHtml(it.nama)}</strong></td>
+                            <td style="font-size:11.5px;color:var(--muted)">${escapeHtml(it.alamat || '–')}</td>
+                            <td style="font-family:var(--mono);font-size:11px">${escapeHtml(it.telepon || '–')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        }
+    };
+
+    renderTable();
+    modalEl.hidden = false;
+    if (modalSearchEl) {
+        modalSearchEl.value = '';
+        modalSearchEl.oninput = (e) => renderTable(e.target.value);
+    }
+    if (closeBtn) closeBtn.onclick = () => { modalEl.hidden = true; };
+    modalEl.onclick = (e) => { if (e.target === modalEl) modalEl.hidden = true; };
 }
 
 /* ============================================================
