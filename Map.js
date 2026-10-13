@@ -686,9 +686,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (markersLayer && !map.hasLayer(markersLayer)) {
             map.addLayer(markersLayer);
         }
-        // Render ulang poligon choropleth & ringkasan metrik
+        // Render ulang poligon choropleth, ringkasan metrik, dan leaderboard sidebar
         createOrUpdateMarkers();
-        updateNationalSummary(getFilteredData());
+        const filtered = getFilteredData();
+        updateNationalSummary(filtered);
+        updateLeaderboard(filtered);
 
         // Sinkronkan visibilitas kontainer legenda & context strip profil vs potensi
         const profLeg = document.getElementById('mapLegend');
@@ -696,23 +698,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const potLeg = document.getElementById('potensiMapLegend');
         const potStrip = document.getElementById('potensiContextStrip');
 
-        if (profLeg) profLeg.style.display = 'block';
-        if (profStrip) profStrip.style.display = 'flex';
-        if (potLeg) potLeg.style.display = 'none';
-        if (potStrip) potStrip.style.display = 'none';
+        if (currentView === 'table') {
+            if (profLeg) profLeg.style.display = 'none';
+            if (profStrip) profStrip.style.display = 'none';
+            if (potLeg) potLeg.style.display = 'none';
+            if (potStrip) potStrip.style.display = 'none';
+            renderTable();
+        } else {
+            if (profLeg) profLeg.style.display = 'block';
+            if (profStrip) profStrip.style.display = 'flex';
+            if (potLeg) potLeg.style.display = 'none';
+            if (potStrip) potStrip.style.display = 'none';
 
-        // Kembalikan viewport ke nasional/provinsi jika sebelumnya zoom mikro kota potensi (zoom > 8)
-        if (map.getZoom() > 8) {
-            if (filterProv && allGeoJsonFeatures.length > 0) {
-                const provFeatures = allGeoJsonFeatures.filter(f => f.properties && sameProvName(f.properties.COUNTRY, filterProv));
-                if (provFeatures.length > 0) {
-                    const tempLayer = L.geoJSON(provFeatures);
-                    map.flyToBounds(tempLayer.getBounds(), { padding: [40, 40], duration: 1.0 });
+            // Kembalikan viewport ke nasional/provinsi jika sebelumnya zoom mikro kota potensi (zoom > 8)
+            if (map.getZoom() > 8) {
+                if (filterProv && allGeoJsonFeatures.length > 0) {
+                    const provFeatures = allGeoJsonFeatures.filter(f => f.properties && sameProvName(f.properties.COUNTRY, filterProv));
+                    if (provFeatures.length > 0) {
+                        const tempLayer = L.geoJSON(provFeatures);
+                        map.flyToBounds(tempLayer.getBounds(), { padding: [40, 40], duration: 1.0 });
+                    } else {
+                        map.flyTo([-1.2, 117.5], 5, { duration: 1.0 });
+                    }
                 } else {
                     map.flyTo([-1.2, 117.5], 5, { duration: 1.0 });
                 }
-            } else {
-                map.flyTo([-1.2, 117.5], 5, { duration: 1.0 });
             }
         }
     };
@@ -1061,6 +1071,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+    window.renderProfileTable = renderTable;
+    window.renderTable = renderTable;
 
     // Attach table header click listeners for sorting (Profil Daerah BPS Table)
     document.querySelectorAll('#dataTable th[data-sort]').forEach(th => {

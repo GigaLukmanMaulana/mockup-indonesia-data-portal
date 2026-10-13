@@ -452,7 +452,16 @@
                     tableViewWrap?.classList.add('active');
                     if (this.profileContextStrip) this.profileContextStrip.style.display = 'none';
                     if (this.profileMapLegend) this.profileMapLegend.style.display = 'none';
-                    if (window.renderTable) window.renderTable();
+                    if (typeof window.setViewMode === 'function') {
+                        window.setViewMode('table');
+                    } else if (typeof window.renderProfileTable === 'function') {
+                        window.renderProfileTable();
+                    } else if (typeof window.renderTable === 'function') {
+                        window.renderTable();
+                    }
+                    if (typeof window.restoreProfileView === 'function') {
+                        window.restoreProfileView();
+                    }
                 } else {
                     // Tampilkan kembali status strip dan legenda profil daerah
                     if (this.profileContextStrip) this.profileContextStrip.style.display = 'flex';
