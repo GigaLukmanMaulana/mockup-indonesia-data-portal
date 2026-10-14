@@ -1350,7 +1350,13 @@ document.addEventListener('DOMContentLoaded', () => {
             regionPanel.classList.remove('open');
         }
         selectedRegion = null;
+        if (window.PotensiCtrl && typeof window.PotensiCtrl.closeDetailPanel === 'function') {
+            window.PotensiCtrl.closeDetailPanel();
+        }
     }
+
+    window.closeProfilePanel = closePanel;
+    window.closeRegionPanel = closePanel;
 
     if (rpClose) {
         rpClose.addEventListener('click', closePanel);

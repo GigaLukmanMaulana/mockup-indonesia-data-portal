@@ -355,7 +355,8 @@
             const btnViewMap = document.getElementById('btnViewMap');
 
             btnViewTable?.addEventListener('click', () => {
-                if (this.regionPanel) this.regionPanel.classList.remove('open');
+                this.closeDetailPanel();
+                if (typeof window.closeProfilePanel === 'function') window.closeProfilePanel();
                 if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = this.active ? 'flex' : 'none';
                 if (this.active) {
                     this.renderSidebar();
@@ -364,6 +365,8 @@
             });
 
             btnViewMap?.addEventListener('click', () => {
+                this.closeDetailPanel();
+                if (typeof window.closeProfilePanel === 'function') window.closeProfilePanel();
                 if (this.modeSwitcherWrap) this.modeSwitcherWrap.style.display = 'flex';
                 if (this.potensiHeaderWrap) this.potensiHeaderWrap.style.display = this.active ? 'flex' : 'none';
                 if (this.active) {
@@ -375,7 +378,30 @@
             });
         }
 
+        closeDetailPanel(immediateClear = false) {
+            if (this.regionPanel) {
+                this.regionPanel.classList.remove('open');
+            }
+            this.state.selectedObject = null;
+            if (this._rpClearTimer) clearTimeout(this._rpClearTimer);
+            if (immediateClear) {
+                if (this.rpContent) this.rpContent.innerHTML = '';
+            } else {
+                this._rpClearTimer = setTimeout(() => {
+                    if (this.regionPanel && !this.regionPanel.classList.contains('open') && this.rpContent) {
+                        this.rpContent.innerHTML = '';
+                    }
+                }, 360);
+            }
+        }
+
         setMode(mode) {
+            // Tutup sidebar kanan secara otomatis saat beralih mode (Opsi 1: Auto-Close & Reset Total)
+            this.closeDetailPanel();
+            if (typeof window.closeProfilePanel === 'function') {
+                window.closeProfilePanel();
+            }
+
             const data = this.getData();
             const tableViewWrap = document.getElementById('tableViewWrap');
             const potensiTableViewWrap = document.getElementById('potensiTableViewWrap');
@@ -666,6 +692,7 @@
         }
 
         selectIsland(islandId, fly = true) {
+            this.closeDetailPanel();
             if (!islandId) {
                 this.state.scope = 'nasional';
                 this.state.selectedIsland = null;
@@ -707,6 +734,7 @@
                 }
                 setTimeout(() => { this._isFlying = false; }, 1350);
             }
+
             this.renderHeaderFilters();
             this.renderSidebar();
             this.renderMapLayers();
@@ -715,6 +743,7 @@
         }
 
         selectProvince(provId, fly = true) {
+            this.closeDetailPanel();
             if (!provId) {
                 this.state.selectedProv = null;
                 this.state.selectedCity = null;
@@ -1601,6 +1630,8 @@
 
         renderDetailPanel(obj) {
             if (!this.regionPanel || !this.rpContent) return;
+            if (this._rpClearTimer) clearTimeout(this._rpClearTimer);
+            this.state.selectedObject = obj;
             this.rpContent.scrollTop = 0;
 
             const data = this.getData();
@@ -1977,8 +2008,9 @@
 
         renderCheckpointDetail(cp, corridor) {
             if (!this.regionPanel || !this.rpContent) return;
-
-            const isDone = cp.done !== undefined ? cp.done : cp.status === 'done';
+            if (this._rpClearTimer) clearTimeout(this._rpClearTimer);
+            this.state.selectedObject = { type: 'checkpoint', cp, corridor };
+            this.rpContent.scrollTop = 0;
             const num = cp.num || cp.n || '1';
             const label = cp.title || cp.label || 'Checkpoint';
 
