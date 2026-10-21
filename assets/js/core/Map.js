@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            const res = await fetch('indonesia-kab.json');
+            const res = await fetch('data/geojson/indonesia-kab.json');
             if (res.ok) {
                 const data = await res.json();
                 allGeoJsonFeatures = data.features.filter(f => f.geometry !== null);

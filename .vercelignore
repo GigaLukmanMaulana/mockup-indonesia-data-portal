@@ -1,0 +1,7 @@
+# Vercel Deployment Ignore
+.git
+scripts/
+docs/
+data-mentah/
+Referensi/
+*.csv

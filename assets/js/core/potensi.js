@@ -177,7 +177,7 @@
         async loadData() {
             this.data = typeof window !== 'undefined' && window.PotensiData ? window.PotensiData : null;
             try {
-                const res = await fetch('potensi-data.json');
+                const res = await fetch('data/json/potensi-data.json');
                 if (res.ok) {
                     this.data = await res.json();
                     window.PotensiData = this.data;

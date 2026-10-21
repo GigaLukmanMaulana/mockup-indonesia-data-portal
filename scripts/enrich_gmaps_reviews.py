@@ -1,8 +1,11 @@
-import json, random
+import json, random, os
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(base_dir, '..'))
 
 def enrich_gmaps():
-    fpath_js = 'potensi-data.js'
-    fpath_json = 'potensi-data.json'
+    fpath_js = os.path.join(root_dir, 'assets', 'js', 'data', 'potensi-data.js')
+    fpath_json = os.path.join(root_dir, 'data', 'json', 'potensi-data.json')
     
     with open(fpath_json, 'r', encoding='utf-8') as f:
         data = json.load(f)

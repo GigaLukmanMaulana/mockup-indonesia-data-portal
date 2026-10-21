@@ -158,8 +158,8 @@ function detectRegency(text) {
     return 'Lainnya / Tidak Terdefinisi';
 }
 
-const csvDir = path.join(__dirname, '..', 'data-tabel', 'csv');
-const jsonDir = path.join(__dirname, '..', 'data-tabel', 'json');
+const csvDir = path.join(__dirname, '..', 'data-mentah', 'csv');
+const jsonDir = path.join(__dirname, '..', 'data-mentah', 'json');
 
 if (!fs.existsSync(jsonDir)) {
     fs.mkdirSync(jsonDir, { recursive: true });

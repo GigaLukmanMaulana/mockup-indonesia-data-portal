@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const dataPath = path.join(__dirname, 'data.json');
-const geoPath = path.join(__dirname, 'indonesia-kab.json');
+const dataPath = path.join(__dirname, '..', 'data', 'json', 'data.json');
+const geoPath = path.join(__dirname, '..', 'data', 'geojson', 'indonesia-kab.json');
 
 const regData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 const geoData = JSON.parse(fs.readFileSync(geoPath, 'utf8'));
@@ -392,10 +392,10 @@ regData.forEach(r => {
 });
 
 // Output JSON file
-fs.writeFileSync(path.join(__dirname, 'region-boundaries.json'), JSON.stringify(RESULT, null, 2), 'utf8');
+fs.writeFileSync(path.join(__dirname, '..', 'data', 'geojson', 'region-boundaries.json'), JSON.stringify(RESULT, null, 2), 'utf8');
 
 // Output JS file for zero-CORS script tag inclusion
 const jsContent = `window.REGION_BOUNDARIES = ${JSON.stringify(RESULT, null, 2)};`;
-fs.writeFileSync(path.join(__dirname, 'region-boundaries.js'), jsContent, 'utf8');
+fs.writeFileSync(path.join(__dirname, '..', 'assets', 'js', 'data', 'region-boundaries.js'), jsContent, 'utf8');
 
 console.log('Successfully built region-boundaries.json & region-boundaries.js for', Object.keys(RESULT).length, 'regions.');

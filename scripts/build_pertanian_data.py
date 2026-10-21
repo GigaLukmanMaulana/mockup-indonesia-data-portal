@@ -8,10 +8,10 @@ import openpyxl
 base_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.abspath(os.path.join(base_dir, '..'))
 
-data_json_path = os.path.join(root_dir, 'data.json')
+data_json_path = os.path.join(root_dir, 'data', 'json', 'data.json')
 pertanian_dir = os.path.join(root_dir, 'data-mentah', 'xlsx', 'data-pertanian')
-output_json_path = os.path.join(root_dir, 'pertanian-data.json')
-output_js_path = os.path.join(root_dir, 'pertanian-data.js')
+output_json_path = os.path.join(root_dir, 'data', 'json', 'pertanian-data.json')
+output_js_path = os.path.join(root_dir, 'assets', 'js', 'data', 'pertanian-data.js')
 
 print("1. Loading 514 region reference from data.json...")
 with open(data_json_path, 'r', encoding='utf-8') as f:

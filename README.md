@@ -64,13 +64,21 @@ Proyek ini dibuat menggunakan **Vanilla HTML5, CSS3, dan JavaScript (ES6)** tanp
 
 ```text
 mockup-indonesia-data-portal/
-├── index.html         # Halaman Utama Dashboard & Peta Interaktif GIS
+├── index.html         # Halaman Utama Dashboard & Peta Interaktif GIS (Choropleth & PAD360)
 ├── profil.html        # Halaman Profil Detail Wilayah Kabupaten/Kota
-├── styles.css         # Custom Design System, Off-White Tokens & Layout
-├── Map.js             # Logika Peta Leaflet, Choropleth, Filter & Leaderboard
-├── Profil.js          # Logika Detail Profil, ScrollSpy & Custom Search Picker
-├── data.js            # Basis Data 514 Kabupaten/Kota & 38 Provinsi Indonesia
-├── indonesia-kab.json # Berkas Batas Poligon GeoJSON Kabupaten/Kota Indonesia
+├── assets/
+│   ├── css/
+│   │   └── styles.css # Custom Design System, Off-White Tokens & Layout
+│   └── js/
+│       ├── core/      # Logika Aplikasi (Map.js, Profil.js, potensi.js)
+│       └── data/      # Bundle Variabel Window Global (Data.js, indonesia-kab.js, dll)
+├── data/
+│   ├── geojson/       # Data Spasial Poligon (indonesia-kab.json, region-boundaries.json)
+│   └── json/          # Dataset Statistik Murni (data.json, pertanian, konsumsi, potensi, sosial)
+├── data-mentah/       # Data Mentah Asal (CSV, XLSX)
+├── scripts/           # Pipeline ETL, Generator Batas, & Enricher Data
+├── docs/              # Dokumentasi & Dokumen Perencanaan Teknis
+├── vercel.json        # Konfigurasi Serverless Deployment
 └── README.md          # Dokumentasi Proyek
 ```
 

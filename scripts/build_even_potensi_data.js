@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const srcPath = path.join(__dirname, '..', 'potensi-data.json');
+const srcPath = path.join(__dirname, '..', 'data', 'json', 'potensi-data.json');
 const rawData = JSON.parse(fs.readFileSync(srcPath, 'utf8'));
 
 const provinces = rawData.provinces || [];
@@ -260,7 +260,7 @@ const fullDataset = {
 fs.writeFileSync(srcPath, JSON.stringify(fullDataset, null, 2), 'utf8');
 
 // Write to potensi-data.js (as window.PotensiData)
-const jsPath = path.join(__dirname, '..', 'potensi-data.js');
+const jsPath = path.join(__dirname, '..', 'assets', 'js', 'data', 'potensi-data.js');
 const jsContent = `/* Dataset Peta Potensi Pajak PAD360 - Seluruh Indonesia */\nwindow.PotensiData = ${JSON.stringify(fullDataset, null, 2)};\n`;
 fs.writeFileSync(jsPath, jsContent, 'utf8');
 

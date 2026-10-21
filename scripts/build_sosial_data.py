@@ -17,6 +17,12 @@ import re
 import os
 import time
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(base_dir, '..'))
+data_json_path = os.path.join(root_dir, 'data', 'json', 'data.json')
+output_json_path = os.path.join(root_dir, 'data', 'json', 'sosial-data.json')
+output_js_path = os.path.join(root_dir, 'assets', 'js', 'data', 'sosial-data.js')
+
 def normalize_str(s):
     if not s:
         return ""
@@ -60,7 +66,7 @@ ALIASES = {
 }
 
 def load_regions():
-    with open('data.json', 'r', encoding='utf-8') as f:
+    with open(data_json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
     reg_by_id = {}
@@ -412,13 +418,13 @@ def main():
     process_rs(reg_by_id, kota_prov_kab, kab_prov_kab, kota_kab, kab_kab)
     
     # Simpan JSON
-    json_path = 'sosial-data.json'
+    json_path = output_json_path
     print(f"Menyimpan ke {json_path}...")
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(reg_by_id, f, ensure_ascii=False, indent=2)
         
     # Simpan JS (window.SOSIAL_DATA)
-    js_path = 'sosial-data.js'
+    js_path = output_js_path
     print(f"Menyimpan ke {js_path}...")
     with open(js_path, 'w', encoding='utf-8') as f:
         f.write("/* Basis Data Riil Sarana Pendidikan & Kesehatan 514 Kabupaten/Kota Indonesia */\n")

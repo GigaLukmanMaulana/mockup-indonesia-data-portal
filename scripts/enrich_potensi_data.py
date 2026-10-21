@@ -1,7 +1,9 @@
-import json, random
+import json, random, os
 from datetime import datetime, timedelta
 
-fpath = 'potensi-data.js'
+base_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(base_dir, '..'))
+fpath = os.path.join(root_dir, 'assets', 'js', 'data', 'potensi-data.js')
 with open(fpath, 'r', encoding='utf-8') as f:
     text = f.read()
 

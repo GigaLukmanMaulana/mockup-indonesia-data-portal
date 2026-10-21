@@ -4,8 +4,8 @@ import os
 import re
 
 excel_path = os.path.join(os.path.dirname(__file__), '..', 'data-mentah', 'xlsx', 'Merge Konsumsi 2023.xlsx')
-output_json_path = os.path.join(os.path.dirname(__file__), '..', 'konsumsi-data.json')
-output_js_path = os.path.join(os.path.dirname(__file__), '..', 'konsumsi-data.js')
+output_json_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'json', 'konsumsi-data.json')
+output_js_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'js', 'data', 'konsumsi-data.js')
 
 # Mapping from Excel sheet names to Standard Tab UI Category Labels
 sheet_mapping = {
