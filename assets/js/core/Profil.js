@@ -1025,24 +1025,94 @@ function renderPenduduk(r) {
         const pl = (laki / r.penduduk) * 100;
         const pw = (wanita / r.penduduk) * 100;
 
+        // Metrik Demografi BPS Riil
+        const sexRatio = wanita > 0 ? ((laki / wanita) * 100).toFixed(1).replace('.', ',') : '100';
+        
+        // 3 Kelompok Umur Utama dari Piramida BPS
+        const muda = (r.u04 || 0) + (r.u59 || 0) + (r.u1014 || 0); // 0-14 tahun
+        const tua = (r.u6569 || 0) + (r.u7074 || 0) + (r.u75p || 0); // 65+ tahun
+        const prod = ((r.u1519 || 0) + (r.u2024 || 0) + (r.u2529 || 0) + (r.u3034 || 0) + (r.u3539 || 0) + (r.u4044 || 0) + (r.u4549 || 0) + (r.u5054 || 0) + (r.u5559 || 0) + (r.u6064 || 0)) || (r.penduduk - muda - tua);
+        const sumDemog = muda + prod + tua;
+        const baseDemog = sumDemog > 0 ? sumDemog : r.penduduk;
+
+        const pctMuda = ((muda / baseDemog) * 100).toFixed(1).replace('.', ',');
+        const pctProd = ((prod / baseDemog) * 100).toFixed(1).replace('.', ',');
+        const pctTua = ((tua / baseDemog) * 100).toFixed(1).replace('.', ',');
+        const depRatio = prod > 0 ? (((muda + tua) / prod) * 100).toFixed(1).replace('.', ',') : '–';
+
+        const keluarga = r.keluarga ? fmt(r.keluarga) : null;
+        const perKeluarga = r.penduduk_per_keluarga ? r.penduduk_per_keluarga.toFixed(2).replace('.', ',') : null;
+
         sexWrap.innerHTML = `
-            <div class="sex-split">
+            <div class="sex-split" style="margin-bottom:10px">
                 <div class="sex-seg" style="width:${pl}%;background:#2E9BD6"><span>${pl.toFixed(1)}%</span></div>
                 <div class="sex-seg" style="width:${pw}%;background:#C4568A;justify-content:flex-end"><span>${pw.toFixed(1)}%</span></div>
             </div>
-            <div class="sex-cards">
+            <div class="sex-cards" style="margin-bottom:12px">
                 <div class="sex-card">
                     <div class="sc-icon" style="color:#2E9BD6">♂ Laki-laki</div>
                     <div class="sc-num">${fmt(laki)}</div>
-                    <div class="sc-lbl">jiwa</div>
+                    <div class="sc-lbl">jiwa (${pl.toFixed(1)}%)</div>
                 </div>
                 <div class="sex-card">
                     <div class="sc-icon" style="color:#C4568A">♀ Perempuan</div>
                     <div class="sc-num">${fmt(wanita)}</div>
-                    <div class="sc-lbl">jiwa</div>
+                    <div class="sc-lbl">jiwa (${pw.toFixed(1)}%)</div>
                 </div>
             </div>
+
+            <!-- Indikator Demografi Resmi BPS -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                <div style="border:1px solid var(--line);border-radius:6px;padding:9px 12px;background:var(--panel-2)">
+                    <div style="font-size:10.5px;color:var(--muted);font-weight:600">Rasio Jenis Kelamin</div>
+                    <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--text);margin-top:2px">${sexRatio}</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:1px">Laki-laki per 100 Perempuan</div>
+                </div>
+                <div style="border:1px solid var(--line);border-radius:6px;padding:9px 12px;background:var(--panel-2)">
+                    <div style="font-size:10.5px;color:var(--muted);font-weight:600">Rasio Ketergantungan</div>
+                    <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--text);margin-top:2px">${depRatio}</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:1px">Non-produktif per 100 Produktif</div>
+                </div>
+            </div>
+
+            <!-- Struktur 3 Generasi Penduduk -->
+            <div style="border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--panel-2)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                    <span style="font-size:11px;font-weight:700;color:var(--text)">Struktur Kelompok Umur</span>
+                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted)">Sensus BPS</span>
+                </div>
+                <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:8px;background:var(--line)">
+                    <div style="width:${(muda/baseDemog)*100}%;background:#2E9BD6" title="0–14 thn: ${pctMuda}%"></div>
+                    <div style="width:${(prod/baseDemog)*100}%;background:#0FB5A0" title="15–64 thn: ${pctProd}%"></div>
+                    <div style="width:${(tua/baseDemog)*100}%;background:#D9962B" title="65+ thn: ${pctTua}%"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:10px">
+                    <div>
+                        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2E9BD6;margin-right:3px"></span>
+                        <span style="color:var(--muted)">0–14 th:</span> <b>${pctMuda}%</b>
+                    </div>
+                    <div>
+                        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#0FB5A0;margin-right:3px"></span>
+                        <span style="color:var(--muted)">15–64 th:</span> <b>${pctProd}%</b>
+                    </div>
+                    <div>
+                        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#D9962B;margin-right:3px"></span>
+                        <span style="color:var(--muted)">65+ th:</span> <b>${pctTua}%</b>
+                    </div>
+                </div>
+                ${keluarga ? `
+                    <div style="margin-top:8px;padding-top:7px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted)">
+                        <span>Kepala Keluarga: <b style="color:var(--text)">${keluarga} KK</b></span>
+                        <span>Rata-rata: <b style="color:var(--text)">${perKeluarga} jiwa/KK</b></span>
+                    </div>
+                ` : ''}
+            </div>
         `;
+
+        const srcSex = document.getElementById('srcSex');
+        if (srcSex) {
+            srcSex.innerHTML = `<b>Sumber Data:</b> BPS — Sensus Penduduk &amp; Proyeksi Demografi Daerah 2023/2024. Mencakup rasio jenis kelamin, dependency ratio, dan struktur generasi.`;
+        }
     }
 
     // Piramida Penduduk SVG
