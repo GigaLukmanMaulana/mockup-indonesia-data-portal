@@ -1092,20 +1092,18 @@ function renderPenduduk(r) {
         akTotal.textContent = `${fmt(ak)} Jiwa`;
     }
     if (akTree) {
-        const pctBek = ak > 0 ? ((bek / ak) * 100).toFixed(1) : '0';
-        const pctNganggur = ak > 0 ? ((nganggur / ak) * 100).toFixed(1) : '0';
         akTree.innerHTML = `
             <div class="tree-row lvl1">
                 <div class="t-name"><b>I.</b> Angkatan Kerja</div>
-                <div class="t-amt"><b>${fmt(ak)}</b> jiwa <span style="font-size:10.5px;color:var(--muted);font-weight:400">(100%)</span></div>
+                <div class="t-amt"><b>${fmt(ak)}</b> jiwa</div>
             </div>
             <div class="tree-row lvl2">
                 <div class="t-name">Penduduk Bekerja</div>
-                <div class="t-amt" style="color:#0FB5A0"><b>${fmt(bek)}</b> jiwa <span style="font-size:10.5px;color:var(--muted);font-weight:600">(${pctBek}%)</span></div>
+                <div class="t-amt" style="color:#0FB5A0"><b>${fmt(bek)}</b> jiwa</div>
             </div>
             <div class="tree-row lvl2">
                 <div class="t-name">Pengangguran Terbuka</div>
-                <div class="t-amt" style="color:#E8604C"><b>${fmt(nganggur)}</b> jiwa <span style="font-size:10.5px;color:var(--muted);font-weight:600">(${pctNganggur}%)</span></div>
+                <div class="t-amt" style="color:#E8604C"><b>${fmt(nganggur)}</b> jiwa</div>
             </div>
         `;
     }
@@ -1560,24 +1558,24 @@ function renderPertanian(r) {
 
         let cardsHtml = '';
 
-        // Card 1: Tanaman Pangan
+        // Card 1: Tanaman Pangan (Baris 1, Kolom 1)
         const tpListHtml = filteredTp.map(it => {
             const prod = it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '-';
             const luas = it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '';
             const prodv = it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '';
             const metaStr = [luas ? `Luas: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
             return `
-                <div class="gc-sub-item" style="flex-direction:column;gap:1px;padding:3px 0">
+                <div class="gc-sub-item" style="flex-direction:column;gap:2px">
                     <div style="display:flex;justify-content:space-between;align-items:center">
-                        <span style="font-weight:600;color:var(--text)">${it.komoditas}</span>
-                        <b style="font-family:var(--mono);color:#0FB5A0">${prod}</b>
+                        <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#0FB5A0;font-size:12px">${prod}</b>
                     </div>
                     ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
                 </div>
             `;
         }).join('');
 
-        cardsHtml += `
+        const cardTp = `
             <div class="grp-card" style="border-top:3px solid #0FB5A0">
                 <div class="gc-header">
                     <div class="gc-name">🌾 Tanaman Pangan</div>
@@ -1592,56 +1590,24 @@ function renderPertanian(r) {
             </div>
         `;
 
-        // Card 2: Hortikultura
-        const hortiListHtml = filteredHorti.map(it => {
-            const prod = it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '-';
-            const luas = it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '';
-            const prodv = it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '';
-            const metaStr = [luas ? `Luas: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
-            return `
-                <div class="gc-sub-item" style="flex-direction:column;gap:1px;padding:3px 0">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <span style="font-weight:600;color:var(--text)">${it.komoditas}</span>
-                        <b style="font-family:var(--mono);color:#2FA65E">${prod}</b>
-                    </div>
-                    ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
-                </div>
-            `;
-        }).join('');
-
-        cardsHtml += `
-            <div class="grp-card" style="border-top:3px solid #2FA65E">
-                <div class="gc-header">
-                    <div class="gc-name">🥬 Hortikultura</div>
-                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
-                        ${q ? `${filteredHorti.length} cocok` : `${hortiItems.length} komoditas`}
-                    </span>
-                </div>
-                <div class="gc-count" style="color:#2FA65E">
-                    ${fmtVol(ring.hortikultura_total_produksi_ton)} <span class="unit">Ton/th</span>
-                </div>
-                ${hortiListHtml ? `<div class="gc-sub-list">${hortiListHtml}</div>` : '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>'}
-            </div>
-        `;
-
-        // Card 3: Perkebunan
+        // Card 2: Perkebunan (Baris 1, Kolom 2)
         const kebunListHtml = filteredKebun.map(it => {
             const prod = it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '-';
             const luas = it.luas_areal ? `${fmtItemVal(it.luas_areal.val)} ${it.luas_areal.unit}` : '';
             const prodv = it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '';
             const metaStr = [luas ? `Areal: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
             return `
-                <div class="gc-sub-item" style="flex-direction:column;gap:1px;padding:3px 0">
+                <div class="gc-sub-item" style="flex-direction:column;gap:2px">
                     <div style="display:flex;justify-content:space-between;align-items:center">
-                        <span style="font-weight:600;color:var(--text)">${it.komoditas}</span>
-                        <b style="font-family:var(--mono);color:#D9962B">${prod}</b>
+                        <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#D9962B;font-size:12px">${prod}</b>
                     </div>
                     ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
                 </div>
             `;
         }).join('');
 
-        cardsHtml += `
+        const cardKebun = `
             <div class="grp-card" style="border-top:3px solid #D9962B">
                 <div class="gc-header">
                     <div class="gc-name">🌴 Perkebunan</div>
@@ -1656,24 +1622,56 @@ function renderPertanian(r) {
             </div>
         `;
 
-        // Card 4: Peternakan
+        // Card 3: Hortikultura (Baris 2, Kolom 1)
+        const hortiListHtml = filteredHorti.map(it => {
+            const prod = it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '-';
+            const luas = it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '';
+            const prodv = it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '';
+            const metaStr = [luas ? `Luas: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
+            return `
+                <div class="gc-sub-item" style="flex-direction:column;gap:2px">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#2FA65E;font-size:12px">${prod}</b>
+                    </div>
+                    ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        const cardHorti = `
+            <div class="grp-card" style="border-top:3px solid #2FA65E">
+                <div class="gc-header">
+                    <div class="gc-name">🥬 Hortikultura</div>
+                    <span style="font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--surface);padding:2px 6px;border-radius:4px">
+                        ${q ? `${filteredHorti.length} cocok` : `${hortiItems.length} komoditas`}
+                    </span>
+                </div>
+                <div class="gc-count" style="color:#2FA65E">
+                    ${fmtVol(ring.hortikultura_total_produksi_ton)} <span class="unit">Ton/th</span>
+                </div>
+                ${hortiListHtml ? `<div class="gc-sub-list">${hortiListHtml}</div>` : '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>'}
+            </div>
+        `;
+
+        // Card 4: Peternakan (Baris 2, Kolom 2)
         const popListHtml = filteredPop.map(it => `
-            <div class="gc-sub-item" style="padding:2px 0">
-                <span>${it.komoditas}</span>
-                <b style="font-family:var(--mono);color:#E8604C">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+            <div class="gc-sub-item" style="align-items:center">
+                <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
+                <b style="font-family:var(--mono);color:#E8604C;font-size:12px">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
             </div>
         `).join('');
 
         const prodListHtml = filteredProd.map(it => `
-            <div class="gc-sub-item" style="padding:2px 0">
-                <span>${it.komoditas}</span>
-                <b style="font-family:var(--mono);color:#E8604C">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+            <div class="gc-sub-item" style="align-items:center">
+                <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
+                <b style="font-family:var(--mono);color:#E8604C;font-size:12px">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
             </div>
         `).join('');
 
         const matchedTernakTotal = filteredPop.length + filteredProd.length;
 
-        cardsHtml += `
+        const cardTernak = `
             <div class="grp-card" style="border-top:3px solid #E8604C">
                 <div class="gc-header">
                     <div class="gc-name">🐄 Peternakan</div>
@@ -1687,17 +1685,20 @@ function renderPertanian(r) {
                 <div>
                     ${popListHtml ? `
                         <div style="font-size:10.5px;font-weight:700;color:var(--text);margin-top:6px;margin-bottom:2px">Populasi Ternak Hidup:</div>
-                        <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:0">${popListHtml}</div>
+                        <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:0;max-height:260px">${popListHtml}</div>
                     ` : (q && !prodListHtml ? '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>' : '')}
                     ${prodListHtml ? `
                         <div style="font-size:10.5px;font-weight:700;color:var(--text);margin-top:7px;margin-bottom:2px;border-top:1px dashed var(--line);padding-top:5px">Produksi Hasil Ternak:</div>
-                        <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:0">${prodListHtml}</div>
+                        <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:0;max-height:260px">${prodListHtml}</div>
                     ` : ''}
                 </div>
             </div>
         `;
 
-        gridEl.innerHTML = cardsHtml;
+        // Susun 2 Baris x 2 Kolom Berimbang
+        // Baris 1: Tanaman Pangan & Perkebunan
+        // Baris 2: Hortikultura & Peternakan
+        gridEl.innerHTML = cardTp + cardKebun + cardHorti + cardTernak;
     }
 
     // Render awal
@@ -1802,36 +1803,35 @@ function renderSosial(r) {
         const slbTotal = (rekap.slb ? rekap.slb.total : 0);
         const kampusTotal = ring.total_kampus || (pend.daftar_kampus ? pend.daftar_kampus.length : 0);
 
-        // Urutan jenjang pendidikan formal runut: PAUD/TK -> SD -> MI -> SMP -> MTs -> SMA -> MA -> SMK -> SLB -> PT
+        // Nomenklatur formal lugas tanpa kata "/ Sederajat":
+        // Seluruh 10 jenjang formal utama ditampilkan permanen (termasuk nilai 0) agar transparan dan tidak disangka hilang.
         const E = [
             { n: 'PAUD & TK', v: paudTotal, c: '#E8604C' },
-            { n: 'SD / Sederajat', v: sdTotal, c: '#0FB5A0' },
+            { n: 'Sekolah Dasar (SD)', v: sdTotal, c: '#0FB5A0' },
             { n: 'Madrasah Ibtidaiyah (MI)', v: miTotal, c: '#14B8A6' },
-            { n: 'SMP / Sederajat', v: smpTotal, c: '#2E9BD6' },
+            { n: 'Sekolah Menengah Pertama (SMP)', v: smpTotal, c: '#2E9BD6' },
             { n: 'Madrasah Tsanawiyah (MTs)', v: mtsTotal, c: '#38BDF8' },
-            { n: 'SMA / Sederajat', v: smaTotal, c: '#D9962B' },
+            { n: 'Sekolah Menengah Atas (SMA)', v: smaTotal, c: '#D9962B' },
             { n: 'Madrasah Aliyah (MA)', v: maTotal, c: '#F59E0B' },
-            { n: 'SMK', v: smkTotal, c: '#5B6EE0' },
-            { n: 'SLB', v: slbTotal, c: '#64748B' },
-            { n: 'Perguruan Tinggi', v: kampusTotal, c: '#8E44AD' }
-        ].filter(item => item.v > 0);
+            { n: 'Sekolah Menengah Kejuruan (SMK)', v: smkTotal, c: '#5B6EE0' },
+            { n: 'Sekolah Luar Biasa (SLB)', v: slbTotal, c: '#64748B' },
+            { n: 'Perguruan Tinggi (PT)', v: kampusTotal, c: '#8E44AD' }
+        ];
 
-        if (E.length === 0) {
-            eduBar.innerHTML = `<text x="230" y="140" text-anchor="middle" fill="var(--muted)" font-size="12">Belum ada rincian sekolah terdata</text>`;
-        } else {
-            const W = 470, rowH = 34, labelW = 180, barMax = W - labelW - 60;
-            const maxV = Math.max(...E.map(e => e.v)) || 1;
-            eduBar.setAttribute('viewBox', `0 0 ${W} ${E.length * rowH + 20}`);
-            let s = '';
-            E.forEach((e, i) => {
-                const y = i * rowH + 8;
-                const w = Math.max(4, (e.v / maxV) * barMax);
-                s += `<text class="pd-lbl" x="0" y="${y + rowH / 2 + 1}" font-size="11" font-weight="600" fill="var(--text)">${e.n}</text>`;
+        const W = 490, rowH = 32, labelW = 190, barMax = W - labelW - 65;
+        const maxV = Math.max(...E.map(e => e.v)) || 1;
+        eduBar.setAttribute('viewBox', `0 0 ${W} ${E.length * rowH + 18}`);
+        let s = '';
+        E.forEach((e, i) => {
+            const y = i * rowH + 8;
+            const w = e.v > 0 ? Math.max(4, (e.v / maxV) * barMax) : 0;
+            s += `<text class="pd-lbl" x="0" y="${y + rowH / 2 + 1}" font-size="11" font-weight="600" fill="${e.v > 0 ? 'var(--text)' : 'var(--muted)'}">${e.n}</text>`;
+            if (w > 0) {
                 s += `<rect x="${labelW}" y="${y + 5}" width="${w}" height="${rowH - 12}" rx="3" fill="${e.c}" opacity="0.88"/>`;
-                s += `<text class="pd-val" x="${labelW + w + 8}" y="${y + rowH / 2 + 2}" font-size="11" font-weight="700" font-family="var(--mono)" fill="${e.c}">${fmt(e.v)}</text>`;
-            });
-            eduBar.innerHTML = s;
-        }
+            }
+            s += `<text class="pd-val" x="${labelW + (w > 0 ? w + 8 : 4)}" y="${y + rowH / 2 + 2}" font-size="11" font-weight="700" font-family="var(--mono)" fill="${e.v > 0 ? e.c : 'var(--muted)'}">${fmt(e.v)}</text>`;
+        });
+        eduBar.innerHTML = s;
     }
 
     // 3. Render Status Negeri vs Swasta
