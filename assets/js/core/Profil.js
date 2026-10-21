@@ -124,10 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
             scrollWheelZoom: false
         });
 
-        // Use standard OpenStreetMap tile layer (same as Map.js) for clean, watermark-free maps
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // OSM Humanitarian HOT tile layer: clean, detailed, no API key watermark, no localhost 403 blocks
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            subdomains: ['a', 'b', 'c'],
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, Tiles courtesy of <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a>'
         }).addTo(map);
 
         if (typeof INDONESIA_KAB_GEOJSON !== 'undefined' && INDONESIA_KAB_GEOJSON.features) {
@@ -159,6 +160,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 map.fitBounds(mainRegionLayer.getBounds(), { padding: [30, 30] });
             }
         }
+
+        setTimeout(() => {
+            if (map) map.invalidateSize();
+        }, 120);
     }
 
     // Helper: Strict Kota vs Kabupaten & Province matching to prevent cross-matching

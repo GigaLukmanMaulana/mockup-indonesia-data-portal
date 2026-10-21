@@ -393,9 +393,7 @@ button:active,
     transform: scale(0.97) !important;
 }
 
-/* Smooth Scrolling & Overscroll Containment */
-html,
-body,
+/* Smooth Scrolling & Overscroll Containment for Overlays & Drawers */
 .sidebar,
 .table-view-wrap,
 .region-panel,
@@ -410,6 +408,12 @@ body,
 
 .data-table-container {
     overscroll-behavior: auto;
+}
+
+/* Leaflet Container & Tile Display Safeguards */
+.leaflet-container img {
+    max-width: none !important;
+    max-height: none !important;
 }
 
 /* Lightweight Shimmer Loader Utility */
