@@ -1703,15 +1703,28 @@ body,
    Core Application Layout & Shell (Consolidated from index.html)
    ============================================================ */
 /* ---------------- Root App Layout ---------------- */
-        html,
-        body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
+        html {
             background: var(--cream-100);
             color: var(--text-hi);
             font-family: var(--font-sans);
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--cream-100);
+            color: var(--text-hi);
+            font-family: var(--font-sans);
+        }
+
+        /* Fullscreen lock scoped exclusively to fullscreen SPA map shell */
+        html:has(.app-root),
+        body:has(.app-root),
+        html.app-shell-page,
+        body.app-shell-page {
+            height: 100%;
+            overflow: hidden;
         }
 
         .app-root {
