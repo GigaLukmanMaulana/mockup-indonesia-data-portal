@@ -276,7 +276,9 @@
   .grp-card .gc-name, .sektor-card .sk-name{font-size:12.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
   .grp-card .gc-count, .sektor-card .sk-count{font-family:var(--mono);font-size:20px;font-weight:700;margin:6px 0 8px;letter-spacing:-0.02em}
   .grp-card .gc-count .unit{font-size:11px;font-weight:500;color:var(--muted);margin-left:4px}
-  .grp-card .gc-sub-list{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--line);padding-top:7px;margin-top:4px}
+  .grp-card .gc-sub-list{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--line);padding-top:7px;margin-top:4px;max-height:420px;overflow-y:auto;padding-right:4px}
+  .grp-card .gc-sub-list::-webkit-scrollbar{width:4px}
+  .grp-card .gc-sub-list::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:4px}
   .grp-card .gc-sub-item{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
   .grp-card .gc-sub-item b{font-family:var(--mono);color:var(--text);font-weight:600}
   .grp-card .gc-sub-block{border-top:1px dashed var(--line);padding-top:7px;margin-top:7px}
@@ -612,7 +614,10 @@
 
     <section class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
-        <h2 class="card-title" style="margin:0">Sektor Produksi Pertanian</h2>
+        <div>
+          <h2 class="card-title" style="margin:0">Sektor Produksi Pertanian</h2>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px">Publikasi Resmi BPS &amp; Kementan RI · Tahun Data 2023</div>
+        </div>
         <div class="section-search-wrap">
           <span class="section-search-icon">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -669,6 +674,7 @@
         <div id="akredGrid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;text-align:center"></div>
       </div>
     </section>
+    <div class="src" id="srcSosial" style="margin-top:14px"></div>
   </div>
 
   <!-- 9. TAB DATA PODES -->
@@ -691,31 +697,12 @@
       <div class="podes-table-wrap">
         <table class="podes-table" id="podesTable"></table>
       </div>
+      <div class="src" id="srcPodes" style="margin-top:14px"></div>
     </section>
   </div>
 
 </div>
 <div class="toast" id="toast" data-on="0"></div>
-
-<!-- Modal Dialog Detail Lengkap Komoditas Pertanian -->
-<div id="taniModal" class="tani-modal-backdrop" hidden>
-  <div class="tani-modal-box" role="dialog" aria-modal="true" aria-labelledby="taniModalTitle">
-    <div class="tani-modal-header">
-      <div>
-        <div class="eyebrow" id="taniModalSub">Sektor Pertanian · Publikasi Resmi BPS</div>
-        <h2 id="taniModalTitle" style="margin:2px 0 0;font-size:17px;font-weight:700">Daftar Lengkap Komoditas</h2>
-      </div>
-      <button type="button" class="btn" id="btnTaniModalClose" style="padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer">✕ Tutup</button>
-    </div>
-    <div style="padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center">
-      <input type="search" id="taniModalSearch" placeholder="Cari nama komoditas..." style="flex:1;padding:7px 12px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:12.5px;background:var(--panel);outline:none">
-      <span id="taniModalCount" style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap">0 Komoditas</span>
-    </div>
-    <div class="tani-modal-body">
-      <table class="tani-table" id="taniModalTable"></table>
-    </div>
-  </div>
-</div>
 
 <!-- Modal Dialog Detail Faskes & Layanan Kesehatan -->
 <div id="sosModal" class="tani-modal-backdrop" hidden>

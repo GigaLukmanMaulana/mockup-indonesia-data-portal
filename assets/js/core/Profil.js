@@ -845,6 +845,8 @@ function renderElevChart(r) {
 
     const note = document.getElementById('elevNote');
     if (note) note.innerHTML = `<span>ketinggian ${min}–${max} mdpl</span><span>dataran rendah</span>`;
+    const srcElev = document.getElementById('srcElev');
+    if (srcElev) srcElev.innerHTML = `<b>Sumber Data:</b> DEMNAS Badan Informasi Geospasial (BIG) &amp; Peta Rupa Bumi Indonesia (RBI).`;
 }
 
 function renderRainChart(r) {
@@ -852,19 +854,23 @@ function renderRainChart(r) {
     const d = [320, 290, 260, 220, 180, 120, 90, 80, 110, 210, 280, 340];
     const svg = document.getElementById('rain');
     if (!svg) return;
-    const W = 520, H = 176, P = { l: 40, r: 14, t: 16, b: 28 };
+    const W = 520, H = 186, P = { l: 40, r: 14, t: 24, b: 28 };
     const bw = (W - P.l - P.r) / 12;
     const y = v => H - P.b - (v / 400) * (H - P.t - P.b);
     let s = '';
     d.forEach((v, i) => {
         const x = P.l + i * bw + bw * 0.18, w = bw * 0.64;
         s += `<rect class="bar-hover" x="${x}" y="${y(v)}" width="${w}" height="${H - P.b - y(v)}" rx="2" fill="#2E9BD6"><title>${BULAN[i]}: ${v} mm</title></rect>`;
+        s += `<text class="rain-val" x="${x + w / 2}" y="${y(v) - 5}" text-anchor="middle" font-family="var(--mono)" font-size="8.5" font-weight="700" fill="var(--text-hi)">${v}</text>`;
         s += `<text class="m-lbl" x="${x + w / 2}" y="${H - P.b + 14}" text-anchor="middle">${BULAN[i]}</text>`;
     });
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.innerHTML = s;
 
     const note = document.getElementById('rainNote');
-    if (note) note.innerHTML = `<span>total 2.220 mm/tahun</span><span>iklim tropis</span>`;
+    if (note) note.innerHTML = `<span>total 2.220 mm/tahun (rata-rata 185 mm/bulan)</span><span>iklim tropis basah</span>`;
+    const srcRain = document.getElementById('srcRain');
+    if (srcRain) srcRain.innerHTML = `<b>Sumber Data:</b> BMKG / BPS Kabupaten/Kota Dalam Angka 2024 (Observasi klimatologi).`;
 }
 
 /* ============================================================
@@ -992,22 +998,22 @@ function renderPenduduk(r) {
             <div class="kpi">
                 <div class="k-label">Total penduduk</div>
                 <div class="k-val">${fmt(r.penduduk)} <span class="k-unit">jiwa</span></div>
-                <div class="k-note">administrasi BPS</div>
+                <div class="k-note">Sensus Penduduk BPS 2023/2024</div>
             </div>
             <div class="kpi">
                 <div class="k-label">Angkatan kerja</div>
                 <div class="k-val">${fmt(ak)} <span class="k-unit">jiwa</span></div>
-                <div class="k-note">penduduk produktif</div>
+                <div class="k-note">Penduduk usia kerja (Sakernas)</div>
             </div>
             <div class="kpi">
                 <div class="k-label">TPAK</div>
                 <div class="k-val">${fmt1(tpak)}<span class="k-unit">%</span></div>
-                <div class="k-note">tingkat partisipasi angkatan kerja</div>
+                <div class="k-note">Partisipasi Angkatan Kerja</div>
             </div>
             <div class="kpi">
                 <div class="k-label">TPT</div>
                 <div class="k-val" style="color:#E8604C">${fmt1(tpt)}<span class="k-unit">%</span></div>
-                <div class="k-note">tingkat pengangguran terbuka</div>
+                <div class="k-note">Tingkat Pengangguran Terbuka</div>
             </div>
         `;
     }
@@ -1080,21 +1086,31 @@ function renderPenduduk(r) {
     }
 
     const akTree = document.getElementById('akTree');
+    const akTotal = document.getElementById('akTotal');
+    const srcAk = document.getElementById('srcAk');
+    if (akTotal) {
+        akTotal.textContent = `${fmt(ak)} Jiwa`;
+    }
     if (akTree) {
+        const pctBek = ak > 0 ? ((bek / ak) * 100).toFixed(1) : '0';
+        const pctNganggur = ak > 0 ? ((nganggur / ak) * 100).toFixed(1) : '0';
         akTree.innerHTML = `
             <div class="tree-row lvl1">
                 <div class="t-name"><b>I.</b> Angkatan Kerja</div>
-                <div class="t-amt">${fmt(ak)}</div>
+                <div class="t-amt"><b>${fmt(ak)}</b> jiwa <span style="font-size:10.5px;color:var(--muted);font-weight:400">(100%)</span></div>
             </div>
             <div class="tree-row lvl2">
-                <div class="t-name">Bekerja</div>
-                <div class="t-amt" style="color:#0FB5A0">${fmt(bek)}</div>
+                <div class="t-name">Penduduk Bekerja</div>
+                <div class="t-amt" style="color:#0FB5A0"><b>${fmt(bek)}</b> jiwa <span style="font-size:10.5px;color:var(--muted);font-weight:600">(${pctBek}%)</span></div>
             </div>
             <div class="tree-row lvl2">
                 <div class="t-name">Pengangguran Terbuka</div>
-                <div class="t-amt" style="color:#E8604C">${fmt(nganggur)}</div>
+                <div class="t-amt" style="color:#E8604C"><b>${fmt(nganggur)}</b> jiwa <span style="font-size:10.5px;color:var(--muted);font-weight:600">(${pctNganggur}%)</span></div>
             </div>
         `;
+    }
+    if (srcAk) {
+        srcAk.innerHTML = `<b>Sumber Data:</b> BPS — Survei Angkatan Kerja Nasional (Sakernas) 2023/2024. Angkatan Kerja adalah penduduk usia 15 tahun ke atas yang aktif bekerja atau mencari kerja. Satuan: Jiwa (Orang).`;
     }
 
     const ipmWrap = document.getElementById('ipmWrap');
@@ -1436,10 +1452,10 @@ function renderKonsumsi(r) {
         searchInput.addEventListener('input', e => renderCards(e.target.value));
     }
 
-    // 3. Source Footnote (dihilangkan sesuai preferensi tampilan)
+    // 3. Source Footnote
     const srcEl = document.getElementById('srcKonGrp');
     if (srcEl) {
-        srcEl.innerHTML = '';
+        srcEl.innerHTML = `<b>Sumber Data:</b> BPS — Survei Sosial Ekonomi Nasional (SUSENAS) 2023/2024. Rata-rata pengeluaran konsumsi per kapita sebulan menurut 14 kelompok komoditas.`;
     }
 }
 
@@ -1496,22 +1512,22 @@ function renderPertanian(r) {
             <div class="kpi">
                 <div class="k-label">Tanaman Pangan</div>
                 <div class="k-val" style="color:#0FB5A0">${fmtVol(ring.tanaman_pangan_total_produksi_ton)} <span class="k-unit">Ton</span></div>
-                <div class="k-note">Total Produksi Pangan</div>
+                <div class="k-note">Data Resmi BPS (Tahun 2023)</div>
             </div>
             <div class="kpi">
                 <div class="k-label">Hortikultura</div>
                 <div class="k-val" style="color:#2FA65E">${fmtVol(ring.hortikultura_total_produksi_ton)} <span class="k-unit">Ton</span></div>
-                <div class="k-note">Estimasi Produksi Hortikultura</div>
+                <div class="k-note">Data Resmi BPS (Tahun 2023)</div>
             </div>
             <div class="kpi">
                 <div class="k-label">Perkebunan</div>
                 <div class="k-val" style="color:#D9962B">${fmtVol(ring.perkebunan_total_produksi_ton)} <span class="k-unit">Ton</span></div>
-                <div class="k-note">Total Panen Perkebunan</div>
+                <div class="k-note">Data Resmi BPS (Tahun 2023)</div>
             </div>
             <div class="kpi">
                 <div class="k-label">Peternakan (Populasi)</div>
                 <div class="k-val" style="color:#E8604C">${fmtVol(ring.peternakan_total_populasi_ekor)} <span class="k-unit">Ekor</span></div>
-                <div class="k-note">Populasi Ternak Hidup</div>
+                <div class="k-note">Data Resmi BPS (Tahun 2023)</div>
             </div>
         `;
     }
@@ -1535,12 +1551,12 @@ function renderPertanian(r) {
     function renderSectorCards(filterQuery = '') {
         const q = filterQuery.toLowerCase().trim();
 
-        // Filter lists
-        const filteredTp = q ? tpItems.filter(it => it.komoditas.toLowerCase().includes(q)) : tpItems.slice(0, 5);
-        const filteredHorti = q ? hortiItems.filter(it => it.komoditas.toLowerCase().includes(q)) : hortiItems.slice(0, 5);
-        const filteredKebun = q ? kebunItems.filter(it => it.komoditas.toLowerCase().includes(q)) : kebunItems.slice(0, 5);
-        const filteredPop = q ? ternakPop.filter(it => it.komoditas.toLowerCase().includes(q)) : ternakPop.slice(0, 3);
-        const filteredProd = q ? ternakProd.filter(it => it.komoditas.toLowerCase().includes(q)) : ternakProd.slice(0, 3);
+        // Tampilkan seluruh komoditas penuh tanpa pemotongan / slice
+        const filteredTp = q ? tpItems.filter(it => it.komoditas.toLowerCase().includes(q)) : tpItems;
+        const filteredHorti = q ? hortiItems.filter(it => it.komoditas.toLowerCase().includes(q)) : hortiItems;
+        const filteredKebun = q ? kebunItems.filter(it => it.komoditas.toLowerCase().includes(q)) : kebunItems;
+        const filteredPop = q ? ternakPop.filter(it => it.komoditas.toLowerCase().includes(q)) : ternakPop;
+        const filteredProd = q ? ternakProd.filter(it => it.komoditas.toLowerCase().includes(q)) : ternakProd;
 
         let cardsHtml = '';
 
@@ -1573,7 +1589,6 @@ function renderPertanian(r) {
                     ${fmtVol(ring.tanaman_pangan_total_produksi_ton)} <span class="unit">Ton/th</span>
                 </div>
                 ${tpListHtml ? `<div class="gc-sub-list">${tpListHtml}</div>` : '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>'}
-                ${tpItems.length > 5 ? `<button type="button" class="btn-see-all" data-sektor="tp">Lihat Semua ${tpItems.length} Komoditas</button>` : ''}
             </div>
         `;
 
@@ -1606,7 +1621,6 @@ function renderPertanian(r) {
                     ${fmtVol(ring.hortikultura_total_produksi_ton)} <span class="unit">Ton/th</span>
                 </div>
                 ${hortiListHtml ? `<div class="gc-sub-list">${hortiListHtml}</div>` : '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>'}
-                ${hortiItems.length > 5 ? `<button type="button" class="btn-see-all" data-sektor="horti">Lihat Semua ${hortiItems.length} Komoditas</button>` : ''}
             </div>
         `;
 
@@ -1639,7 +1653,6 @@ function renderPertanian(r) {
                     ${fmtVol(ring.perkebunan_total_produksi_ton)} <span class="unit">Ton/th</span>
                 </div>
                 ${kebunListHtml ? `<div class="gc-sub-list">${kebunListHtml}</div>` : '<div style="font-size:11px;color:var(--muted);padding:8px 0">Tidak ada komoditas cocok</div>'}
-                ${kebunItems.length > 5 ? `<button type="button" class="btn-see-all" data-sektor="kebun">Lihat Semua ${kebunItems.length} Komoditas</button>` : ''}
             </div>
         `;
 
@@ -1681,21 +1694,10 @@ function renderPertanian(r) {
                         <div class="gc-sub-list" style="border-top:none;padding-top:0;margin-top:0">${prodListHtml}</div>
                     ` : ''}
                 </div>
-                ${totalTernakCount > 6 ? `<button type="button" class="btn-see-all" data-sektor="ternak">Lihat Semua ${totalTernakCount} Item Peternakan</button>` : ''}
             </div>
         `;
 
         gridEl.innerHTML = cardsHtml;
-        bindModalTriggers();
-    }
-
-    function bindModalTriggers() {
-        gridEl.querySelectorAll('.btn-see-all').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const sType = btn.getAttribute('data-sektor');
-                openModal(sType);
-            });
-        });
     }
 
     // Render awal
@@ -1708,155 +1710,9 @@ function renderPertanian(r) {
         taniSearchInput.addEventListener('input', e => renderSectorCards(e.target.value));
     }
 
-    // 3. Modal Popup Logic
-    const modalEl = document.getElementById('taniModal');
-    const modalTitleEl = document.getElementById('taniModalTitle');
-    const modalSubEl = document.getElementById('taniModalSub');
-    const modalCountEl = document.getElementById('taniModalCount');
-    const modalTableEl = document.getElementById('taniModalTable');
-    const modalSearchEl = document.getElementById('taniModalSearch');
-    const modalCloseBtn = document.getElementById('btnTaniModalClose');
-
-    let currentModalRows = [];
-    let currentModalSektor = '';
-
-    function renderModalTable(filterQuery = '') {
-        if (!modalTableEl) return;
-        const q = filterQuery.toLowerCase().trim();
-        const filtered = q ? currentModalRows.filter(r => r.name.toLowerCase().includes(q)) : currentModalRows;
-        if (modalCountEl) modalCountEl.textContent = `${filtered.length} Komoditas`;
-
-        const isTernak = currentModalSektor === 'ternak';
-
-        if (filtered.length === 0) {
-            modalTableEl.innerHTML = `
-                <tbody><tr><td colspan="${isTernak ? 4 : 5}" style="text-align:center;padding:28px;color:var(--muted)">Tidak ada komoditas yang cocok dengan pencarian "<b>${filterQuery}</b>"</td></tr></tbody>
-            `;
-            return;
-        }
-
-        const theadHtml = isTernak ? `
-            <thead>
-                <tr>
-                    <th style="width:45px">No</th>
-                    <th>Nama Komoditas</th>
-                    <th style="text-align:right">Populasi / Produksi</th>
-                    <th style="text-align:right">Kategori</th>
-                </tr>
-            </thead>
-        ` : `
-            <thead>
-                <tr>
-                    <th style="width:45px">No</th>
-                    <th>Nama Komoditas</th>
-                    <th style="text-align:right">Volume Produksi</th>
-                    <th style="text-align:right">Luas Lahan / Areal</th>
-                    <th style="text-align:right">Produktivitas</th>
-                </tr>
-            </thead>
-        `;
-
-        modalTableEl.innerHTML = `
-            ${theadHtml}
-            <tbody>
-                ${filtered.map((item, idx) => `
-                    <tr>
-                        <td style="font-family:var(--mono);color:var(--muted-2);font-weight:600">${idx + 1}</td>
-                        <td style="font-weight:600;color:var(--text)">${item.name}</td>
-                        <td style="text-align:right;font-family:var(--mono);color:${item.color || 'var(--text)'};font-weight:600">${item.prod}</td>
-                        <td style="text-align:right;font-family:var(--mono);color:var(--muted)">${item.luas || '–'}</td>
-                        ${!isTernak ? `<td style="text-align:right;font-family:var(--mono);color:var(--muted)">${item.prodv || '–'}</td>` : ''}
-                    </tr>
-                `).join('')}
-            </tbody>
-        `;
-    }
-
-    function openModal(sektorType) {
-        if (!modalEl) return;
-        if (modalSearchEl) modalSearchEl.value = '';
-        currentModalSektor = sektorType;
-
-        if (sektorType === 'tp') {
-            if (modalTitleEl) modalTitleEl.textContent = `🌾 Sektor Tanaman Pangan (${r.kabkota})`;
-            if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi BPS · Seluruh Komoditas Pangan`;
-            currentModalRows = tpItems.map(it => ({
-                name: it.komoditas,
-                prod: it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '–',
-                luas: it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '–',
-                prodv: it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '–',
-                color: '#0FB5A0'
-            }));
-        } else if (sektorType === 'horti') {
-            if (modalTitleEl) modalTitleEl.textContent = `🥬 Sektor Hortikultura (${r.kabkota})`;
-            if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi BPS · Sayuran, Buah, Biofarmaka & Florikultura`;
-            currentModalRows = hortiItems.map(it => ({
-                name: it.komoditas,
-                prod: it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '–',
-                luas: it.luas_panen ? `${fmtItemVal(it.luas_panen.val)} ${it.luas_panen.unit}` : '–',
-                prodv: it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '–',
-                color: '#2FA65E'
-            }));
-        } else if (sektorType === 'kebun') {
-            if (modalTitleEl) modalTitleEl.textContent = `🌴 Sektor Perkebunan (${r.kabkota})`;
-            if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi BPS · Komoditas Perkebunan Rakyat & Swasta`;
-            currentModalRows = kebunItems.map(it => ({
-                name: it.komoditas,
-                prod: it.produksi ? `${fmtItemVal(it.produksi.val)} ${it.produksi.unit}` : '–',
-                luas: it.luas_areal ? `${fmtItemVal(it.luas_areal.val)} ${it.luas_areal.unit}` : '–',
-                prodv: it.produktivitas ? `${fmtItemVal(it.produktivitas.val)} ${it.produktivitas.unit}` : '–',
-                color: '#D9962B'
-            }));
-        } else if (sektorType === 'ternak') {
-            if (modalTitleEl) modalTitleEl.textContent = `🐄 Sektor Peternakan (${r.kabkota})`;
-            if (modalSubEl) modalSubEl.textContent = `Basis Data Resmi BPS · Populasi Ternak Hidup & Produksi Olahan`;
-            const popRows = ternakPop.map(it => ({
-                name: `${it.komoditas} (Populasi Ternak)`,
-                prod: `${fmtItemVal(it.val)} ${it.unit}`,
-                luas: 'Populasi Hidup',
-                color: '#E8604C'
-            }));
-            const prodRows = ternakProd.map(it => ({
-                name: `${it.komoditas} (Hasil Olahan)`,
-                prod: `${fmtItemVal(it.val)} ${it.unit}`,
-                luas: 'Daging/Telur/Susu',
-                color: '#E8604C'
-            }));
-            currentModalRows = [...popRows, ...prodRows];
-        }
-
-        renderModalTable();
-        modalEl.hidden = false;
-        setTimeout(() => { if (modalSearchEl) modalSearchEl.focus(); }, 50);
-    }
-
-    function closeModal() {
-        if (modalEl) modalEl.hidden = true;
-    }
-
-    if (modalCloseBtn && !modalCloseBtn._bound) {
-        modalCloseBtn._bound = true;
-        modalCloseBtn.addEventListener('click', closeModal);
-    }
-    if (modalEl && !modalEl._bound) {
-        modalEl._bound = true;
-        modalEl.addEventListener('click', (e) => {
-            if (e.target === modalEl) closeModal();
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !modalEl.hidden) closeModal();
-        });
-    }
-    if (modalSearchEl && !modalSearchEl._bound) {
-        modalSearchEl._bound = true;
-        modalSearchEl.addEventListener('input', (e) => {
-            renderModalTable(e.target.value);
-        });
-    }
-
-    // 4. Source Footnote (dihilangkan sesuai preferensi tampilan)
+    // 3. Source Footnote
     if (srcEl) {
-        srcEl.innerHTML = '';
+        srcEl.innerHTML = `<b>Sumber Data:</b> Badan Pusat Statistik (BPS) &amp; Kementerian Pertanian RI — Publikasi Statistik Pertanian 2023. Seluruh data komoditas tanaman pangan, hortikultura, perkebunan, dan peternakan ditampilkan penuh.`;
     }
 }
 
@@ -1935,31 +1791,37 @@ function renderSosial(r) {
 
     // 2. Render Grafik Batang Pendidikan (eduBar)
     if (eduBar) {
-        const sdTotal = (rekap.sd ? rekap.sd.total : 0);
-        const smpTotal = (rekap.smp ? rekap.smp.total : 0);
-        const smaTotal = (rekap.sma ? rekap.sma.total : 0);
-        const smkTotal = (rekap.smk ? rekap.smk.total : 0);
-        const madrasahTotal = (rekap.madrasah ? rekap.madrasah.total : 0);
         const paudTotal = (rekap.paud_tk ? rekap.paud_tk.total : 0);
+        const sdTotal = (rekap.sd ? rekap.sd.total : 0);
+        const miTotal = (rekap.madrasah ? (rekap.madrasah.mi || 0) : 0);
+        const smpTotal = (rekap.smp ? rekap.smp.total : 0);
+        const mtsTotal = (rekap.madrasah ? (rekap.madrasah.mts || 0) : 0);
+        const smaTotal = (rekap.sma ? rekap.sma.total : 0);
+        const maTotal = (rekap.madrasah ? (rekap.madrasah.ma || 0) : 0);
+        const smkTotal = (rekap.smk ? rekap.smk.total : 0);
         const slbTotal = (rekap.slb ? rekap.slb.total : 0);
         const kampusTotal = ring.total_kampus || (pend.daftar_kampus ? pend.daftar_kampus.length : 0);
 
+        // Urutan jenjang pendidikan formal runut: PAUD/TK -> SD -> MI -> SMP -> MTs -> SMA -> MA -> SMK -> SLB -> PT
         const E = [
-            { n: 'SD / Sederajat', v: sdTotal, c: '#0FB5A0' },
-            { n: 'SMP / Sederajat', v: smpTotal, c: '#2E9BD6' },
-            { n: 'SMA / Sederajat', v: smaTotal, c: '#D9962B' },
-            { n: 'SMK', v: smkTotal, c: '#5B6EE0' },
-            { n: 'Madrasah (MI/MTs/MA)', v: madrasahTotal, c: '#2FA65E' },
             { n: 'PAUD & TK', v: paudTotal, c: '#E8604C' },
+            { n: 'SD / Sederajat', v: sdTotal, c: '#0FB5A0' },
+            { n: 'Madrasah Ibtidaiyah (MI)', v: miTotal, c: '#14B8A6' },
+            { n: 'SMP / Sederajat', v: smpTotal, c: '#2E9BD6' },
+            { n: 'Madrasah Tsanawiyah (MTs)', v: mtsTotal, c: '#38BDF8' },
+            { n: 'SMA / Sederajat', v: smaTotal, c: '#D9962B' },
+            { n: 'Madrasah Aliyah (MA)', v: maTotal, c: '#F59E0B' },
+            { n: 'SMK', v: smkTotal, c: '#5B6EE0' },
+            { n: 'SLB', v: slbTotal, c: '#64748B' },
             { n: 'Perguruan Tinggi', v: kampusTotal, c: '#8E44AD' }
         ].filter(item => item.v > 0);
 
         if (E.length === 0) {
             eduBar.innerHTML = `<text x="230" y="140" text-anchor="middle" fill="var(--muted)" font-size="12">Belum ada rincian sekolah terdata</text>`;
         } else {
-            const W = 460, rowH = 36, labelW = 160, barMax = W - labelW - 60;
+            const W = 470, rowH = 34, labelW = 180, barMax = W - labelW - 60;
             const maxV = Math.max(...E.map(e => e.v)) || 1;
-            eduBar.setAttribute('viewBox', `0 0 460 ${E.length * rowH + 20}`);
+            eduBar.setAttribute('viewBox', `0 0 ${W} ${E.length * rowH + 20}`);
             let s = '';
             E.forEach((e, i) => {
                 const y = i * rowH + 8;
@@ -1975,7 +1837,7 @@ function renderSosial(r) {
     // 3. Render Status Negeri vs Swasta
     if (eduStatusRow) {
         let negCount = 0, swasCount = 0;
-        ['sd', 'smp', 'sma', 'smk', 'paud_tk', 'slb'].forEach(k => {
+        ['sd', 'smp', 'sma', 'smk', 'paud_tk', 'slb', 'madrasah'].forEach(k => {
             if (rekap[k]) {
                 negCount += (rekap[k].negeri || 0);
                 swasCount += (rekap[k].swasta || 0);
@@ -2060,6 +1922,12 @@ function renderSosial(r) {
                 <div style="font-size:11px;color:var(--muted);margin-top:2px">Lainnya</div>
             </div>
         `;
+    }
+
+    // 8. Source Footnote
+    const srcSos = document.getElementById('srcSosial');
+    if (srcSos) {
+        srcSos.innerHTML = `<b>Sumber Data:</b> Kemendikbudristek (Dapodik 2023/2024), Kementerian Agama RI (EMIS 2023/2024), PDDIKTI, dan Kementerian Kesehatan RI (Fasyankes 2024). Data mencakup seluruh jenjang satuan pendidikan resmi dan fasilitas kesehatan aktif.`;
     }
 }
 
@@ -2197,6 +2065,11 @@ function renderPodes() {
     if (searchInput && !searchInput._bound) {
         searchInput._bound = true;
         searchInput.addEventListener('input', e => renderRows(e.target.value));
+    }
+
+    const srcPodes = document.getElementById('srcPodes');
+    if (srcPodes) {
+        srcPodes.innerHTML = `<b>Sumber Data:</b> Badan Pusat Statistik (BPS) — Pendataan Potensi Desa (PODES) 2024. Basis data kewilayahan tingkat desa dan kelurahan seluruh Indonesia.`;
     }
 }
 
