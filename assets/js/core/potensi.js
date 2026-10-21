@@ -606,7 +606,6 @@
             // Level 2: Zoom 5.6 - 8.5 (Scope Provinsi / Antar Provinsi)
             if (zoom > 5.5 && zoom <= 8.5) {
                 let stateChanged = false;
-                // Lepas kuncian kota saat pengguna zoom-out ke level provinsi
                 if (this.state.selectedCity) {
                     this.state.selectedCity = null;
                     this.state.selectedCorridor = null;
@@ -614,17 +613,18 @@
                     stateChanged = true;
                 }
 
-                // Tentukan provinsi terdekat dari tengah layar jika belum ada atau berada di luar viewport
-                if (!this.state.selectedProv || !bounds.contains([this.state.selectedProv.lat, this.state.selectedProv.lng])) {
-                    const nearestProv = this.findNearestProvince(center);
-                    if (nearestProv) {
-                        this.state.selectedProv = nearestProv;
-                        this.state.selectedIsland = ISLAND_REGIONS.find((i) => i.provIds.includes(nearestProv.id)) || null;
-                        stateChanged = true;
+                if (this.state.scope !== 'pulau') {
+                    if (this.state.selectedProv && !bounds.contains([this.state.selectedProv.lat, this.state.selectedProv.lng])) {
+                        const nearestProv = this.findNearestProvince(center);
+                        if (nearestProv) {
+                            this.state.selectedProv = nearestProv;
+                            this.state.selectedIsland = ISLAND_REGIONS.find((i) => i.provIds.includes(nearestProv.id)) || null;
+                            stateChanged = true;
+                        }
                     }
                 }
 
-                if (this.state.scope !== 'provinsi') {
+                if (this.state.selectedProv && this.state.scope !== 'provinsi') {
                     this.state.scope = 'provinsi';
                     stateChanged = true;
                 }
@@ -888,6 +888,18 @@
             const data = this.getData();
             const obj = data.objects[objId];
             if (!obj) return;
+
+            // Toggle zoom out jika objek aktif yang sama diklik kembali
+            if (this.state.selectedObject && this.state.selectedObject.id === obj.id && this.state.selectedCity) {
+                this.state.selectedObject = null;
+                this.closeDetailPanel();
+                if (this.map && this.state.selectedCity.lat && this.state.selectedCity.lng) {
+                    this.map.flyTo([this.state.selectedCity.lat, this.state.selectedCity.lng], this.state.selectedCity.zoom || 13, { duration: 0.9 });
+                }
+                this.renderMapLayers();
+                return;
+            }
+
             this.state.selectedObject = obj;
 
             if (this.map && obj.lat && obj.lng) {
@@ -959,10 +971,8 @@
             const currentProv = this.state.selectedProv;
             const currentIsland = this.state.selectedIsland;
 
-            // ==========================================
-            // LEVEL 1: NASIONAL (Zoom <= 5.5)
-            // ==========================================
-            if (zoom <= 5.5) {
+            // Level 1: Nasional (Zoom <= 5.5 saat tidak ada provinsi atau kota aktif)
+            if (zoom <= 5.5 && !currentCity && !currentProv) {
                 ISLAND_REGIONS.forEach((isl) => {
                     const provsInIsland = (data.provinces || []).filter((p) => isl.provIds.includes(p.id));
                     const totalPoi = provsInIsland.reduce((s, p) => s + (p.poi || 0), 0);
@@ -998,66 +1008,160 @@
                 return;
             }
 
-            // ==========================================
-            // LEVEL 2: PROVINSI (Zoom 5.6 - 8.5)
-            // Tampilkan semua provinsi yang berada dalam batas pandang (viewport)
-            // ==========================================
-            if (zoom > 5.5 && zoom <= 8.5) {
-                let provsToRender = (data.provinces || []).filter((p) => bounds.contains([p.lat, p.lng]));
-                if (provsToRender.length === 0) {
-                    if (currentIsland) {
-                        provsToRender = (data.provinces || []).filter((p) => currentIsland.provIds.includes(p.id));
-                    } else {
-                        provsToRender = data.provinces || [];
-                    }
+            // Level 4: DETAIL LAPANGAN (Zoom > 11.0 ATAU selectedCity aktif)
+            if (currentCity || zoom > 11.0) {
+                const activeCity = currentCity || this.findNearestCity(this.map.getCenter());
+                if (activeCity) {
+                    (data.cities || [])
+                        .filter((c) => c.id !== activeCity.id && bounds.contains([c.lat, c.lng]))
+                        .forEach((otherCity, idx) => {
+                            const shortName = formatDisplayName(otherCity.name);
+                            const isEven = idx % 2 === 0;
+                            const stemClass = isEven ? '' : 'stem-mid';
+                            const h = isEven ? 60 : 68;
+                            const anchorY = isEven ? 55 : 63;
+
+                            const otherIconHtml = `
+                                <div class="potensi-cluster-stick-pin neighbor-variant ${stemClass}">
+                                    <div class="cluster-stick-badge">
+                                        <span class="poi-count">${otherCity.poi}</span>
+                                    </div>
+                                    <div class="cluster-stick-label" title="${otherCity.name}">${shortName}</div>
+                                    <div class="cluster-stick-stem"></div>
+                                    <div class="cluster-stick-ground">
+                                        <div class="ground-ring ring-outer"></div>
+                                        <div class="ground-ring ring-inner"></div>
+                                        <div class="ground-center-dot"></div>
+                                    </div>
+                                </div>
+                            `;
+                            const otherIcon = L.divIcon({
+                                className: 'potensi-cluster-wrapper',
+                                html: otherIconHtml,
+                                iconSize: [50, h],
+                                iconAnchor: [25, anchorY]
+                            });
+                            const otherMarker = L.marker([otherCity.lat, otherCity.lng], { icon: otherIcon });
+                            otherMarker.on('click', () => {
+                                this.selectCity(otherCity.id);
+                            });
+                            this.layers.clusters.addLayer(otherMarker);
+                        });
+
+                    Object.values(data.corridors || {})
+                        .filter((c) => c.cityId === activeCity.id)
+                        .forEach((c) => {
+                            const isSelected = this.state.selectedCorridor?.id === c.id;
+                            const routeCoords = c._snappedPath || c.path || c.route || [];
+                            if (!routeCoords.length) return;
+
+                            const polyline = L.polyline(routeCoords, {
+                                color: isSelected ? '#cf1e2e' : c.color || '#0d9488',
+                                weight: isSelected ? 7 : 5,
+                                opacity: isSelected ? 0.95 : 0.75,
+                                dashArray: isSelected ? null : '6, 6',
+                                lineCap: 'round',
+                                lineJoin: 'round'
+                            });
+
+                            polyline.on('click', () => {
+                                this.selectCorridor(c.id);
+                            });
+                            polyline.bindTooltip(`<b>${c.name}</b> (${c.length || c.km || '1,8 km'})<br>${c.status || 'Aktif'}`, { sticky: true });
+                            this.layers.corridors.addLayer(polyline);
+
+                            const cpMarkers = {};
+
+                            if (isSelected && c.checkpoints) {
+                                c.checkpoints.forEach((cp, idx) => {
+                                    const isDone = cp.done !== undefined ? cp.done : cp.status === 'done';
+                                    const num = cp.num || cp.n || '1';
+                                    const label = cp.title || cp.label || 'Checkpoint';
+                                    const cpIconHtml = `
+                                        <div class="potensi-cp-marker ${isDone ? 'done' : 'pending'}">
+                                            <span>${num}</span>
+                                        </div>
+                                    `;
+                                    const cpIcon = L.divIcon({
+                                        className: 'potensi-cp-wrapper',
+                                        html: cpIconHtml,
+                                        iconSize: [28, 28],
+                                        iconAnchor: [14, 14]
+                                    });
+
+                                    const cpMarker = L.marker([cp.lat, cp.lng], { icon: cpIcon });
+                                    cpMarker.on('click', () => {
+                                        this.renderCheckpointDetail(cp, c);
+                                    });
+                                    cpMarker.bindTooltip(`<b>Checkpoint ${num}</b>: ${label}<br>${isDone ? '✓ Sudah diperiksa' : '⏳ Belum diperiksa'}`, {
+                                        direction: 'top',
+                                        offset: [0, -14]
+                                    });
+                                    this.layers.checkpoints.addLayer(cpMarker);
+                                    cpMarkers[idx] = cpMarker;
+                                });
+                            }
+
+                            if (!c._snappedPath) {
+                                this.fetchRoadSnappedRoute(c, polyline, cpMarkers);
+                            }
+                        });
+
+                    Object.values(data.objects || {})
+                        .filter((o) => o.cityId === activeCity.id)
+                        .forEach((o) => {
+                            if (this.state.categoryFilter !== 'all' && o.category !== this.state.categoryFilter) {
+                                return;
+                            }
+
+                            const catMeta = (data.categories || []).find((cat) => cat.id === o.category) || { color: '#0d9488', tag: 'POI' };
+                            const isObjSelected = this.state.selectedObject?.id === o.id;
+
+                            const poiIconHtml = `
+                                <div class="potensi-stick-pin ${isObjSelected ? 'selected' : ''}" style="--pin-color: ${catMeta.color};">
+                                    <div class="stick-pin-head">
+                                        <span class="stick-pin-badge">${catMeta.tag || 'POI'}</span>
+                                    </div>
+                                    <div class="stick-pin-stem"></div>
+                                    <div class="stick-pin-ground">
+                                        <div class="ground-ring ring-outer"></div>
+                                        <div class="ground-ring ring-inner"></div>
+                                        <div class="ground-center-dot"></div>
+                                    </div>
+                                </div>
+                            `;
+
+                            const poiIcon = L.divIcon({
+                                className: 'potensi-pin-wrapper',
+                                html: poiIconHtml,
+                                iconSize: [40, 52],
+                                iconAnchor: [20, 47]
+                            });
+
+                            const poiMarker = L.marker([o.lat, o.lng], { icon: poiIcon });
+                            poiMarker.on('click', () => {
+                                this.selectObject(o.id);
+                            });
+
+                            poiMarker.bindTooltip(
+                                `<b>${o.name}</b><br><span style="color:${catMeta.color}">●</span> ${o.catName}<br>${o.addr}<br><b>${o.estimatedValue}</b>`,
+                                { direction: 'top', offset: [0, -48] }
+                            );
+
+                            this.layers.poiMarkers.addLayer(poiMarker);
+                        });
+                    return;
                 }
-
-                provsToRender.forEach((p, idx) => {
-                    const shortName = formatDisplayName(p.name);
-                    const isEven = idx % 2 === 0;
-                    const stemClass = isEven ? '' : 'stem-mid';
-                    const h = isEven ? 64 : 72;
-                    const anchorY = isEven ? 59 : 67;
-
-                    const iconHtml = `
-                        <div class="potensi-cluster-stick-pin ${stemClass}">
-                            <div class="cluster-stick-badge">
-                                <span class="poi-count">${p.poi}</span>
-                                <span class="poi-unit">POI</span>
-                            </div>
-                            <div class="cluster-stick-label" title="${p.name}">${shortName}</div>
-                            <div class="cluster-stick-stem"></div>
-                            <div class="cluster-stick-ground">
-                                <div class="ground-ring ring-outer"></div>
-                                <div class="ground-ring ring-inner"></div>
-                                <div class="ground-center-dot"></div>
-                            </div>
-                        </div>
-                    `;
-                    const customIcon = L.divIcon({
-                        className: 'potensi-cluster-wrapper',
-                        html: iconHtml,
-                        iconSize: [54, h],
-                        iconAnchor: [27, anchorY]
-                    });
-
-                    const marker = L.marker([p.lat, p.lng], { icon: customIcon });
-                    marker.on('click', () => {
-                        this.selectProvince(p.id);
-                    });
-                    this.layers.clusters.addLayer(marker);
-                });
-                return;
             }
 
-            // ==========================================
-            // LEVEL 3: KABUPATEN / KOTA OVERVIEW (Zoom 8.6 - 11.0)
-            // Tampilkan pin gugusan kabupaten & kota yang ada di dalam viewport
-            // ==========================================
-            if (zoom > 8.5 && zoom <= 11.0) {
-                let citiesToRender = (data.cities || []).filter((c) => bounds.contains([c.lat, c.lng]));
-                if (citiesToRender.length === 0 && currentProv) {
+            // Level 3: KABUPATEN / KOTA OVERVIEW
+            // Diprioritaskan jika selectedProv aktif (State Priority) ATAU zoom sudah berada di 8.6 - 11.0
+            if (currentProv || (zoom > 8.5 && zoom <= 11.0)) {
+                let citiesToRender = [];
+                if (currentProv) {
                     citiesToRender = (data.cities || []).filter((c) => c.provId === currentProv.id);
+                } else {
+                    citiesToRender = (data.cities || []).filter((c) => bounds.contains([c.lat, c.lng]));
                 }
 
                 citiesToRender.forEach((city, idx) => {
@@ -1096,159 +1200,97 @@
                     });
                     this.layers.clusters.addLayer(marker);
                 });
+
+                // Macro-Micro Layering: jika scope provinsi aktif dan zoom masih <= 8.5,
+                // tampilkan juga pin cluster provinsi tetangga di sekitar layar agar user tidak kehilangan konteks
+                if (currentProv && zoom <= 8.5) {
+                    const neighborProvs = (data.provinces || []).filter(
+                        (p) => p.id !== currentProv.id && bounds.contains([p.lat, p.lng])
+                    );
+                    neighborProvs.forEach((p, idx) => {
+                        const shortName = formatDisplayName(p.name);
+                        const isEven = idx % 2 === 0;
+                        const stemClass = isEven ? '' : 'stem-mid';
+                        const h = isEven ? 64 : 72;
+                        const anchorY = isEven ? 59 : 67;
+
+                        const iconHtml = `
+                            <div class="potensi-cluster-stick-pin ${stemClass}">
+                                <div class="cluster-stick-badge">
+                                    <span class="poi-count">${p.poi}</span>
+                                    <span class="poi-unit">POI</span>
+                                </div>
+                                <div class="cluster-stick-label" title="${p.name}">${shortName}</div>
+                                <div class="cluster-stick-stem"></div>
+                                <div class="cluster-stick-ground">
+                                    <div class="ground-ring ring-outer"></div>
+                                    <div class="ground-ring ring-inner"></div>
+                                    <div class="ground-center-dot"></div>
+                                </div>
+                            </div>
+                        `;
+                        const customIcon = L.divIcon({
+                            className: 'potensi-cluster-wrapper',
+                            html: iconHtml,
+                            iconSize: [54, h],
+                            iconAnchor: [27, anchorY]
+                        });
+
+                        const marker = L.marker([p.lat, p.lng], { icon: customIcon });
+                        marker.on('click', () => {
+                            this.selectProvince(p.id);
+                        });
+                        this.layers.clusters.addLayer(marker);
+                    });
+                }
                 return;
             }
 
-            // ==========================================
-            // LEVEL 4: DETAIL LAPANGAN (Zoom > 11.0)
-            // Tampilkan Objek POI, Koridor Jalan, dan Tetangga Sekitar
-            // ==========================================
-            const activeCity = currentCity || this.findNearestCity(this.map.getCenter());
-            if (!activeCity) return;
+            // Level 2: PROVINSI (Zoom 5.6 - 8.5 saat tidak ada kuncian provinsi aktif)
+            let provsToRender = (data.provinces || []).filter((p) => bounds.contains([p.lat, p.lng]));
+            if (provsToRender.length === 0) {
+                if (currentIsland) {
+                    provsToRender = (data.provinces || []).filter((p) => currentIsland.provIds.includes(p.id));
+                } else {
+                    provsToRender = data.provinces || [];
+                }
+            }
 
-            // Render pin kota-kota tetangga yang terlihat di viewport
-            (data.cities || [])
-                .filter((c) => c.id !== activeCity.id && bounds.contains([c.lat, c.lng]))
-                .forEach((otherCity, idx) => {
-                    const shortName = formatDisplayName(otherCity.name);
-                    const isEven = idx % 2 === 0;
-                    const stemClass = isEven ? '' : 'stem-mid';
-                    const h = isEven ? 60 : 68;
-                    const anchorY = isEven ? 55 : 63;
+            provsToRender.forEach((p, idx) => {
+                const shortName = formatDisplayName(p.name);
+                const isEven = idx % 2 === 0;
+                const stemClass = isEven ? '' : 'stem-mid';
+                const h = isEven ? 64 : 72;
+                const anchorY = isEven ? 59 : 67;
 
-                    const otherIconHtml = `
-                        <div class="potensi-cluster-stick-pin neighbor-variant ${stemClass}">
-                            <div class="cluster-stick-badge">
-                                <span class="poi-count">${otherCity.poi}</span>
-                            </div>
-                            <div class="cluster-stick-label" title="${otherCity.name}">${shortName}</div>
-                            <div class="cluster-stick-stem"></div>
-                            <div class="cluster-stick-ground">
-                                <div class="ground-ring ring-outer"></div>
-                                <div class="ground-ring ring-inner"></div>
-                                <div class="ground-center-dot"></div>
-                            </div>
+                const iconHtml = `
+                    <div class="potensi-cluster-stick-pin ${stemClass}">
+                        <div class="cluster-stick-badge">
+                            <span class="poi-count">${p.poi}</span>
+                            <span class="poi-unit">POI</span>
                         </div>
-                    `;
-                    const otherIcon = L.divIcon({
-                        className: 'potensi-cluster-wrapper',
-                        html: otherIconHtml,
-                        iconSize: [50, h],
-                        iconAnchor: [25, anchorY]
-                    });
-                    const otherMarker = L.marker([otherCity.lat, otherCity.lng], { icon: otherIcon });
-                    otherMarker.on('click', () => {
-                        this.selectCity(otherCity.id);
-                    });
-                    this.layers.clusters.addLayer(otherMarker);
-                });
-
-            // Render Koridor Jalan untuk activeCity
-            Object.values(data.corridors || {})
-                .filter((c) => c.cityId === activeCity.id)
-                .forEach((c) => {
-                    const isSelected = this.state.selectedCorridor?.id === c.id;
-                    const routeCoords = c._snappedPath || c.path || c.route || [];
-                    if (!routeCoords.length) return;
-
-                    const polyline = L.polyline(routeCoords, {
-                        color: isSelected ? '#cf1e2e' : c.color || '#0d9488',
-                        weight: isSelected ? 7 : 5,
-                        opacity: isSelected ? 0.95 : 0.75,
-                        dashArray: isSelected ? null : '6, 6',
-                        lineCap: 'round',
-                        lineJoin: 'round'
-                    });
-
-                    polyline.on('click', () => {
-                        this.selectCorridor(c.id);
-                    });
-                    polyline.bindTooltip(`<b>${c.name}</b> (${c.length || c.km || '1,8 km'})<br>${c.status || 'Aktif'}`, { sticky: true });
-                    this.layers.corridors.addLayer(polyline);
-
-                    const cpMarkers = {};
-
-                    // Jika koridor dipilih, tampilkan checkpoint
-                    if (isSelected && c.checkpoints) {
-                        c.checkpoints.forEach((cp, idx) => {
-                            const isDone = cp.done !== undefined ? cp.done : cp.status === 'done';
-                            const num = cp.num || cp.n || '1';
-                            const label = cp.title || cp.label || 'Checkpoint';
-                            const cpIconHtml = `
-                                <div class="potensi-cp-marker ${isDone ? 'done' : 'pending'}">
-                                    <span>${num}</span>
-                                </div>
-                            `;
-                            const cpIcon = L.divIcon({
-                                className: 'potensi-cp-wrapper',
-                                html: cpIconHtml,
-                                iconSize: [28, 28],
-                                iconAnchor: [14, 14]
-                            });
-
-                            const cpMarker = L.marker([cp.lat, cp.lng], { icon: cpIcon });
-                            cpMarker.on('click', () => {
-                                this.renderCheckpointDetail(cp, c);
-                            });
-                            cpMarker.bindTooltip(`<b>Checkpoint ${num}</b>: ${label}<br>${isDone ? '✓ Sudah diperiksa' : '⏳ Belum diperiksa'}`, {
-                                direction: 'top',
-                                offset: [0, -14]
-                            });
-                            this.layers.checkpoints.addLayer(cpMarker);
-                            cpMarkers[idx] = cpMarker;
-                        });
-                    }
-
-                    // Auto-fetch real street routing dari OSM
-                    if (!c._snappedPath) {
-                        this.fetchRoadSnappedRoute(c, polyline, cpMarkers);
-                    }
-                });
-
-            // Render Titik POI untuk activeCity
-            Object.values(data.objects || {})
-                .filter((o) => o.cityId === activeCity.id)
-                .forEach((o) => {
-                    if (this.state.categoryFilter !== 'all' && o.category !== this.state.categoryFilter) {
-                        return;
-                    }
-
-                    const catMeta = (data.categories || []).find((cat) => cat.id === o.category) || { color: '#0d9488', tag: 'POI' };
-                    const isObjSelected = this.state.selectedObject?.id === o.id;
-
-                    const poiIconHtml = `
-                        <div class="potensi-stick-pin ${isObjSelected ? 'selected' : ''}" style="--pin-color: ${catMeta.color};">
-                            <div class="stick-pin-head">
-                                <span class="stick-pin-badge">${catMeta.tag || 'POI'}</span>
-                            </div>
-                            <div class="stick-pin-stem"></div>
-                            <div class="stick-pin-ground">
-                                <div class="ground-ring ring-outer"></div>
-                                <div class="ground-ring ring-inner"></div>
-                                <div class="ground-center-dot"></div>
-                            </div>
+                        <div class="cluster-stick-label" title="${p.name}">${shortName}</div>
+                        <div class="cluster-stick-stem"></div>
+                        <div class="cluster-stick-ground">
+                            <div class="ground-ring ring-outer"></div>
+                            <div class="ground-ring ring-inner"></div>
+                            <div class="ground-center-dot"></div>
                         </div>
-                    `;
-
-                    const poiIcon = L.divIcon({
-                        className: 'potensi-pin-wrapper',
-                        html: poiIconHtml,
-                        iconSize: [40, 52],
-                        iconAnchor: [20, 47]
-                    });
-
-                    const poiMarker = L.marker([o.lat, o.lng], { icon: poiIcon });
-                    poiMarker.on('click', () => {
-                        this.selectObject(o.id);
-                    });
-
-                    poiMarker.bindTooltip(
-                        `<b>${o.name}</b><br><span style="color:${catMeta.color}">●</span> ${o.catName}<br>${o.addr}<br><b>${o.estimatedValue}</b>`,
-                        { direction: 'top', offset: [0, -48] }
-                    );
-
-                    this.layers.poiMarkers.addLayer(poiMarker);
+                    </div>
+                `;
+                const customIcon = L.divIcon({
+                    className: 'potensi-cluster-wrapper',
+                    html: iconHtml,
+                    iconSize: [54, h],
+                    iconAnchor: [27, anchorY]
                 });
+
+                const marker = L.marker([p.lat, p.lng], { icon: customIcon });
+                marker.on('click', () => {
+                    this.selectProvince(p.id);
+                });
+                this.layers.clusters.addLayer(marker);
+            });
         }
 
         renderSidebar() {
