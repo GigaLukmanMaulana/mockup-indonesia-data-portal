@@ -451,7 +451,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const filtered = provinces.filter(p => p.toLowerCase().includes(q));
             
             if (filtered.length === 0) {
-                html += `<div class="prov-opt-empty">Tidak ada provinsi dengan nama "${escapeHtml(query)}"</div>`;
+                html += `
+                    <div class="prov-opt-empty">
+                        <div>Tidak ada provinsi cocok "${escapeHtml(query)}"</div>
+                        <button type="button" class="empty-action-link" onclick="const inp=document.getElementById('provSearchInput'); if(inp){ inp.value=''; inp.dispatchEvent(new Event('input')); inp.focus(); }">Bersihkan Pencarian</button>
+                    </div>
+                `;
             } else {
                 html += filtered.map(p => `
                     <div class="prov-opt-item ${filterProv === p ? 'active' : ''}" data-value="${escapeHtml(p)}">
@@ -1389,7 +1394,12 @@ document.addEventListener('DOMContentLoaded', () => {
         searchResults.hidden = false;
 
         if (matches.length === 0) {
-            searchResults.innerHTML = `<div class="rempty">Tidak ditemukan wilayah dengan kata kunci "${escapeHtml(query)}"</div>`;
+            searchResults.innerHTML = `
+                <div class="rempty">
+                    <div>Tidak ditemukan wilayah cocok "<b>${escapeHtml(query)}</b>"</div>
+                    <button type="button" class="empty-action-link" onclick="const inp=document.getElementById('searchInput'); if(inp){ inp.value=''; inp.focus(); } const res=document.getElementById('searchResults'); if(res){ res.hidden=true; }">Bersihkan Pencarian</button>
+                </div>
+            `;
             return;
         }
 

@@ -3,45 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Profil Wilayah — Portal Data Kabupaten &amp; Kota Indonesia</title>
+<title>Profil Wilayah: Portal Data Kabupaten &amp; Kota Indonesia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Roboto+Mono:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/css/styles.css">
 <style>
   :root{
-    --ink:#EEF3F8;
-    --panel:#FFFFFF;
-    --panel-2:#F4F8FC;
-    --line:#D2DEEA;
-    --line-soft:#DCE6F050;
-    --teal:#0FB5A0;
-    --sand:#D9962B;
-    --violet:#5B6EE0;
-    --coral:#E8604C;
-    --rose:#C4568A;
-    --sky:#2E9BD6;
-    --text:#12212E;
-    --muted:#5A7086;
-    --muted-2:#8398AC;
-    --surface:#F0F5FA;
-    --surface-2:#E7EFF6;
-    --hover:#EAF2FA;
-    --track:#E4ECF4;
-    --mono: "Roboto Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-    --sans: "DM Sans", ui-sans-serif, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+    --ink: var(--cream-100, #f1f5f9);
+    --panel: #FFFFFF;
+    --panel-2: var(--cream-50, #f8fafc);
+    --line: var(--line-strong, rgba(148, 163, 184, 0.40));
+    --line-soft: var(--line, rgba(148, 163, 184, 0.22));
+    --teal: var(--merah, #0d9488);
+    --sand: var(--tan, #d97706);
+    --violet: #5B6EE0;
+    --coral: #ef4444;
+    --rose: var(--merah, #0d9488);
+    --sky: var(--sky, #2E9BD6);
+    --text: var(--text-hi, #0f172a);
+    --muted: var(--text-mid, #475569);
+    --muted-2: var(--text-low, #475569);
+    --surface: var(--cream-50, #f8fafc);
+    --surface-2: var(--cream-100, #f1f5f9);
+    --hover: var(--cream-200, #e2e8f0);
+    --track: var(--cream-200, #e2e8f0);
+    --mono: var(--font-mono, "Roboto Mono", monospace);
+    --sans: var(--font-sans, "DM Sans", sans-serif);
   }
   *{box-sizing:border-box}
   html{scrollbar-width:none;-ms-overflow-style:none}
   html::-webkit-scrollbar{display:none;width:0;height:0}
   html,body{margin:0;padding:0}
   body{
-    background:
-      radial-gradient(1100px 560px at 12% -8%, #DCEBF7 0%, transparent 58%),
-      radial-gradient(900px 480px at 92% 0%, #E4F4F0 0%, transparent 52%),
-      var(--ink);
-    color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;
-    -webkit-font-smoothing:antialiased;padding-bottom:56px;
+    background: #f1f5f9;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 56px;
   }
   .wrap{max-width:1280px;margin:0 auto;padding:0 24px}
 
@@ -64,11 +65,11 @@
 
   /* header masthead */
   .masthead{border-bottom:1px solid var(--line);padding:14px 0 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between}
-  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);margin-bottom:6px}
+  .eyebrow{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--teal);margin-bottom:6px}
   h1{font-size:28px;font-weight:700;letter-spacing:-.03em;margin:0;line-height:1.1}
   .sub{color:var(--muted);font-size:12.5px;margin-top:6px;font-family:var(--mono);letter-spacing:.03em}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
-  .btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:9px 13px;border-radius:5px;cursor:pointer;transition:.16s}
+  .btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--text);font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.01em;padding:8px 14px;border-radius:6px;cursor:pointer;transition:.16s}
   .btn:hover{color:var(--text);border-color:#B7C7D8}
   .btn[aria-pressed="true"]{background:var(--teal);color:#FFFFFF;border-color:var(--teal);font-weight:600}
 
@@ -81,14 +82,14 @@
   .lead-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
   .lead{display:flex;gap:14px;align-items:center}
   .avatar{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--mono);font-size:16px;font-weight:600;letter-spacing:.02em}
-  .lead-role{font-family:var(--mono);font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--muted-2)}
+  .lead-role{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-2)}
   .lead-name{font-size:17px;font-weight:650;letter-spacing:-.02em;margin-top:2px}
   .lead-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
 
   /* kpi */
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px}
   .kpi{background:var(--panel);padding:14px 16px}
-  .k-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2)}
+  .k-label{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-2)}
   .k-val{font-family:var(--mono);font-size:25px;font-weight:600;letter-spacing:-.025em;margin-top:5px;font-variant-numeric:tabular-nums}
   .k-unit{font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0}
   .k-note{font-size:11px;color:var(--muted);margin-top:3px}
@@ -114,7 +115,7 @@
   .wedge:hover{filter:brightness(1.12);transform:scale(1.03)}
   .wedge-lbl{font-family:var(--mono);font-size:12px;font-weight:600;fill:#F0F5FA;pointer-events:none;letter-spacing:.04em}
   .batas-panel{flex:1;min-width:190px}
-  .batas-role{font-family:var(--mono);font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--teal)}
+  .batas-role{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--teal)}
   .batas-text{font-size:14px;margin-top:5px;line-height:1.45;font-weight:600}
   .batas-all{margin-top:14px;border-top:1px solid var(--line);padding-top:11px;display:flex;flex-direction:column;gap:7px}
   .batas-row{display:flex;gap:10px;font-size:11.5px;color:var(--muted);cursor:pointer;padding:6px 10px;border-radius:6px;transition:all .18s ease;border-left:3px solid transparent}

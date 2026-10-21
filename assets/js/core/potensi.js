@@ -278,7 +278,12 @@
                 }).slice(0, 15);
 
                 if (!matchedCities.length) {
-                    searchResults.innerHTML = `<div class="pot-search-empty">Tidak ada wilayah yang cocok dengan "<b>${q}</b>"</div>`;
+                    searchResults.innerHTML = `
+                        <div class="pot-search-empty">
+                            <div>Tidak ada wilayah cocok "<b>${q}</b>"</div>
+                            <button type="button" class="empty-action-link" onclick="const inp=document.getElementById('potensiSearchInput'); if(inp){ inp.value=''; inp.focus(); } const res=document.getElementById('potensiSearchResults'); if(res){ res.classList.remove('open'); }">Bersihkan Pencarian</button>
+                        </div>
+                    `;
                     searchResults.classList.add('open');
                     return;
                 }
@@ -985,11 +990,7 @@
                             </div>
                             <div class="cluster-stick-label" title="${isl.name}">${isl.shortName || isl.name}</div>
                             <div class="cluster-stick-stem"></div>
-                            <div class="cluster-stick-ground">
-                                <div class="ground-ring ring-outer"></div>
-                                <div class="ground-ring ring-inner"></div>
-                                <div class="ground-center-dot"></div>
-                            </div>
+                            <div class="cluster-stick-ground"></div>
                         </div>
                     `;
                     const customIcon = L.divIcon({
@@ -1028,11 +1029,7 @@
                                     </div>
                                     <div class="cluster-stick-label" title="${otherCity.name}">${shortName}</div>
                                     <div class="cluster-stick-stem"></div>
-                                    <div class="cluster-stick-ground">
-                                        <div class="ground-ring ring-outer"></div>
-                                        <div class="ground-ring ring-inner"></div>
-                                        <div class="ground-center-dot"></div>
-                                    </div>
+                                    <div class="cluster-stick-ground"></div>
                                 </div>
                             `;
                             const otherIcon = L.divIcon({
@@ -1123,11 +1120,7 @@
                                         <span class="stick-pin-badge">${catMeta.tag || 'POI'}</span>
                                     </div>
                                     <div class="stick-pin-stem"></div>
-                                    <div class="stick-pin-ground">
-                                        <div class="ground-ring ring-outer"></div>
-                                        <div class="ground-ring ring-inner"></div>
-                                        <div class="ground-center-dot"></div>
-                                    </div>
+                                    <div class="stick-pin-ground"></div>
                                 </div>
                             `;
 
@@ -1180,11 +1173,7 @@
                             </div>
                             <div class="cluster-stick-label" title="${city.name}">${shortName}</div>
                             <div class="cluster-stick-stem"></div>
-                            <div class="cluster-stick-ground">
-                                <div class="ground-ring ring-outer"></div>
-                                <div class="ground-ring ring-inner"></div>
-                                <div class="ground-center-dot"></div>
-                            </div>
+                            <div class="cluster-stick-ground"></div>
                         </div>
                     `;
                     const customIcon = L.divIcon({
@@ -1222,11 +1211,7 @@
                                 </div>
                                 <div class="cluster-stick-label" title="${p.name}">${shortName}</div>
                                 <div class="cluster-stick-stem"></div>
-                                <div class="cluster-stick-ground">
-                                    <div class="ground-ring ring-outer"></div>
-                                    <div class="ground-ring ring-inner"></div>
-                                    <div class="ground-center-dot"></div>
-                                </div>
+                                <div class="cluster-stick-ground"></div>
                             </div>
                         `;
                         const customIcon = L.divIcon({
@@ -1271,11 +1256,7 @@
                         </div>
                         <div class="cluster-stick-label" title="${p.name}">${shortName}</div>
                         <div class="cluster-stick-stem"></div>
-                        <div class="cluster-stick-ground">
-                            <div class="ground-ring ring-outer"></div>
-                            <div class="ground-ring ring-inner"></div>
-                            <div class="ground-center-dot"></div>
-                        </div>
+                        <div class="cluster-stick-ground"></div>
                     </div>
                 `;
                 const customIcon = L.divIcon({
