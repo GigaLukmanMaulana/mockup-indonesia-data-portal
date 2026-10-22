@@ -482,8 +482,9 @@ button:active,
 }
 
 /* ============================================================
-   Top Header Potensi Controls (Search + Provinsi + Kab/Kota)
+   Top Header Potensi & Profil Controls (Search + Provinsi + Kab/Kota)
    ============================================================ */
+.header-profil-wrap,
 .header-potensi-wrap {
     display: flex;
     align-items: center;
@@ -492,6 +493,7 @@ button:active,
     min-width: 0;
 }
 
+.profil-header-search,
 .potensi-header-search {
     flex: 1 1 200px;
     min-width: 150px;
@@ -499,6 +501,7 @@ button:active,
     position: relative;
 }
 
+.profil-header-search .search-box,
 .potensi-header-search .search-box {
     padding: 4px 10px;
     height: 34px;
@@ -506,6 +509,7 @@ button:active,
     width: 100%;
 }
 
+.profil-header-search .search-box input,
 .potensi-header-search .search-box input {
     font-size: 12.5px;
     min-width: 0;
@@ -1861,6 +1865,7 @@ button:active,
             top: calc(100% + 6px);
             left: 0;
             right: 0;
+            min-width: 320px;
             background: var(--cream-50);
             border: 1px solid var(--line-strong);
             border-radius: var(--radius-m);
@@ -3245,8 +3250,10 @@ button:active,
             .sidebar {
                 width: 320px;
             }
-            .header-search {
-                max-width: 320px;
+            .header-search,
+            .header-profil-wrap,
+            .header-potensi-wrap {
+                max-width: 100%;
             }
         }
 
@@ -3260,10 +3267,13 @@ button:active,
             .brand-block {
                 min-width: auto;
             }
-            .header-search {
+            .header-search,
+            .header-profil-wrap,
+            .header-potensi-wrap {
                 order: 3;
                 max-width: 100%;
                 width: 100%;
+                flex-wrap: wrap;
             }
             .app-body {
                 flex-direction: column;

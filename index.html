@@ -31,17 +31,33 @@
                 </div>
             </div>
 
-            <!-- Useful Quick Search Bar (Profil Mode) -->
-            <div class="header-search" id="profilHeaderSearch">
-                <div class="search-box">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <circle cx="11" cy="11" r="7" />
-                        <line x1="21" y1="21" x2="16.2" y2="16.2" />
-                    </svg>
-                    <input id="searchInput" type="text" placeholder="Cari nama kabupaten, kota, atau provinsi…" autocomplete="off" aria-label="Cari wilayah">
-                    <button class="clear-btn" id="searchClearBtn" hidden aria-label="Bersihkan pencarian">✕</button>
+            <!-- Useful Quick Search Bar + Filters (Profil Mode) -->
+            <div class="header-profil-wrap" id="profilHeaderSearch">
+                <div class="profil-header-search">
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="11" cy="11" r="7" />
+                            <line x1="21" y1="21" x2="16.2" y2="16.2" />
+                        </svg>
+                        <input id="searchInput" type="text" placeholder="Cari nama kabupaten, kota, atau provinsi…" autocomplete="off" aria-label="Cari wilayah">
+                        <button class="clear-btn" id="searchClearBtn" hidden aria-label="Bersihkan pencarian">✕</button>
+                    </div>
+                    <div class="search-dropdown" id="searchResults" hidden></div>
                 </div>
-                <div class="search-dropdown" id="searchResults" hidden></div>
+                <div class="header-filters" id="profilHeaderFilters">
+                    <div class="header-filter-group">
+                        <label for="profilProvSelect" class="header-filter-label">Provinsi</label>
+                        <select id="profilProvSelect" class="header-filter-select" aria-label="Pilih Provinsi">
+                            <option value="">Semua Provinsi (38)</option>
+                        </select>
+                    </div>
+                    <div class="header-filter-group">
+                        <label for="profilCitySelect" class="header-filter-label">Kab/Kota</label>
+                        <select id="profilCitySelect" class="header-filter-select" disabled aria-label="Pilih Kabupaten / Kota">
+                            <option value="">Pilih Provinsi Dulu</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <!-- Top Potensi Controls: Search + Provinsi + Kab/Kota (Peta Potensi Mode) -->

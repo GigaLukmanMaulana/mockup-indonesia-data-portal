@@ -65,6 +65,21 @@
   .back-link:hover{border-color:var(--teal);color:var(--teal);background:var(--surface);transform:translateY(-1px)}
   .back-link svg{width:15px;height:15px}
 
+  /* Cascading Filter Bar (Gambar 2) */
+  .header-filters-wrap{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px 10px 3px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);height:38px;box-sizing:border-box;position:relative}
+  .header-filter-search{display:flex;align-items:center;gap:8px;position:relative;flex:1;min-width:160px}
+  .header-filter-search svg{width:14px;height:14px;color:var(--muted);flex-shrink:0}
+  .header-filter-search input{border:none;background:transparent;outline:none;font-family:inherit;font-size:12.5px;color:var(--text);width:100%}
+  .header-filter-search input::placeholder{color:var(--muted)}
+  .header-filter-divider{width:1px;height:18px;background:var(--line);flex-shrink:0}
+  .header-filter-group{display:flex;align-items:center;gap:5px;flex-shrink:0}
+  .header-filter-label{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;letter-spacing:.02em}
+  .header-filter-select{background:var(--surface);border:1px solid var(--line);border-radius:6px;color:var(--text);font-family:inherit;font-size:11.5px;font-weight:600;padding:2px 8px;height:28px;box-sizing:border-box;outline:none;cursor:pointer;max-width:165px;text-overflow:ellipsis;transition:all .16s ease}
+  .header-filter-select:hover:not(:disabled){border-color:var(--teal);background:var(--hover)}
+  .header-filter-select:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(13,148,136,0.2)}
+  .header-filter-select:disabled{opacity:.55;cursor:not-allowed}
+  .filter-search-dropdown{position:absolute;top:calc(100% + 8px);left:0;width:320px;max-height:280px;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.12);z-index:1300;padding:4px 0}
+
   .picker-trigger{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:99px;border:1px solid var(--line);background:var(--panel);font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:.16s}
   .picker-trigger:hover{border-color:var(--teal);color:var(--teal)}
   .picker-trigger .kbd{font-family:var(--mono);font-size:10px;background:var(--surface);border:1px solid var(--line);padding:2px 6px;border-radius:4px;color:var(--muted-2)}
@@ -356,16 +371,27 @@
       </svg>
       <span id="backLinkLabel">Kembali ke Peta &amp; Dashboard</span>
     </a>
-    <div style="position:relative">
-      <button type="button" class="picker-trigger" id="pickerTrigger">
-        <span id="pickerCurrentName">Pilih 514 Daerah...</span>
-        <span class="kbd">Ctrl K</span>
-      </button>
-      <div class="picker-dropdown" id="pickerDropdown" hidden>
-        <div class="picker-search-bar">
-          <input type="text" id="pickerSearchInput" placeholder="Cari nama kabupaten/kota/provinsi..." autocomplete="off">
-        </div>
-        <div class="picker-results-list" id="pickerResultsList"></div>
+    <div class="header-filters-wrap" id="headerFiltersWrap">
+      <div class="header-filter-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="filterSearchInput" placeholder="Cari kota / provinsi…" autocomplete="off" aria-label="Cari wilayah">
+        <div class="filter-search-dropdown" id="filterSearchResults" hidden></div>
+      </div>
+      <div class="header-filter-divider"></div>
+      <div class="header-filter-group">
+        <label for="filterProvSelect" class="header-filter-label">Provinsi</label>
+        <select id="filterProvSelect" class="header-filter-select" aria-label="Pilih Provinsi">
+          <option value="">Semua Provinsi (38)</option>
+        </select>
+      </div>
+      <div class="header-filter-group">
+        <label for="filterCitySelect" class="header-filter-label">Kab/Kota</label>
+        <select id="filterCitySelect" class="header-filter-select" disabled aria-label="Pilih Kabupaten / Kota">
+          <option value="">Pilih Provinsi Dulu</option>
+        </select>
       </div>
     </div>
   </div>

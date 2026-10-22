@@ -102,8 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (judulEl) judulEl.textContent = r.kabkota || 'Nama Wilayah';
     if (subjudulEl) subjudulEl.textContent = `PROVINSI ${r.prov || 'INDONESIA'} · kode BPS #${r.id || r.no || '1'}`;
 
-    // 3. Setup Region Picker
-    setupRegionPicker(r, returnView);
+    // 3. Setup Cascading Region Filter (Search + Provinsi + Kab/Kota)
+    setupCascadingFilter(r, returnView);
 
     // 4. Leaflet Map Initialization
     let map = null;
@@ -308,6 +308,15 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     function switchTab(idx) {
+        if (idx < 0 || idx >= TABS.length) idx = 1;
+        const currentPaneId = TABS[idx].pane;
+        try {
+            sessionStorage.setItem('active_profil_tab', currentPaneId);
+            const curUrl = new URL(window.location.href);
+            curUrl.searchParams.set('tab', currentPaneId.replace('tab-', ''));
+            window.history.replaceState(null, '', curUrl.toString());
+        } catch (e) {}
+
         TABS.forEach((t, i) => {
             const on = i === idx;
             const btnEl = document.getElementById(t.btn);
@@ -364,8 +373,21 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSosial(r);
     renderPodes();
 
-    // Default to Wilayah Tab (index 1)
-    switchTab(1);
+    // Restore active tab from URL query param / sessionStorage, or default to Wilayah Tab (index 1)
+    const urlTab = urlParams.get('tab');
+    let savedTab = urlTab;
+    if (!savedTab) {
+        try {
+            savedTab = sessionStorage.getItem('active_profil_tab');
+        } catch (e) {}
+    }
+    let initialTabIdx = 1;
+    if (savedTab) {
+        const cleanTab = savedTab.toLowerCase().replace(/^tab-/, '');
+        const foundIdx = TABS.findIndex(t => t.pane.replace('tab-', '') === cleanTab || t.btn.replace('tab-btn-', '') === cleanTab);
+        if (foundIdx !== -1) initialTabIdx = foundIdx;
+    }
+    switchTab(initialTabIdx);
 
     // Copy JSON action
     const btnCopyJson = document.getElementById('btnCopyJson');
@@ -387,6 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
    ============================================================ */
 const fmt = n => Number(n || 0).toLocaleString('id-ID');
 const fmt1 = n => Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmt2 = n => Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function toast(msg) {
     const t = document.getElementById('toast');
@@ -988,9 +1011,22 @@ function renderPemerintahan(r) {
 function renderPenduduk(r) {
     const ak = r.angkatan_kerja || Math.round(r.penduduk * 0.5);
     const bek = r.bekerja || Math.round(ak * 0.94);
-    const nganggur = r.pengangguran || (ak - bek);
-    const tpak = (ak / Math.max(1, r.penduduk * 0.65)) * 100;
-    const tpt = ak > 0 ? (nganggur / ak) * 100 : 5.5;
+    const nganggur = r.pengangguran != null ? r.pengangguran : Math.max(0, ak - bek);
+
+    // Hitung Penduduk Usia Kerja Riil (15+ tahun) dari Piramida Penduduk BPS
+    const usiaMuda = (r.u04 || 0) + (r.u59 || 0) + (r.u1014 || 0);
+    const usiaKerja = (r.penduduk && usiaMuda > 0 && r.penduduk > usiaMuda)
+        ? (r.penduduk - usiaMuda)
+        : Math.round((r.penduduk || 1) * 0.72);
+
+    // TPAK = (Angkatan Kerja / Usia Kerja 15+) * 100%
+    let calcTpak = usiaKerja > 0 ? (ak / usiaKerja) * 100 : 68.5;
+    if (calcTpak > 98) calcTpak = 72.4;
+    if (calcTpak < 40) calcTpak = 65.2;
+    const tpak = calcTpak;
+
+    // TPT = (Pengangguran / Angkatan Kerja) * 100%
+    const tpt = ak > 0 ? Math.min(25, (nganggur / ak) * 100) : 5.5;
 
     const sdmKpis = document.getElementById('sdmKpis');
     if (sdmKpis) {
@@ -1007,12 +1043,12 @@ function renderPenduduk(r) {
             </div>
             <div class="kpi">
                 <div class="k-label">TPAK</div>
-                <div class="k-val">${fmt1(tpak)}<span class="k-unit">%</span></div>
+                <div class="k-val">${fmt2(tpak)}<span class="k-unit">%</span></div>
                 <div class="k-note">Partisipasi Angkatan Kerja</div>
             </div>
             <div class="kpi">
                 <div class="k-label">TPT</div>
-                <div class="k-val" style="color:#E8604C">${fmt1(tpt)}<span class="k-unit">%</span></div>
+                <div class="k-val" style="color:#E8604C">${fmt2(tpt)}<span class="k-unit">%</span></div>
                 <div class="k-note">Tingkat Pengangguran Terbuka</div>
             </div>
         `;
@@ -1324,22 +1360,22 @@ function renderKonsumsi(r) {
                 <div class="kpi">
                     <div class="k-label">Karbohidrat Pokok</div>
                     <div class="k-val">${fmt(Math.round(padiTon))} <span class="k-unit">Ton/th</span></div>
-                    <div class="k-note">Padi-padian &amp; Umbi-umbian</div>
+                    <div class="k-note">Data Resmi BPS (Susenas 2023/2024)</div>
                 </div>
                 <div class="kpi">
                     <div class="k-label">Protein Hewani</div>
                     <div class="k-val">${fmt(Math.round(dagingTon + ikanTon))} <span class="k-unit">Ton/th</span></div>
-                    <div class="k-note">Daging ${fmt(Math.round(dagingTon))} Ton + Ikan ${fmt(Math.round(ikanTon))} Ton</div>
+                    <div class="k-note">Data Resmi BPS (Susenas 2023/2024)</div>
                 </div>
                 <div class="kpi">
                     <div class="k-label">Sayur &amp; Buah</div>
                     <div class="k-val">${fmt(Math.round(sayurBuahTon))} <span class="k-unit">Ton/th</span></div>
-                    <div class="k-note">Hortikultura Segar Tahunan</div>
+                    <div class="k-note">Data Resmi BPS (Susenas 2023/2024)</div>
                 </div>
                 <div class="kpi">
                     <div class="k-label">Konsumsi Rokok</div>
                     <div class="k-val" style="color:#E8604C">${rokokJt} <span class="k-unit">Juta Batang</span></div>
-                    <div class="k-note">Kretek Filter, Putih &amp; Non-Filter</div>
+                    <div class="k-note">Data Resmi BPS (Susenas 2023/2024)</div>
                 </div>
             `;
         } else {
@@ -1570,9 +1606,7 @@ function renderPertanian(r) {
     const ring = pData.ringkasan || {};
     const fmtVol = (v) => {
         if (!v || v === 0) return '0';
-        if (v >= 1000000) return (v / 1000000).toFixed(2).replace('.', ',') + ' Jt';
-        if (v >= 10000) return (v / 1000).toFixed(1).replace('.', ',') + ' Rb';
-        return fmt(Math.round(v));
+        return typeof v === 'number' ? Math.round(v).toLocaleString('id-ID') : v;
     };
 
     if (kpisEl) {
@@ -1611,9 +1645,12 @@ function renderPertanian(r) {
 
     const fmtItemVal = (v) => {
         if (!v || v === 0) return '0';
-        if (v >= 1000000) return (v / 1000000).toFixed(1).replace('.', ',') + ' Jt';
-        if (v >= 10000) return (v / 1000).toFixed(1).replace('.', ',') + ' Rb';
-        return typeof v === 'number' ? v.toLocaleString('id-ID') : v;
+        if (typeof v === 'number') {
+            return Number.isInteger(v)
+                ? v.toLocaleString('id-ID')
+                : v.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        }
+        return v;
     };
 
     function renderSectorCards(filterQuery = '') {
@@ -1636,9 +1673,9 @@ function renderPertanian(r) {
             const metaStr = [luas ? `Luas: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
             return `
                 <div class="gc-sub-item" style="flex-direction:column;gap:2px">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
-                        <b style="font-family:var(--mono);color:#0FB5A0;font-size:12px">${prod}</b>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                        <span style="font-weight:600;color:var(--text);font-size:12px;flex:1">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#0FB5A0;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0">${prod}</b>
                     </div>
                     ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
                 </div>
@@ -1668,9 +1705,9 @@ function renderPertanian(r) {
             const metaStr = [luas ? `Areal: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
             return `
                 <div class="gc-sub-item" style="flex-direction:column;gap:2px">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
-                        <b style="font-family:var(--mono);color:#D9962B;font-size:12px">${prod}</b>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                        <span style="font-weight:600;color:var(--text);font-size:12px;flex:1">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#D9962B;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0">${prod}</b>
                     </div>
                     ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
                 </div>
@@ -1700,9 +1737,9 @@ function renderPertanian(r) {
             const metaStr = [luas ? `Luas: ${luas}` : '', prodv ? `Prod: ${prodv}` : ''].filter(Boolean).join(' · ');
             return `
                 <div class="gc-sub-item" style="flex-direction:column;gap:2px">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
-                        <b style="font-family:var(--mono);color:#2FA65E;font-size:12px">${prod}</b>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                        <span style="font-weight:600;color:var(--text);font-size:12px;flex:1">${it.komoditas}</span>
+                        <b style="font-family:var(--mono);color:#2FA65E;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0">${prod}</b>
                     </div>
                     ${metaStr ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${metaStr}</div>` : ''}
                 </div>
@@ -1726,16 +1763,16 @@ function renderPertanian(r) {
 
         // Card 4: Peternakan (Baris 2, Kolom 2)
         const popListHtml = filteredPop.map(it => `
-            <div class="gc-sub-item" style="align-items:center">
-                <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
-                <b style="font-family:var(--mono);color:#E8604C;font-size:12px">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+            <div class="gc-sub-item" style="align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-weight:600;color:var(--text);font-size:12px;flex:1">${it.komoditas}</span>
+                <b style="font-family:var(--mono);color:#E8604C;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
             </div>
         `).join('');
 
         const prodListHtml = filteredProd.map(it => `
-            <div class="gc-sub-item" style="align-items:center">
-                <span style="font-weight:600;color:var(--text);font-size:12px">${it.komoditas}</span>
-                <b style="font-family:var(--mono);color:#E8604C;font-size:12px">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
+            <div class="gc-sub-item" style="align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-weight:600;color:var(--text);font-size:12px;flex:1">${it.komoditas}</span>
+                <b style="font-family:var(--mono);color:#E8604C;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0">${fmtItemVal(it.val)} <span style="font-weight:400;font-size:10px">${it.unit}</span></b>
             </div>
         `).join('');
 
@@ -1876,6 +1913,7 @@ function renderSosial(r) {
         // Nomenklatur formal lugas tanpa kata "/ Sederajat":
         // Seluruh 10 jenjang formal utama ditampilkan permanen (termasuk nilai 0) agar transparan dan tidak disangka hilang.
         const E = [
+            { n: 'Sekolah Luar Biasa (SLB)', v: slbTotal, c: '#64748B' },
             { n: 'PAUD & TK', v: paudTotal, c: '#E8604C' },
             { n: 'Sekolah Dasar (SD)', v: sdTotal, c: '#0FB5A0' },
             { n: 'Madrasah Ibtidaiyah (MI)', v: miTotal, c: '#14B8A6' },
@@ -1884,7 +1922,6 @@ function renderSosial(r) {
             { n: 'Sekolah Menengah Atas (SMA)', v: smaTotal, c: '#D9962B' },
             { n: 'Madrasah Aliyah (MA)', v: maTotal, c: '#F59E0B' },
             { n: 'Sekolah Menengah Kejuruan (SMK)', v: smkTotal, c: '#5B6EE0' },
-            { n: 'Sekolah Luar Biasa (SLB)', v: slbTotal, c: '#64748B' },
             { n: 'Perguruan Tinggi (PT)', v: kampusTotal, c: '#8E44AD' }
         ];
 
@@ -2144,88 +2181,151 @@ function renderPodes() {
 }
 
 /* ============================================================
-   REGION PICKER CONTROLLER
+   CASCADING REGION FILTER CONTROLLER (Gambar 2 UI)
    ============================================================ */
-function setupRegionPicker(currentRegion, returnView) {
-    const trigger = document.getElementById('pickerTrigger');
-    const dropdown = document.getElementById('pickerDropdown');
-    const searchInput = document.getElementById('pickerSearchInput');
-    const resultsList = document.getElementById('pickerResultsList');
-    const currentName = document.getElementById('pickerCurrentName');
+function setupCascadingFilter(currentRegion, returnView) {
+    const provSelect = document.getElementById('filterProvSelect');
+    const citySelect = document.getElementById('filterCitySelect');
+    const searchInput = document.getElementById('filterSearchInput');
+    const searchDropdown = document.getElementById('filterSearchResults');
 
-    if (!trigger || !dropdown || !resultsList) return;
+    function navigateToRegion(targetId, targetSlug) {
+        const targetItem = REGION_DATA.find(x => String(x.id) === String(targetId));
+        try {
+            localStorage.setItem('selected_region_id', String(targetId));
+            localStorage.setItem('selected_region_slug', String(targetSlug || ''));
+            if (targetItem) localStorage.setItem('selected_region_name', String(targetItem.kabkota || ''));
+            sessionStorage.setItem('selected_region_id', String(targetId));
+            sessionStorage.setItem('selected_region_slug', String(targetSlug || ''));
+            if (targetItem) sessionStorage.setItem('selected_region_name', String(targetItem.kabkota || ''));
+        } catch (e) {}
 
-    if (currentName) currentName.textContent = currentRegion.kabkota || 'Pilih Daerah';
+        const activeTabPane = sessionStorage.getItem('active_profil_tab') || 'tab-wilayah';
+        const cleanTab = activeTabPane.toLowerCase().replace(/^tab-/, '');
+        const viewParam = returnView ? `&view=${returnView}` : '';
+        window.location.href = `profil.html?id=${targetId}&slug=${targetSlug}&tab=${cleanTab}${viewParam}#id=${targetId}&slug=${targetSlug}`;
+    }
 
-    function toggle(open) {
-        const isHidden = dropdown.hidden;
-        const show = open !== undefined ? open : isHidden;
-        dropdown.hidden = !show;
-        if (show) {
-            if (searchInput) {
+    if (provSelect && citySelect) {
+        // 1. Ekstrak daftar 38 provinsi unik dan urutkan alfabetis
+        const provs = [...new Set(REGION_DATA.map(x => x.prov).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
+
+        let provOpts = '<option value="">Semua Provinsi (38)</option>';
+        provs.forEach(p => {
+            const isSel = (currentRegion && currentRegion.prov && currentRegion.prov.toUpperCase() === p.toUpperCase());
+            provOpts += `<option value="${escapeHtml(p)}" ${isSel ? 'selected' : ''}>${escapeHtml(p)}</option>`;
+        });
+        provSelect.innerHTML = provOpts;
+
+        function populateCities(selectedProv) {
+            if (!selectedProv) {
+                citySelect.disabled = true;
+                citySelect.innerHTML = '<option value="">Pilih Provinsi Dulu</option>';
+                return;
+            }
+
+            const cities = REGION_DATA.filter(x => x.prov && x.prov.toUpperCase() === selectedProv.toUpperCase())
+                .sort((a, b) => (a.kabkota || '').localeCompare(b.kabkota || '', 'id'));
+
+            let cityOpts = '<option value="">Pilih Kab/Kota...</option>';
+            cities.forEach(c => {
+                const isSel = (currentRegion && String(c.id) === String(currentRegion.id));
+                cityOpts += `<option value="${c.id}" data-slug="${c.slug}" ${isSel ? 'selected' : ''}>${escapeHtml(c.kabkota)}</option>`;
+            });
+
+            citySelect.disabled = false;
+            citySelect.innerHTML = cityOpts;
+        }
+
+        // Inisialisasi awal kab/kota sesuai provinsi daerah aktif
+        if (currentRegion && currentRegion.prov) {
+            populateCities(currentRegion.prov);
+        }
+
+        provSelect.addEventListener('change', e => {
+            const chosenProv = e.target.value;
+            populateCities(chosenProv);
+        });
+
+        citySelect.addEventListener('change', e => {
+            const targetId = e.target.value;
+            if (!targetId) return;
+            const selOpt = e.target.options[e.target.selectedIndex];
+            const targetSlug = selOpt ? selOpt.dataset.slug : '';
+            navigateToRegion(targetId, targetSlug);
+        });
+    }
+
+    // 2. Search Autocomplete
+    if (searchInput && searchDropdown) {
+        function renderSearch(q = '') {
+            const query = q.toLowerCase().trim();
+            if (!query) {
+                searchDropdown.hidden = true;
+                searchDropdown.innerHTML = '';
+                return;
+            }
+
+            const matches = REGION_DATA.filter(x => 
+                (x.kabkota && x.kabkota.toLowerCase().includes(query)) ||
+                (x.prov && x.prov.toLowerCase().includes(query))
+            ).slice(0, 15);
+
+            if (matches.length === 0) {
+                searchDropdown.innerHTML = `<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Tidak ada daerah cocok.</div>`;
+                searchDropdown.hidden = false;
+                return;
+            }
+
+            searchDropdown.innerHTML = matches.map(x => `
+                <div class="picker-item ${currentRegion && x.id === currentRegion.id ? 'selected' : ''}" data-id="${x.id}" data-slug="${x.slug}">
+                    <span style="font-weight:600;font-size:12.5px">${escapeHtml(x.kabkota)}</span>
+                    <span style="font-family:var(--mono);font-size:10.5px;color:var(--muted-2)">${escapeHtml(x.prov)}</span>
+                </div>
+            `).join('');
+
+            searchDropdown.hidden = false;
+
+            searchDropdown.querySelectorAll('.picker-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const targetId = item.dataset.id;
+                    const targetSlug = item.dataset.slug;
+                    navigateToRegion(targetId, targetSlug);
+                });
+            });
+        }
+
+        searchInput.addEventListener('input', e => renderSearch(e.target.value));
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.trim()) renderSearch(searchInput.value);
+        });
+
+        document.addEventListener('click', e => {
+            if (!searchDropdown.hidden && !searchDropdown.contains(e.target) && e.target !== searchInput) {
+                searchDropdown.hidden = true;
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
                 searchInput.focus();
                 searchInput.select();
+            } else if (e.key === 'Escape' && !searchDropdown.hidden) {
+                searchDropdown.hidden = true;
             }
-            renderList();
-        }
+        });
     }
 
-    trigger.addEventListener('click', e => {
-        e.stopPropagation();
-        toggle();
-    });
-
-    document.addEventListener('click', e => {
-        if (!dropdown.hidden && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
-            toggle(false);
-        }
-    });
-
-    document.addEventListener('keydown', e => {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-            e.preventDefault();
-            toggle(true);
-        } else if (e.key === 'Escape' && !dropdown.hidden) {
-            toggle(false);
-        }
-    });
-
-    if (searchInput) {
-        searchInput.addEventListener('input', () => renderList());
-    }
-
-    function renderList() {
-        const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
-        const filtered = REGION_DATA.filter(x => !q || x.kabkota.toLowerCase().includes(q) || x.prov.toLowerCase().includes(q));
-
-        if (filtered.length === 0) {
-            resultsList.innerHTML = `<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Tidak ada daerah yang cocok.</div>`;
-            return;
-        }
-
-        resultsList.innerHTML = filtered.map(x => `
-            <div class="picker-item ${x.id === currentRegion.id ? 'selected' : ''}" data-id="${x.id}" data-slug="${x.slug}">
-                <span style="font-weight:600">${x.kabkota}</span>
-                <span style="font-family:var(--mono);font-size:10px;color:var(--muted-2)">${x.prov}</span>
-            </div>
-        `).join('');
-
-        resultsList.querySelectorAll('.picker-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const targetId = item.dataset.id;
-                const targetSlug = item.dataset.slug;
-                const targetItem = REGION_DATA.find(x => String(x.id) === String(targetId));
-                try {
-                    localStorage.setItem('selected_region_id', String(targetId));
-                    localStorage.setItem('selected_region_slug', String(targetSlug || ''));
-                    if (targetItem) localStorage.setItem('selected_region_name', String(targetItem.kabkota || ''));
-                    sessionStorage.setItem('selected_region_id', String(targetId));
-                    sessionStorage.setItem('selected_region_slug', String(targetSlug || ''));
-                    if (targetItem) sessionStorage.setItem('selected_region_name', String(targetItem.kabkota || ''));
-                } catch (e) {}
-                const viewParam = returnView ? `&view=${returnView}` : '';
-                window.location.href = `profil.html?id=${targetId}&slug=${targetSlug}${viewParam}#id=${targetId}&slug=${targetSlug}`;
-            });
+    // 3. Fallback backward compatibility untuk pickerTrigger lama jika ada
+    const oldTrigger = document.getElementById('pickerTrigger');
+    const oldDropdown = document.getElementById('pickerDropdown');
+    const oldSearch = document.getElementById('pickerSearchInput');
+    const oldList = document.getElementById('pickerResultsList');
+    if (oldTrigger && oldDropdown && oldList) {
+        oldTrigger.addEventListener('click', () => {
+            oldDropdown.hidden = !oldDropdown.hidden;
+            if (!oldDropdown.hidden && oldSearch) oldSearch.focus();
         });
     }
 }

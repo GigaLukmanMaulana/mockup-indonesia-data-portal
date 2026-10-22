@@ -431,6 +431,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const provSearchInput = document.getElementById('provSearchInput');
     const provOptionsList = document.getElementById('provOptionsList');
 
+    // Cascading Header Filter in Profil Mode
+    const profilProvSelect = document.getElementById('profilProvSelect');
+    const profilCitySelect = document.getElementById('profilCitySelect');
+
+    function syncHeaderFilterCities(provName, selectedCityId = '') {
+        if (!profilCitySelect) return;
+        if (!provName) {
+            profilCitySelect.disabled = true;
+            profilCitySelect.innerHTML = '<option value="">Pilih Provinsi Dulu</option>';
+            return;
+        }
+
+        const citiesInProv = REGION_DATA.filter(d => (d.prov || '').toLowerCase() === provName.toLowerCase())
+            .sort((a, b) => (a.kabkota || '').localeCompare(b.kabkota || ''));
+
+        profilCitySelect.disabled = false;
+        profilCitySelect.innerHTML = `
+            <option value="">Semua Kab/Kota (${citiesInProv.length})</option>
+            ${citiesInProv.map(c => `
+                <option value="${c.id || c.no}" ${String(c.id || c.no) === String(selectedCityId) ? 'selected' : ''}>
+                    ${escapeHtml(c.kabkota || '')}
+                </option>
+            `).join('')}
+        `;
+    }
+
     if (provFilter) {
         const provinces = Array.from(new Set(REGION_DATA.map(d => d.prov).filter(Boolean))).sort();
         
@@ -442,6 +468,49 @@ document.addEventListener('DOMContentLoaded', () => {
             opt.textContent = `Provinsi ${p}`;
             provFilter.appendChild(opt);
         });
+
+        // Populate header cascading select for Profil Mode
+        if (profilProvSelect) {
+            profilProvSelect.innerHTML = `
+                <option value="">Semua Provinsi (${provinces.length})</option>
+                ${provinces.map(p => `<option value="${escapeHtml(p)}">Provinsi ${escapeHtml(p)}</option>`).join('')}
+            `;
+
+            profilProvSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                filterProv = val;
+                if (provFilter) provFilter.value = val;
+                if (provSelectLabel) {
+                    provSelectLabel.textContent = val ? `Provinsi ${val}` : 'Semua Provinsi (Nasional)';
+                }
+                syncHeaderFilterCities(val);
+                applyFilters();
+
+                if (val && allGeoJsonFeatures.length > 0) {
+                    const provFeatures = allGeoJsonFeatures.filter(f => f.properties && sameProvName(f.properties.COUNTRY, val));
+                    if (provFeatures.length > 0) {
+                        const tempLayer = L.geoJSON(provFeatures);
+                        map.flyToBounds(tempLayer.getBounds(), { padding: [40, 40], duration: 1.0 });
+                    }
+                } else if (!val) {
+                    map.flyTo([-1.2, 117.5], 5, { duration: 1.0 });
+                }
+            });
+        }
+
+        if (profilCitySelect) {
+            profilCitySelect.addEventListener('change', (e) => {
+                const cityId = e.target.value;
+                if (!cityId) return;
+                const target = REGION_DATA.find(d => String(d.id || d.no) === String(cityId));
+                if (target) {
+                    const sInp = document.getElementById('searchInput');
+                    if (sInp) sInp.value = target.kabkota || '';
+                    focusRegionMap(target);
+                    selectRegion(target);
+                }
+            });
+        }
 
         function renderProvOptions(query = '') {
             if (!provOptionsList) return;
@@ -476,6 +545,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (provSelectLabel) {
                         provSelectLabel.textContent = val ? `Provinsi ${val}` : 'Semua Provinsi (Nasional)';
                     }
+                    if (profilProvSelect) {
+                        profilProvSelect.value = val;
+                    }
+                    syncHeaderFilterCities(val);
                     closeProvSelect();
                     applyFilters();
 
@@ -555,6 +628,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (provSelectLabel) {
                 provSelectLabel.textContent = filterProv ? `Provinsi ${filterProv}` : 'Semua Provinsi (Nasional)';
             }
+            if (profilProvSelect) {
+                profilProvSelect.value = filterProv;
+            }
+            syncHeaderFilterCities(filterProv);
             applyFilters();
         });
     }
@@ -1232,6 +1309,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 sessionStorage.setItem('selected_region_slug', regSlug);
                 sessionStorage.setItem('selected_region_name', regName);
             } catch (e) {}
+
+            if (region.prov && profilProvSelect) {
+                profilProvSelect.value = region.prov;
+                syncHeaderFilterCities(region.prov, regId);
+            }
         }
 
         const isKota = (region.kabkota || '').toUpperCase().startsWith('KOTA');
